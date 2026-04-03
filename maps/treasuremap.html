@@ -305,19 +305,40 @@ function renderNodes(container, nodes) {
           .attr("stroke", BLUE_INK).attr("stroke-width", 0.5).attr("opacity", 0.5);
       }
     } else switch (node.point_type) {
-      case "heart":
-        g.append("circle").attr("r", 6).attr("fill", color).attr("stroke", "none").attr("opacity", 0.8);
-        g.append("circle").attr("r", 8).attr("fill", "none").attr("stroke", color).attr("stroke-width", 1.0);
+      case "heart": {
+        // Town — sparse cluster of 3-4 small houses
+        const hs = 3.5;
+        const positions = [{x:0, y:0}, {x:-hs*1.2, y:hs*0.2}, {x:hs*1.2, y:hs*0.1}, {x:0, y:-hs*0.9}];
+        positions.forEach(p => {
+          // House body
+          g.append("rect").attr("x", p.x - hs*0.45).attr("y", p.y - hs*0.2).attr("width", hs*0.9).attr("height", hs*0.65)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+          // Roof
+          g.append("path")
+            .attr("d", `M ${p.x - hs*0.55} ${p.y - hs*0.2} L ${p.x} ${p.y - hs*0.75} L ${p.x + hs*0.55} ${p.y - hs*0.2}`)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+        });
         break;
-      case "fortress":
-        g.append("rect").attr("x", -s).attr("y", -s).attr("width", s*2).attr("height", s*2)
-          .attr("fill", "none").attr("stroke", color).attr("stroke-width", 1.0);
-        // Small flag
-        g.append("line").attr("x1", 0).attr("y1", -s).attr("x2", 0).attr("y2", -s - 6)
-          .attr("stroke", color).attr("stroke-width", 0.8);
-        g.append("path").attr("d", `M 0 ${-s - 6} L 4 ${-s - 4.5} L 0 ${-s - 3}`)
-          .attr("fill", color).attr("opacity", 0.7);
+      }
+      case "fortress": {
+        const hs = 4;
+        // Main wall
+        g.append("rect").attr("x", -hs).attr("y", -hs*0.35).attr("width", hs*2).attr("height", hs*0.8)
+          .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.7);
+        // Central tower (taller)
+        g.append("rect").attr("x", -hs*0.3).attr("y", -hs).attr("width", hs*0.6).attr("height", hs*1.45)
+          .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.7);
+        // Crenellations on tower
+        for (let ci = 0; ci < 2; ci++) {
+          g.append("rect").attr("x", -hs*0.2 + ci * hs*0.25).attr("y", -hs - hs*0.18).attr("width", hs*0.15).attr("height", hs*0.18)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+        }
+        // Gate arch
+        g.append("path")
+          .attr("d", `M ${-hs*0.2} ${hs*0.45} L ${-hs*0.2} ${hs*0.1} A ${hs*0.2} ${hs*0.2} 0 0 1 ${hs*0.2} ${hs*0.1} L ${hs*0.2} ${hs*0.45}`)
+          .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
         break;
+      }
       case "tavern": {
         const hs = isLocal ? 2.5 : 3.5;
         // Building body

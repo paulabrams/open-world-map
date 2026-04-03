@@ -393,18 +393,48 @@ function renderNodes(container, nodes) {
           .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.5);
       }
     } else switch (node.point_type) {
-      case "heart":
-        g.append("circle").attr("r", 7).attr("fill", INK).attr("stroke", "none");
-        g.append("circle").attr("r", 9).attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.5);
+      case "heart": {
+        // Main town — cluster of filled houses
+        const hs = 4;
+        const positions = [{x:0, y:0}, {x:-hs*1.3, y:hs*0.2}, {x:hs*1.3, y:hs*0.1}, {x:-hs*0.5, y:-hs*0.8}, {x:hs*0.6, y:-hs*0.7}];
+        positions.forEach(p => {
+          // House body (filled)
+          g.append("rect").attr("x", p.x - hs*0.45).attr("y", p.y - hs*0.2).attr("width", hs*0.9).attr("height", hs*0.65)
+            .attr("fill", INK).attr("stroke", "none");
+          // Roof (filled)
+          g.append("path")
+            .attr("d", `M ${p.x - hs*0.55} ${p.y - hs*0.2} L ${p.x} ${p.y - hs*0.75} L ${p.x + hs*0.55} ${p.y - hs*0.2} Z`)
+            .attr("fill", INK).attr("stroke", "none");
+        });
         break;
-      case "fortress":
-        g.append("rect").attr("x", -s).attr("y", -s).attr("width", s*2).attr("height", s*2)
+      }
+      case "fortress": {
+        const hs = 5;
+        // Main wall (filled)
+        g.append("rect").attr("x", -hs).attr("y", -hs*0.4).attr("width", hs*2).attr("height", hs*0.9)
           .attr("fill", INK).attr("stroke", "none");
-        for (let i = -1; i <= 1; i++) {
-          g.append("rect").attr("x", i * s * 0.7 - 1.5).attr("y", -s - 3).attr("width", 3).attr("height", 3)
-            .attr("fill", INK);
+        // Left tower (filled)
+        g.append("rect").attr("x", -hs - hs*0.3).attr("y", -hs).attr("width", hs*0.6).attr("height", hs*1.5)
+          .attr("fill", INK).attr("stroke", "none");
+        // Right tower (filled)
+        g.append("rect").attr("x", hs - hs*0.3).attr("y", -hs).attr("width", hs*0.6).attr("height", hs*1.5)
+          .attr("fill", INK).attr("stroke", "none");
+        // Crenellations on left tower
+        for (let ci = 0; ci < 2; ci++) {
+          g.append("rect").attr("x", -hs - hs*0.2 + ci * hs*0.3).attr("y", -hs - hs*0.2).attr("width", hs*0.2).attr("height", hs*0.2)
+            .attr("fill", INK).attr("stroke", "none");
         }
+        // Crenellations on right tower
+        for (let ci = 0; ci < 2; ci++) {
+          g.append("rect").attr("x", hs - hs*0.2 + ci * hs*0.3).attr("y", -hs - hs*0.2).attr("width", hs*0.2).attr("height", hs*0.2)
+            .attr("fill", INK).attr("stroke", "none");
+        }
+        // Gate arch (cutout on filled wall)
+        g.append("path")
+          .attr("d", `M ${-hs*0.25} ${hs*0.5} L ${-hs*0.25} ${hs*0.1} A ${hs*0.25} ${hs*0.25} 0 0 1 ${hs*0.25} ${hs*0.1} L ${hs*0.25} ${hs*0.5} Z`)
+          .attr("fill", PARCHMENT).attr("stroke", "none");
         break;
+      }
       case "tavern": {
         const hs = isLocal ? 2 : 3.5;
         // Building body (filled)
