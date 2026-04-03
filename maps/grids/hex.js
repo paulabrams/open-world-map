@@ -23,6 +23,16 @@ window.MapGrids.hex = {
     const color = "rgba(120,80,40,0.15)";
     const labelColor = "rgba(120,80,40,0.45)";
 
+    // Get flat-top hex neighbors for a given col,row
+    function getNeighbors(col, row) {
+      const even = col % 2 === 0;
+      return [
+        [col + 1, even ? row - 1 : row], [col + 1, even ? row : row + 1],
+        [col - 1, even ? row - 1 : row], [col - 1, even ? row : row + 1],
+        [col, row - 1], [col, row + 1]
+      ];
+    }
+
     // Convert a node's pixel position to hex col,row
     function pixelToHex(px, py) {
       const colFloat = (px - originX) / colStep + bcCol;
@@ -41,21 +51,36 @@ window.MapGrids.hex = {
       contentHexes.add(col + "," + row);
     });
 
-    // Expand by 1 ring of neighbors (hex flower) for context
+    // Expand by 1 ring of neighbors (hex flower)
     const hexesToDraw = new Set(contentHexes);
     contentHexes.forEach(key => {
       const [col, row] = key.split(",").map(Number);
-      // 6 flat-top hex neighbors
-      const even = col % 2 === 0;
-      const neighbors = [
-        [col + 1, even ? row - 1 : row], [col + 1, even ? row : row + 1],
-        [col - 1, even ? row - 1 : row], [col - 1, even ? row : row + 1],
-        [col, row - 1], [col, row + 1]
-      ];
-      neighbors.forEach(([c, r]) => hexesToDraw.add(c + "," + r));
+      getNeighbors(col, row).forEach(([c, r]) => hexesToDraw.add(c + "," + r));
     });
 
-    // Draw only the relevant hexes
+    // Fill gaps: check hexes just outside the current set.
+    // If a hex has 2+ neighbors already in hexesToDraw, add it.
+    // Only do ONE pass to avoid runaway expansion.
+    const snapshot = new Set(hexesToDraw);
+    let minCol = Infinity, maxCol = -Infinity, minRow = Infinity, maxRow = -Infinity;
+    snapshot.forEach(key => {
+      const [c, r] = key.split(",").map(Number);
+      minCol = Math.min(minCol, c); maxCol = Math.max(maxCol, c);
+      minRow = Math.min(minRow, r); maxRow = Math.max(maxRow, r);
+    });
+    for (let col = minCol - 1; col <= maxCol + 1; col++) {
+      for (let row = minRow - 1; row <= maxRow + 1; row++) {
+        const key = col + "," + row;
+        if (snapshot.has(key)) continue;
+        const neighbors = getNeighbors(col, row);
+        const filledNeighbors = neighbors.filter(([c, r]) => snapshot.has(c + "," + r)).length;
+        if (filledNeighbors >= 3) {
+          hexesToDraw.add(key);
+        }
+      }
+    }
+
+    // Draw the hexes
     hexesToDraw.forEach(key => {
       const [col, row] = key.split(",").map(Number);
       const hx = originX + (col - bcCol) * colStep;
@@ -75,7 +100,7 @@ window.MapGrids.hex = {
         .attr("stroke", isBCHex ? "rgba(180,60,30,0.3)" : hasContent ? "rgba(120,80,40,0.25)" : color)
         .attr("stroke-width", isBCHex ? 1.5 : hasContent ? 0.8 : 0.4);
 
-      // Label: CCRR format (no dot)
+      // Label: CCRR format
       const label = String(col + 1).padStart(2, "0") + String(row + 1).padStart(2, "0");
       gridGroup.append("text")
         .attr("x", hx).attr("y", hy + 3)
