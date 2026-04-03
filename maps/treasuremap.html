@@ -734,7 +734,7 @@ function renderAnnotations(container, nodes) {
 
     // Vary angle and distance per node for a scattered, hand-written look
     const angle = (rng() - 0.5) * Math.PI * 1.5;
-    const dist = 35 + rng() * 20;
+    const dist = 45 + rng() * 15;
 
     const ax = node.x + Math.cos(angle) * dist;
     const ay = node.y + Math.sin(angle) * dist;
@@ -742,7 +742,7 @@ function renderAnnotations(container, nodes) {
     // Use node description text, truncated to 35-45 chars
     let phrase;
     if (node.description) {
-      const limit = 35 + Math.floor(rng() * 10); // 35-44 chars
+      const limit = 25 + Math.floor(rng() * 5); // 25-29 chars
       if (node.description.length > limit) {
         let cut = node.description.lastIndexOf(" ", limit);
         if (cut < 20) cut = limit;
@@ -814,8 +814,8 @@ function renderBeastSymbol(container, nodes) {
   const by = beast.y + Math.sin(angle) * dist;
 
   const g = container.append("g")
-    .attr("transform", `translate(${bx}, ${by}) scale(0.9)`)
-    .attr("opacity", 0.6);
+    .attr("transform", `translate(${bx}, ${by}) scale(1.35)`)
+    .attr("opacity", 0.7);
 
   // Simple dragon silhouette: serpentine body with wings
   // Body — sinuous S-curve
@@ -823,7 +823,7 @@ function renderBeastSymbol(container, nodes) {
     .attr("d", "M 0 0 C 6 -8, 14 -4, 18 -10 C 22 -16, 28 -12, 32 -8 C 36 -4, 30 2, 24 0")
     .attr("fill", "none")
     .attr("stroke", RED_INK)
-    .attr("stroke-width", 1.8)
+    .attr("stroke-width", 2.0)
     .attr("stroke-linecap", "round");
 
   // Left wing — swept back
@@ -832,7 +832,7 @@ function renderBeastSymbol(container, nodes) {
     .attr("fill", RED_INK)
     .attr("opacity", 0.25)
     .attr("stroke", RED_INK)
-    .attr("stroke-width", 0.8);
+    .attr("stroke-width", 1.0);
 
   // Right wing — swept forward
   g.append("path")
@@ -840,20 +840,20 @@ function renderBeastSymbol(container, nodes) {
     .attr("fill", RED_INK)
     .attr("opacity", 0.25)
     .attr("stroke", RED_INK)
-    .attr("stroke-width", 0.8);
+    .attr("stroke-width", 1.0);
 
   // Head — small pointed triangle
   g.append("path")
     .attr("d", "M 0 0 L -4 -3 L -2 2 Z")
     .attr("fill", RED_INK)
-    .attr("opacity", 0.5);
+    .attr("opacity", 0.7);
 
   // Tail tip
   g.append("path")
     .attr("d", "M 24 0 C 26 4, 30 6, 34 4")
     .attr("fill", "none")
     .attr("stroke", RED_INK)
-    .attr("stroke-width", 1.2)
+    .attr("stroke-width", 1.6)
     .attr("stroke-linecap", "round");
 }
 
@@ -871,15 +871,15 @@ function renderBeastMark(container, nodes) {
     const flip = rng() > 0.5 ? -1 : 1;
 
     const g = container.append("g")
-      .attr("transform", `translate(${bx}, ${by}) scale(${flip * 0.8}, 0.8)`)
-      .attr("opacity", 0.5);
+      .attr("transform", `translate(${bx}, ${by}) scale(${flip * 1.2}, 1.2)`)
+      .attr("opacity", 0.7);
 
     // Serpentine body — sinuous S-curve
     g.append("path")
       .attr("d", "M 0 0 C 5 -10, 15 -6, 20 -12 C 25 -18, 32 -10, 28 -4")
       .attr("fill", "none")
       .attr("stroke", RED_INK)
-      .attr("stroke-width", 1.6)
+      .attr("stroke-width", 2.0)
       .attr("stroke-linecap", "round");
 
     // Pointed tail
@@ -887,16 +887,16 @@ function renderBeastMark(container, nodes) {
       .attr("d", "M 28 -4 C 32 0, 36 4, 40 2 L 38 5")
       .attr("fill", "none")
       .attr("stroke", RED_INK)
-      .attr("stroke-width", 1.0)
+      .attr("stroke-width", 1.4)
       .attr("stroke-linecap", "round");
 
     // Small wing suggestion
     g.append("path")
       .attr("d", "M 12 -9 C 8 -20, 2 -22, -2 -16 C 2 -14, 8 -12, 12 -9")
       .attr("fill", RED_INK)
-      .attr("opacity", 0.2)
+      .attr("opacity", 0.3)
       .attr("stroke", RED_INK)
-      .attr("stroke-width", 0.6);
+      .attr("stroke-width", 0.8);
   });
 }
 

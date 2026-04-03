@@ -334,10 +334,10 @@ function renderTerrainSymbols(container, nodes, links) {
         drawMountainRange(terrainGroup, mx, my, 5 + rng() * 3, rng);
       }
     } else if (node.terrain === "forest") {
-      const count = 10 + Math.floor(rng() * 6);
+      const count = 12 + Math.floor(rng() * 7);
       for (let i = 0; i < count; i++) {
         const a = placeAngle + (rng() - 0.5) * 1.6;
-        const r = offset * (0.3 + rng() * 0.7);
+        const r = offset * (0.15 + rng() * 0.45);
         const tx = node.x + Math.cos(a) * r;
         const ty = node.y + Math.sin(a) * r;
         drawForestHatch(terrainGroup, tx, ty, 8 + rng() * 4, rng);
@@ -668,13 +668,16 @@ function renderRegionLabels(container, nodes, meta) {
   const regionLabelGroup = container.append("g").attr("class", "region-labels");
 
   // Large spread-out labels for heart/fortress nodes (major regions)
+  // Skip if the node name matches the campaign region (rendered as central watermark)
+  const regionName = (meta && meta.region) ? meta.region.toUpperCase() : "";
   nodes.forEach(node => {
     if (node.point_type !== "heart" && node.point_type !== "fortress") return;
     if (node.scale === "local") return;
+    if (node.name.toUpperCase() === regionName) return;
 
     regionLabelGroup.append("text")
       .attr("x", node.x)
-      .attr("y", node.y - 35)
+      .attr("y", node.y - 50)
       .attr("text-anchor", "middle")
       .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
       .attr("font-size", "24px")

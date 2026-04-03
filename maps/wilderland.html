@@ -670,10 +670,10 @@ function renderLinks(container, links) {
       const lineGen = d3.line().x(d => d.x).y(d => d.y).curve(d3.curveBasis);
 
       linkGroup.append("path").attr("d", lineGen(offsetBank(spine, 1)))
-        .attr("fill", "none").attr("stroke", BLUE).attr("stroke-width", 1.2)
+        .attr("fill", "none").attr("stroke", BLUE).attr("stroke-width", 2.5)
         .attr("stroke-linecap", "round");
       linkGroup.append("path").attr("d", lineGen(offsetBank(spine, -1)))
-        .attr("fill", "none").attr("stroke", BLUE).attr("stroke-width", 1.2)
+        .attr("fill", "none").attr("stroke", BLUE).attr("stroke-width", 1.5)
         .attr("stroke-linecap", "round");
       return;
     }
@@ -815,7 +815,7 @@ function renderCartouche(container, bounds, meta) {
     .attr("width", boxW).attr("height", boxH)
     .attr("fill", PARCHMENT)
     .attr("stroke", INK)
-    .attr("stroke-width", 1.2);
+    .attr("stroke-width", 2.0);
 
   // Inner border
   container.append("rect")
@@ -823,7 +823,7 @@ function renderCartouche(container, bounds, meta) {
     .attr("width", boxW - 6).attr("height", boxH - 6)
     .attr("fill", "none")
     .attr("stroke", INK)
-    .attr("stroke-width", 0.4);
+    .attr("stroke-width", 0.8);
 
   // Title text
   container.append("text")
@@ -831,9 +831,9 @@ function renderCartouche(container, bounds, meta) {
     .attr("y", by + boxH / 2 - 4)
     .attr("text-anchor", "middle")
     .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
-    .attr("font-size", "16px")
+    .attr("font-size", "18px")
     .attr("font-weight", "bold")
-    .attr("letter-spacing", "3px")
+    .attr("letter-spacing", "4px")
     .attr("fill", INK)
     .text(meta.region ? meta.region.toUpperCase() : meta.campaign.toUpperCase());
 
