@@ -1,0 +1,427 @@
+{
+  "meta": {
+    "campaign": "The Basilisk Campaign",
+    "world": "Dragon Isles",
+    "region": "Belerion",
+    "era": "Year 412"
+  },
+  "nodes": [
+    {
+      "id": "blackwater-crossing",
+      "name": "Blackwater Crossing",
+      "point_type": "heart",
+      "terrain": "plains",
+      "visible": true,
+      "description": "A walled frontier town at the center of the Blackwater Crossing region of Belerion. A stone bridge spans the Blackwater River here. The Old Northern Trade Road passes directly through the town. It is the Heart of the Basilisk Campaign \u2014 the starting point. Inside the town: The Laughing Basilisk tavern, The Dragon's Breath Inn, a temple, a market, tunnels beneath the streets, and a cursed well.",
+      "x_hint": 0,
+      "y_hint": 0
+    },
+    {
+      "id": "laughing-basilisk",
+      "name": "The Laughing Basilisk",
+      "point_type": "tavern",
+      "terrain": "plains",
+      "visible": true,
+      "description": "A tavern inside Blackwater Crossing, near the north gate. It is the party's home base in the Basilisk Campaign.",
+      "x_hint": 5,
+      "y_hint": -5,
+      "scale": "local",
+      "parent": "blackwater-crossing"
+    },
+    {
+      "id": "sweaty-mermaid",
+      "name": "The Sweaty Mermaid",
+      "point_type": "tavern",
+      "terrain": "plains",
+      "visible": true,
+      "description": "A tavern on the east (bad) side of the Blackwater River in Blackwater Crossing. It is connected to the suspicious meat rumor. Below the building are stairs leading down to old tunnels beneath the city, including a vampire brothel.",
+      "x_hint": -5,
+      "y_hint": 5,
+      "scale": "local",
+      "parent": "blackwater-crossing"
+    },
+    {
+      "id": "the-twist",
+      "name": "The Twist",
+      "point_type": "settlement",
+      "terrain": "plains",
+      "visible": true,
+      "description": "A maze of alleys near the Laughing Basilisk in Blackwater Crossing. It is controlled by a local thieves guild known as a \"canting crew.\" A dangerous, labyrinthine district in the heart of town.",
+      "x_hint": 3,
+      "y_hint": -3,
+      "scale": "local",
+      "parent": "blackwater-crossing"
+    },
+    {
+      "id": "tunnels-beneath-blackwater",
+      "name": "Tunnels Beneath Blackwater Crossing",
+      "point_type": "dungeon",
+      "terrain": "plains",
+      "visible": true,
+      "description": "Old tunnels under the city, accessed through stairs beneath a crumbling building near the Sweaty Mermaid on the east side of town. Immediately inside is an arch with a beaded curtain leading to a vampire brothel. The brothel has multiple rooms, a receptionist with a giant red-eyed rat, and at least one vampire. Clients from town visit using pseudonyms. A noble patron buys blood on a schedule before the new moon. Connected to the mystery of the missing children and the fog.",
+      "x_hint": -3,
+      "y_hint": 8,
+      "scale": "local",
+      "parent": "blackwater-crossing"
+    },
+    {
+      "id": "farms",
+      "name": "Farms",
+      "point_type": "settlement",
+      "terrain": "plains",
+      "visible": true,
+      "description": "Farms along the Old Northern Trade Road near Blackwater Crossing. Small buildings, fields, and tilled land supporting the town.",
+      "x_hint": 5,
+      "y_hint": -25
+    },
+    {
+      "id": "abandoned-farmhouse",
+      "name": "The Abandoned Farmhouse",
+      "point_type": "ruin",
+      "terrain": "plains",
+      "visible": true,
+      "description": "A ruined farmstead near Blackwater Crossing. It has a basement. There was a fire here.",
+      "x_hint": -30,
+      "y_hint": 25
+    },
+    {
+      "id": "old-forest",
+      "name": "The Old Forest",
+      "point_type": "wilderness",
+      "terrain": "forest",
+      "visible": true,
+      "description": "A dense, ancient woodland north and northeast of Blackwater Crossing. The Old Northern Trade Road passes through it. Contains dire wolves, giant spiders, kobold hunters, porcs, shadow mastiffs, pine trolls, a vampire runestone, barrow wights, and corrupted groves. Also called the Old Wood.",
+      "x_hint": 0,
+      "y_hint": -55
+    },
+    {
+      "id": "pjork-choppe-hille",
+      "name": "Pj\u00f6rk Choppe Hille",
+      "point_type": "settlement",
+      "terrain": "forest",
+      "visible": true,
+      "description": "A porc settlement located in the Old Forest, approximately 3/4 day north of Blackwater Crossing along the Old Northern Trade Road, then west off-road into the woods. Access routes from the Trade Road: widest cart path (direct) ~1 hour, narrower trail ~3 hours, off-path through black pine forest ~6 hours. Several trails lead to the settlement, some wide enough to carry off stolen carts, suggesting organized raiding activity. The porcs here are organized and have been a recurring threat in the region.",
+      "x_hint": -40,
+      "y_hint": -85
+    },
+    {
+      "id": "spider-cave",
+      "name": "The Spider Cave",
+      "point_type": "dungeon",
+      "terrain": "forest",
+      "visible": true,
+      "description": "A cave system near the summit of Pj\u00f6rk Choppe Hille, containing daemon spiders with writings on them. Below the cave are tunnels leading to a skeletal lord's throne room, an Evil Chaos Shrine, a store room, and a torture chamber. The party used the cave as a base camp for multiple sessions while exploring the tunnels. Slavers led by one named Painweaver (\"Suffering Teaches\") claimed to be holed up in caves on the south side near the cursed spiders.",
+      "x_hint": -50,
+      "y_hint": -95
+    },
+    {
+      "id": "kobold-crevasse",
+      "name": "The Kobold Crevasse",
+      "point_type": "settlement",
+      "terrain": "forest",
+      "visible": true,
+      "description": "A location east off the main road in the Old Forest, south of Thornespire Keep. A deep crevasse with a path leading down to a kobold settlement. At the surface is a mystic ring of trees with a stone table bearing thaumaturgical runes \u2014 a stone binding spell for witnessing prophetic dreams as the shadow moves across the moon. Home to Yip-Snap, a mighty kobold hunter, and her clan. The kobolds trade and communicate via drums (trash-talking the porcs).",
+      "x_hint": 45,
+      "y_hint": -70
+    },
+    {
+      "id": "fae-glade",
+      "name": "The Fae Glade",
+      "point_type": "sanctuary",
+      "terrain": "forest",
+      "visible": true,
+      "description": "A section of old-growth forest between Pj\u00f6rk Choppe Hille and Thornespire Keep, about 6 hours through the wood from the Pj\u00f6rk Choppe Hille area. It contains very old trees with silver or white bark that appear to have faces, like a curated garden with paths. There is a significant time differential \u2014 minutes spent inside pass as hours in the outside world. The party discovered it while traveling from Pj\u00f6rk Choppe Hille to Thornespire Keep. Also called \"The Garden.\"",
+      "x_hint": -30,
+      "y_hint": -100
+    },
+    {
+      "id": "thornespire-keep",
+      "name": "Thornespire Keep",
+      "point_type": "fortress",
+      "terrain": "forest",
+      "visible": true,
+      "description": "A stone fortress atop a tall hill in the Old Forest, commanding views of the river and surrounding woodland. Reached by traveling north along the Old Northern Trade Road from Blackwater Crossing (about 1 day to the forest edge), then taking a well-maintained road west for about 4 hours (~1.5 days total). The main north-south road is visible from the keep's towers. Contains an Outer Bailey with a Traveler's Inn, a Main Gate, and a Chapel of Muir. The Castellan governs from the Inner Bailey.",
+      "x_hint": -20,
+      "y_hint": -120
+    },
+    {
+      "id": "ravens-perch",
+      "name": "Raven's Perch",
+      "point_type": "ruin",
+      "terrain": "forest",
+      "visible": true,
+      "description": "An abandoned watchtower north of Thornespire Keep. It was the site where the Castellan's missing scouts disappeared. The party investigated and rescued three scouts. The Castellan held a feast to celebrate and granted the party passes to the Inner Bailey.",
+      "x_hint": -30,
+      "y_hint": -150
+    },
+    {
+      "id": "the-swamp",
+      "name": "The Swamp",
+      "point_type": "wilderness",
+      "terrain": "swamp",
+      "visible": true,
+      "description": "Northwest of Blackwater Crossing. It has lizardmen and a crazy old hermit who drinks ice wine and knows things. The region was once populated until it was flooded \u2014 good place to look for treasure.",
+      "x_hint": -70,
+      "y_hint": -40
+    },
+    {
+      "id": "mistwood-glen",
+      "name": "Mistwood Glen",
+      "point_type": "sanctuary",
+      "terrain": "forest",
+      "visible": true,
+      "description": "A mystical sanctuary deep in the woods, about 2-3 days southwest of Blackwater Crossing through tough forest terrain. The Kalla'din is a pocket realm / Node that exists partially outside normal space and time \u2014 an aerial sanctuary woven between three massive oak trees, with platforms 20 feet above scorched ground, floating rune-carved stones, upward-flowing waterfalls, and luminous silver-bark trees. Home to seven immortal Dwur Eldar called the Thornbeard Circle, led by Gunnar \"Brambleheart.\" Snezynja is an Aethiiri sorceress from the stellar courts. The Stone-Nose Clan are ancient forest trolls dwelling at the Standing Stones.",
+      "x_hint": -80,
+      "y_hint": 80
+    },
+    {
+      "id": "serpents-teeth-crags",
+      "name": "Serpent's Teeth Crags",
+      "point_type": "wilderness",
+      "terrain": "mountains",
+      "visible": true,
+      "description": "A jagged mountain range south and southeast of Blackwater Crossing. About 2 days travel south through perilous terrain. The Old Northern Trade Road passes through a mountain pass here. Contains gargoyles, a brigands' camp, and an obsidian quarry.",
+      "x_hint": 5,
+      "y_hint": 120
+    },
+    {
+      "id": "south-road-mountain-watch",
+      "name": "Brunhilde's Mountain Watch Camp",
+      "point_type": "waypoint",
+      "terrain": "mountains",
+      "visible": true,
+      "description": "Brunhilde Ironfoot's Mountain Watch Camp & Inn, a waypoint and recruiting camp along the south road in the Serpent's Teeth foothills. Brunhilde runs both the inn and recruits for the Mountain Watch. Has a moat (which contained a gelatinous ooze). Encounters in the area include lightning blights and wyverns. Baron Thornwise (gold wheat sheaf on blue banner) claims jurisdiction via a tax collector agent. Dwur patrols operate in the nearby mountain foothills.",
+      "x_hint": 5,
+      "y_hint": 75
+    },
+    {
+      "id": "bandit-camp",
+      "name": "The Bandit Camp",
+      "point_type": "lair",
+      "terrain": "mountains",
+      "visible": true,
+      "description": "Hangman Hill in the Serpent's Teeth Crags. A large operation: 120 people total \u2014 48 bandits and 72 slaves. Key NPCs: Krin \"The Cunning\" (strike force leader), Rath \"Iron-Will\" (slaver boss/quarry overseer), Corth \"Whip-Crack\" (the pit whip). The obsidian quarry is a crater with a single large obsidian spire at its center that may be hollow or deeper than it appears. Bandit Hill is a separate ambush site overlooking the main road. The camp was ultimately destroyed by lightning from the Tower of the Stargazer.",
+      "x_hint": 70,
+      "y_hint": 60
+    },
+    {
+      "id": "tower-of-stargazer",
+      "name": "Tower of the Stargazer",
+      "point_type": "tower",
+      "terrain": "mountains",
+      "visible": true,
+      "description": "Home of Sir Uravulon Calcidius, an evil wizard corrupted by contact with beings from other worlds. Located about 2 days south of Blackwater Crossing along the Old Northern Trade Road, then half a day west, in the foothills north of the Serpent's Teeth Crags. The tower is 80 feet tall, solid stone blocks, no visible windows. Top section resembles a globe with layered metal plate dome. Ring of steel spikes around the rim, and four 40-foot steel spikes jut from the ground 50 feet from the base, all leaning inward. The area between the spikes is a blasted lunar-like wasteland. Lightning strikes constantly, even in cloudless weather.",
+      "x_hint": -20,
+      "y_hint": 100
+    },
+    {
+      "id": "vault-of-first-light",
+      "name": "Vault of First Light",
+      "point_type": "dungeon",
+      "terrain": "mountains",
+      "visible": true,
+      "description": "An ancient dwarven dungeon in the foothills of the Serpent's Teeth. The party has explored it and returned with a magical candle that speaks in ancient tongues. Contains rooms, traps, the Fallen (undead dwur), and connections to cosmic forces.",
+      "x_hint": 70,
+      "y_hint": 160
+    }
+  ],
+  "links": [
+    {
+      "source": "blackwater-crossing",
+      "target": "old-forest",
+      "name": "Old Northern Trade Road",
+      "days": 0.5,
+      "path_type": "road",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "old-forest",
+      "target": "thornespire-keep",
+      "name": "Old Northern Trade Road",
+      "days": 1,
+      "path_type": "road",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "blackwater-crossing",
+      "target": "serpents-teeth-crags",
+      "name": "Old Northern Trade Road",
+      "days": 2,
+      "path_type": "road",
+      "terrain_difficulty": "perilous",
+      "visible": true
+    },
+    {
+      "source": "blackwater-crossing",
+      "target": "mistwood-glen",
+      "name": "Trail to Mistwood Glen",
+      "days": 2.5,
+      "path_type": "trail",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "old-forest",
+      "target": "bandit-camp",
+      "name": "Trail to Bandit Camp",
+      "days": 0.5,
+      "path_type": "wilderness",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "serpents-teeth-crags",
+      "target": "south-road-mountain-watch",
+      "name": "Path to Mountain Watch",
+      "days": 0.5,
+      "path_type": "trail",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "serpents-teeth-crags",
+      "target": "vault-of-first-light",
+      "name": "Path to the Vault",
+      "days": 1,
+      "path_type": "wilderness",
+      "terrain_difficulty": "perilous",
+      "visible": true
+    },
+    {
+      "source": "blackwater-crossing",
+      "target": "the-swamp",
+      "name": "Path to the Swamp",
+      "days": 1,
+      "path_type": "trail",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "the-swamp",
+      "target": "thornespire-keep",
+      "name": "Blackwater River",
+      "path_type": "river",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "blackwater-crossing",
+      "target": "laughing-basilisk",
+      "name": "North Gate Road",
+      "days": 0,
+      "path_type": "road",
+      "terrain_difficulty": "easy",
+      "visible": true
+    },
+    {
+      "source": "blackwater-crossing",
+      "target": "sweaty-mermaid",
+      "name": "East Side",
+      "days": 0,
+      "path_type": "road",
+      "terrain_difficulty": "easy",
+      "visible": true
+    },
+    {
+      "source": "blackwater-crossing",
+      "target": "the-twist",
+      "name": "The Alleys",
+      "days": 0,
+      "path_type": "road",
+      "terrain_difficulty": "easy",
+      "visible": true
+    },
+    {
+      "source": "sweaty-mermaid",
+      "target": "tunnels-beneath-blackwater",
+      "name": "Stairs Beneath the Sweaty Mermaid",
+      "days": 0,
+      "path_type": "trail",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "blackwater-crossing",
+      "target": "farms",
+      "name": "Trade Road Farmlands",
+      "days": 0.1,
+      "path_type": "road",
+      "terrain_difficulty": "easy",
+      "visible": true
+    },
+    {
+      "source": "blackwater-crossing",
+      "target": "abandoned-farmhouse",
+      "name": "Path to the Farmhouse",
+      "days": 0.1,
+      "path_type": "trail",
+      "terrain_difficulty": "easy",
+      "visible": true
+    },
+    {
+      "source": "old-forest",
+      "target": "pjork-choppe-hille",
+      "name": "Forest Track to Pj\u00f6rk Choppe Hille",
+      "days": 0.5,
+      "path_type": "wilderness",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "pjork-choppe-hille",
+      "target": "spider-cave",
+      "name": "Trail to the Spider Cave",
+      "days": 0.1,
+      "path_type": "trail",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "pjork-choppe-hille",
+      "target": "fae-glade",
+      "name": "Path Through the Wood",
+      "days": 0.5,
+      "path_type": "wilderness",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "fae-glade",
+      "target": "thornespire-keep",
+      "name": "Forest Path to Thornespire",
+      "days": 0.5,
+      "path_type": "wilderness",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "thornespire-keep",
+      "target": "ravens-perch",
+      "name": "Northern Road",
+      "days": 0.5,
+      "path_type": "trail",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "old-forest",
+      "target": "kobold-crevasse",
+      "name": "Trail to the Kobold Crevasse",
+      "days": 0.5,
+      "path_type": "wilderness",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "serpents-teeth-crags",
+      "target": "tower-of-stargazer",
+      "name": "Foothills Trail West",
+      "days": 0.5,
+      "path_type": "wilderness",
+      "terrain_difficulty": "perilous",
+      "visible": true
+    }
+  ]
+}
