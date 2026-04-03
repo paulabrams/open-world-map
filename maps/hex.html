@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Basilisk Campaign — Point-Crawl Map</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #2a1f14;
+    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    overflow: hidden;
+  }
+  #map-container {
+    width: 100vw;
+    height: 100vh;
+    cursor: grab;
+  }
+  #map-container:active { cursor: grabbing; }
+
+  #detail-panel {
+    display: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 320px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    background: #f4e8d1;
+    border: 2px solid #2a1f14;
+    padding: 20px;
+    font-size: 14px;
+    color: #2a1f14;
+    box-shadow: 4px 4px 12px rgba(0,0,0,0.3);
+  }
+  #detail-panel.open { display: block; }
+  #detail-panel h2 {
+    color: #8b2500;
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+  #detail-panel .point-type {
+    font-style: italic;
+    color: #5a4a3a;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  #detail-panel .description {
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  #detail-panel .connections {
+    border-top: 1px solid #5a4a3a;
+    padding-top: 10px;
+    font-size: 13px;
+  }
+  #detail-panel .connections h3 {
+    font-size: 14px;
+    color: #8b2500;
+    margin-bottom: 6px;
+  }
+  #detail-panel .connections li {
+    margin-bottom: 4px;
+    list-style: none;
+  }
+  #detail-panel .close-btn {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    cursor: pointer;
+    font-size: 18px;
+    color: #5a4a3a;
+    background: none;
+    border: none;
+    font-family: inherit;
+  }
+
+  #title-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    color: #8b2500;
+    font-size: 11px;
+    font-style: italic;
+    opacity: 0.7;
+    pointer-events: none;
+  }
+  #export-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    background: #f4e8d1;
+    border: 2px solid #2a1f14;
+    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    font-size: 13px;
+    color: #2a1f14;
+    cursor: pointer;
+    opacity: 0.8;
+  }
+  #export-btn:hover { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="map-container">
+  <svg id="map"></svg>
+</div>
+
+<div id="detail-panel">
+  <button class="close-btn" onclick="closePanel()">&times;</button>
+  <h2 id="panel-name"></h2>
+  <div class="point-type" id="panel-type"></div>
+  <div class="description" id="panel-desc"></div>
+  <div class="connections" id="panel-connections"></div>
+</div>
+
+<div id="title-bar"></div>
+<button id="export-btn" onclick="exportSVG()">Save SVG</button>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+// --- Constants ---
+const INK = "#2a1f14";
+const INK_LIGHT = "#5a4a3a";
+const LABEL_RED = "#8b2500";
+const PARCHMENT = "#f4e8d1";
+const PARCHMENT_DARK = "#d4c4a0";
+
+const WIDTH = window.innerWidth;
+const HEIGHT = window.innerHeight;
+const HINT_SCALE = 100; // 1 unit = 1 inch on the hand-drawn 8.5x11 map
+const DAY_SCALE = 100;
+
+// --- Seeded random for deterministic symbol placement ---
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function seedFromString(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return h;
+}
+
+// --- SVG Terrain Symbol Generators ---
+
+function drawMountain(g, x, y, size, rng) {
+  const w = size * (0.8 + rng() * 0.4);
+  const h = size * (1.2 + rng() * 0.6);
+  const skew = (rng() - 0.5) * w * 0.15;
+
+  // Shadow side (left) - filled
+  g.append("path")
+    .attr("d", `M ${x - w/2} ${y} L ${x + skew} ${y - h} L ${x} ${y} Z`)
+    .attr("fill", INK)
+    .attr("stroke", "none");
+
+  // Light side (right) - outline only
+  g.append("path")
+    .attr("d", `M ${x} ${y} L ${x + skew} ${y - h} L ${x + w/2} ${y}`)
+    .attr("fill", "none")
+    .attr("stroke", INK)
+    .attr("stroke-width", 1.2);
+}
+
+function drawTree(g, x, y, size, rng) {
+  // Egg-shaped tree: ellipse with elongated top
+  const rx = size * (0.35 + rng() * 0.15);
+  const ry = size * (0.5 + rng() * 0.2);
+  const points = [];
+  for (let a = 0; a < Math.PI * 2; a += 0.2) {
+    let r_x = rx;
+    let r_y = ry;
+    // Elongate the top (negative y in SVG)
+    if (Math.sin(a) < 0) {
+      r_y *= 1.3;
+    }
+    points.push([x + Math.cos(a) * r_x, y + Math.sin(a) * r_y]);
+  }
+  const line = d3.line().curve(d3.curveBasisClosed);
+  g.append("path")
+    .attr("d", line(points))
+    .attr("fill", INK)
+    .attr("stroke", "none")
+    .attr("opacity", 0.8);
+
+  // Small trunk line
+  g.append("line")
+    .attr("x1", x).attr("y1", y + ry * 0.6)
+    .attr("x2", x).attr("y2", y + ry * 0.6 + size * 0.3)
+    .attr("stroke", INK)
+    .attr("stroke-width", 0.8);
+}
+
+function drawSwampReeds(g, x, y, size, rng) {
+  // Wavy water lines
+  for (let i = 0; i < 3; i++) {
+    const ly = y + i * size * 0.3;
+    const lx = x - size * 0.5;
+    const d = `M ${lx} ${ly} Q ${lx + size * 0.25} ${ly - size * 0.1} ${lx + size * 0.5} ${ly} Q ${lx + size * 0.75} ${ly + size * 0.1} ${lx + size} ${ly}`;
+    g.append("path")
+      .attr("d", d)
+      .attr("fill", "none")
+      .attr("stroke", INK)
+      .attr("stroke-width", 0.8)
+      .attr("opacity", 0.5);
+  }
+  // Reed stalks
+  for (let i = 0; i < 3; i++) {
+    const rx = x - size * 0.3 + rng() * size * 0.6;
+    const ry = y - size * 0.2;
+    g.append("line")
+      .attr("x1", rx).attr("y1", ry)
+      .attr("x2", rx).attr("y2", ry - size * 0.6)
+      .attr("stroke", INK)
+      .attr("stroke-width", 0.8);
+    g.append("circle")
+      .attr("cx", rx).attr("cy", ry - size * 0.6 - 2)
+      .attr("r", 1.5)
+      .attr("fill", INK);
+  }
+}
+
+function drawGrassTuft(g, x, y, size, rng) {
+  const blades = 3;
+  for (let i = 0; i < blades; i++) {
+    const angle = -Math.PI / 2 + (i - 1) * 0.4 + (rng() - 0.5) * 0.2;
+    const len = size * (0.4 + rng() * 0.3);
+    const tx = x + Math.cos(angle) * len;
+    const ty = y + Math.sin(angle) * len;
+    const cx = x + Math.cos(angle) * len * 0.5 + (rng() - 0.5) * 3;
+    const cy = y + Math.sin(angle) * len * 0.5;
+    g.append("path")
+      .attr("d", `M ${x} ${y} Q ${cx} ${cy} ${tx} ${ty}`)
+      .attr("fill", "none")
+      .attr("stroke", INK)
+      .attr("stroke-width", 0.7)
+      .attr("opacity", 0.4);
+  }
+}
+
+// --- Terrain symbol placement ---
+function renderTerrainSymbols(container, nodes, links) {
+  const terrainGroup = container.append("g").attr("class", "terrain");
+
+  nodes.forEach(node => {
+    const rng = mulberry32(seedFromString(node.id));
+
+    // Compute average angle to connected nodes to place symbols on opposite side
+    const connected = links.filter(l =>
+      (l.source.id || l.source) === node.id || (l.target.id || l.target) === node.id
+    );
+    let avgAngle = -Math.PI / 2; // default: place above
+    if (connected.length > 0) {
+      let sx = 0, sy = 0;
+      connected.forEach(l => {
+        const other = (l.source.id || l.source) === node.id ? l.target : l.source;
+        if (other.x !== undefined) {
+          sx += other.x - node.x;
+          sy += other.y - node.y;
+        }
+      });
+      avgAngle = Math.atan2(sy, sx);
+    }
+    // Place on opposite side
+    const placeAngle = avgAngle + Math.PI;
+    const offset = 35;
+
+    if (node.terrain === "mountains") {
+      const count = 2 + Math.floor(rng() * 2);
+      for (let i = 0; i < count; i++) {
+        const spread = (i - (count - 1) / 2) * 18;
+        const mx = node.x + Math.cos(placeAngle) * offset + Math.cos(placeAngle + Math.PI / 2) * spread;
+        const my = node.y + Math.sin(placeAngle) * offset + Math.sin(placeAngle + Math.PI / 2) * spread;
+        drawMountain(terrainGroup, mx, my, 12 + rng() * 6, rng);
+      }
+    } else if (node.terrain === "forest") {
+      const count = 3 + Math.floor(rng() * 3);
+      for (let i = 0; i < count; i++) {
+        const a = placeAngle + (rng() - 0.5) * 1.2;
+        const r = offset * (0.7 + rng() * 0.6);
+        const tx = node.x + Math.cos(a) * r;
+        const ty = node.y + Math.sin(a) * r;
+        drawTree(terrainGroup, tx, ty, 8 + rng() * 4, rng);
+      }
+    } else if (node.terrain === "swamp") {
+      drawSwampReeds(terrainGroup, node.x + Math.cos(placeAngle) * offset, node.y + Math.sin(placeAngle) * offset, 20, rng);
+    } else if (node.terrain === "plains") {
+      const count = 2 + Math.floor(rng() * 2);
+      for (let i = 0; i < count; i++) {
+        const a = placeAngle + (rng() - 0.5) * 1.0;
+        const r = offset * (0.6 + rng() * 0.5);
+        drawGrassTuft(terrainGroup, node.x + Math.cos(a) * r, node.y + Math.sin(a) * r, 12, rng);
+      }
+    }
+  });
+}
+
+// --- Node icon rendering ---
+function renderNodes(container, nodes) {
+  const nodeGroup = container.append("g").attr("class", "nodes");
+
+  nodes.forEach(node => {
+    const g = nodeGroup.append("g")
+      .attr("transform", `translate(${node.x}, ${node.y})`)
+      .attr("class", "node")
+      .style("cursor", "pointer")
+      .on("click", (event) => { event.stopPropagation(); showDetail(node); });
+
+    const isLocal = node.scale === "local";
+    const s = isLocal ? 3 : 5;
+
+    switch (node.point_type) {
+      case "heart":
+        g.append("circle").attr("r", 7).attr("fill", INK).attr("stroke", "none");
+        g.append("circle").attr("r", 9).attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.5);
+        break;
+      case "fortress":
+        g.append("rect").attr("x", -s).attr("y", -s).attr("width", s*2).attr("height", s*2)
+          .attr("fill", INK).attr("stroke", "none");
+        // Crenellations
+        for (let i = -1; i <= 1; i++) {
+          g.append("rect").attr("x", i * s * 0.7 - 1.5).attr("y", -s - 3).attr("width", 3).attr("height", 3)
+            .attr("fill", INK);
+        }
+        break;
+      case "tavern":
+        g.append("rect").attr("x", -3).attr("y", -3).attr("width", 6).attr("height", 6)
+          .attr("fill", INK).attr("stroke", "none");
+        break;
+      case "settlement":
+        g.append("circle").attr("r", s).attr("fill", INK).attr("stroke", "none");
+        break;
+      case "wilderness":
+        g.append("circle").attr("r", s).attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.5);
+        break;
+      case "dungeon": {
+        const dd = s * 1.3;
+        g.append("path")
+          .attr("d", `M 0 ${-dd} L ${dd} 0 L 0 ${dd} L ${-dd} 0 Z`)
+          .attr("fill", INK).attr("stroke", "none");
+        break;
+      }
+      case "sanctuary":
+        g.append("circle").attr("r", s).attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.5);
+        g.append("circle").attr("r", 2).attr("fill", INK);
+        break;
+      case "tower":
+        g.append("rect").attr("x", -2).attr("y", -s - 2).attr("width", 4).attr("height", s * 2 + 4)
+          .attr("fill", INK).attr("stroke", "none");
+        // Crenellation at top
+        g.append("rect").attr("x", -3.5).attr("y", -s - 4).attr("width", 7).attr("height", 2)
+          .attr("fill", INK);
+        break;
+      case "ruin":
+        g.append("rect").attr("x", -s).attr("y", -s).attr("width", s*2).attr("height", s*2)
+          .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2)
+          .attr("stroke-dasharray", "2 2");
+        break;
+      case "waypoint":
+        g.append("path")
+          .attr("d", `M 0 ${-s} L ${s} ${s} L ${-s} ${s} Z`)
+          .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2);
+        break;
+      case "lair":
+        g.append("path")
+          .attr("d", `M 0 ${-s} L ${s} ${s} L ${-s} ${s} Z`)
+          .attr("fill", INK).attr("stroke", "none");
+        break;
+      default:
+        g.append("circle").attr("r", 4).attr("fill", INK);
+    }
+  });
+}
+
+// --- Path/link rendering ---
+function renderLinks(container, links) {
+  const linkGroup = container.append("g").attr("class", "links");
+
+  links.forEach(link => {
+    const sx = link.source.x, sy = link.source.y;
+    const tx = link.target.x, ty = link.target.y;
+
+    // Compute a slight curve offset
+    const dx = tx - sx, dy = ty - sy;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const rng = mulberry32(seedFromString(link.name || "link"));
+    const curvature = (rng() - 0.5) * len * 0.15;
+    // Perpendicular offset for control point
+    const nx = -dy / len, ny = dx / len;
+    const cx = (sx + tx) / 2 + nx * curvature;
+    const cy = (sy + ty) / 2 + ny * curvature;
+
+    if (link.path_type === "river") {
+      // Double-line river channel (Tolkien style: two parallel bank lines)
+      const segments = 20;
+      const spine = [];
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const bx = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * cx + t * t * tx;
+        const by = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * cy + t * t * ty;
+        const wave = Math.sin(t * Math.PI * 3) * 4;
+        spine.push({ x: bx + nx * wave, y: by + ny * wave });
+      }
+
+      const bankWidth = 3.5;
+      function offsetBank(pts, sign) {
+        const result = [];
+        for (let i = 0; i < pts.length; i++) {
+          let lnx, lny;
+          if (i === 0) { lnx = pts[1].x - pts[0].x; lny = pts[1].y - pts[0].y; }
+          else if (i === pts.length - 1) { lnx = pts[i].x - pts[i-1].x; lny = pts[i].y - pts[i-1].y; }
+          else { lnx = pts[i+1].x - pts[i-1].x; lny = pts[i+1].y - pts[i-1].y; }
+          const ll = Math.sqrt(lnx * lnx + lny * lny) || 1;
+          result.push({ x: pts[i].x + sign * (-lny / ll) * bankWidth, y: pts[i].y + sign * (lnx / ll) * bankWidth });
+        }
+        return result;
+      }
+
+      const lineGen = d3.line().x(d => d.x).y(d => d.y).curve(d3.curveBasis);
+
+      linkGroup.append("path").attr("d", lineGen(offsetBank(spine, 1)))
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2)
+        .attr("stroke-linecap", "round").attr("opacity", 0.7);
+      linkGroup.append("path").attr("d", lineGen(offsetBank(spine, -1)))
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2)
+        .attr("stroke-linecap", "round").attr("opacity", 0.7);
+      return;
+    }
+
+    const pathD = `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`;
+
+    const path = linkGroup.append("path")
+      .attr("d", pathD)
+      .attr("fill", "none")
+      .attr("stroke", INK)
+      .attr("stroke-linecap", "round");
+
+    switch (link.path_type) {
+      case "road":
+        path.attr("stroke-width", 2.5);
+        break;
+      case "trail":
+        path.attr("stroke-width", 1.5).attr("stroke-dasharray", "8 4");
+        break;
+      case "wilderness":
+        path.attr("stroke-width", 1).attr("stroke-dasharray", "3 5");
+        break;
+      default:
+        path.attr("stroke-width", 1.5);
+    }
+  });
+}
+
+// --- Day labels on paths ---
+function renderDayLabels(container, links) {
+  const labelGroup = container.append("g").attr("class", "day-labels");
+
+  links.forEach(link => {
+    if (!link.days || link.days < 0.25 || link.path_type === "river") return;
+
+    const sx = link.source.x, sy = link.source.y;
+    const tx = link.target.x, ty = link.target.y;
+    const mx = (sx + tx) / 2, my = (sy + ty) / 2;
+
+    const text = link.days === 1 ? "1 day" : link.days + " days";
+
+    labelGroup.append("text")
+      .attr("x", mx)
+      .attr("y", my + 3)
+      .attr("text-anchor", "middle")
+      .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
+      .attr("font-size", "9px")
+      .attr("font-style", "italic")
+      .attr("fill", INK_LIGHT)
+      .attr("stroke", PARCHMENT)
+      .attr("stroke-width", 2.5)
+      .attr("paint-order", "stroke")
+      .text(text);
+  });
+}
+
+// --- Red labels ---
+function renderLabels(container, nodes) {
+  const labelGroup = container.append("g").attr("class", "labels");
+
+  nodes.forEach(node => {
+    const isLocal = node.scale === "local";
+    const fontSize = isLocal ? 10 : 13;
+    const fontWeight = (node.point_type === "heart" || node.point_type === "fortress") ? "bold" : "normal";
+    const color = isLocal ? INK_LIGHT : LABEL_RED;
+    const yOffset = isLocal ? 14 : 18;
+
+    labelGroup.append("text")
+      .attr("x", node.x)
+      .attr("y", node.y + yOffset)
+      .attr("text-anchor", "middle")
+      .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
+      .attr("font-size", fontSize + "px")
+      .attr("font-weight", fontWeight)
+      .attr("fill", color)
+      .attr("stroke", PARCHMENT)
+      .attr("stroke-width", 3)
+      .attr("paint-order", "stroke")
+      .text(node.name);
+  });
+}
+
+// --- 1-inch grid overlay ---
+function renderHexGrid(container, nodes) {
+  const gridGroup = container.append("g").attr("class", "hex-grid");
+  const bcNode = nodes.find(n => n.id === "blackwater-crossing");
+  const originX = bcNode ? bcNode.x : WIDTH / 2;
+  const originY = bcNode ? bcNode.y : HEIGHT / 2;
+
+  // Hex geometry: flat-top, 1 inch = 6 miles per hex
+  const size = HINT_SCALE / 2; // hex radius in px (0.5 inch = 50px so hex is 1" wide)
+  const hexW = size * 2;                    // flat-top width
+  const hexH = size * Math.sqrt(3);         // flat-top height
+  const colStep = hexW * 0.75;              // horizontal distance between column centers
+  const rowStep = hexH;                     // vertical distance between row centers
+
+  // BC is at hex 1010 (column 10, row 10)
+  const bcCol = 10;
+  const bcRow = 10;
+
+  const color = "rgba(120,80,40,0.15)";
+  const labelColor = "rgba(120,80,40,0.45)";
+
+  // Draw hexes covering the map
+  const colExtent = 19;
+  const rowExtent = 22;
+
+  for (let col = 0; col <= colExtent; col++) {
+    for (let row = 0; row <= rowExtent; row++) {
+      // Pixel position of this hex center
+      const hx = originX + (col - bcCol) * colStep;
+      const hy = originY + (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0);
+
+      // Skip if way off screen
+      if (hx < -200 || hx > WIDTH + 600 || hy < -200 || hy > HEIGHT + 600) continue;
+
+      // Draw flat-top hexagon
+      const points = [];
+      for (let k = 0; k < 6; k++) {
+        const angle = (Math.PI / 180) * (60 * k);
+        points.push((hx + size * Math.cos(angle)) + "," + (hy + size * Math.sin(angle)));
+      }
+      const isBCHex = (col === bcCol && row === bcRow);
+      gridGroup.append("polygon")
+        .attr("points", points.join(" "))
+        .attr("fill", "none")
+        .attr("stroke", isBCHex ? "rgba(180,60,30,0.3)" : color)
+        .attr("stroke-width", isBCHex ? 1.5 : 0.6);
+
+      // Canonical hex number: CC.RR (column.row)
+      const label = String(col + 1).padStart(2, "0") + "." + String(row + 1).padStart(2, "0");
+      gridGroup.append("text")
+        .attr("x", hx).attr("y", hy + 3)
+        .attr("text-anchor", "middle")
+        .attr("font-size", "7px")
+        .attr("fill", isBCHex ? "rgba(180,60,30,0.5)" : labelColor)
+        .attr("font-family", "'Palatino Linotype', Palatino, serif")
+        .text(label);
+    }
+  }
+}
+
+// --- Parchment background ---
+function renderBackground(svg, defs) {
+  // Paper texture filter
+  const filter = defs.append("filter")
+    .attr("id", "parchment-texture")
+    .attr("x", "0%").attr("y", "0%")
+    .attr("width", "100%").attr("height", "100%");
+
+  filter.append("feTurbulence")
+    .attr("type", "fractalNoise")
+    .attr("baseFrequency", "0.035")
+    .attr("numOctaves", "4")
+    .attr("seed", "15")
+    .attr("stitchTiles", "stitch")
+    .attr("result", "noise");
+
+  filter.append("feColorMatrix")
+    .attr("type", "matrix")
+    .attr("in", "noise")
+    .attr("values", `0 0 0 0 0.957
+                     0 0 0 0 0.910
+                     0 0 0 0 0.820
+                     0 0 0 0.4 0.6`)
+    .attr("result", "colored");
+
+  filter.append("feBlend")
+    .attr("in", "SourceGraphic")
+    .attr("in2", "colored")
+    .attr("mode", "multiply");
+
+  // Background rect with gradient
+  const grad = defs.append("radialGradient")
+    .attr("id", "parchment-grad")
+    .attr("cx", "50%").attr("cy", "50%").attr("r", "70%");
+  grad.append("stop").attr("offset", "0%").attr("stop-color", PARCHMENT);
+  grad.append("stop").attr("offset", "100%").attr("stop-color", PARCHMENT_DARK);
+
+  svg.append("rect")
+    .attr("width", WIDTH * 3)
+    .attr("height", HEIGHT * 3)
+    .attr("x", -WIDTH)
+    .attr("y", -HEIGHT)
+    .attr("fill", "url(#parchment-grad)")
+    .attr("filter", "url(#parchment-texture)");
+}
+
+// --- Scale bar (bottom-right) ---
+function renderScaleBar(container, bounds) {
+  const milesPerInch = 6;
+  const barSegments = 3; // 3 segments of 6 miles each = 18 miles
+  const segLen = HINT_SCALE; // 1 inch = 100px
+  const barW = barSegments * segLen;
+  const barH = 6;
+  const bx = bounds.maxX - barW - 10;
+  const by = bounds.maxY + 30;
+
+  const sg = container.append("g").attr("class", "scale-bar");
+
+  // Alternating black/white segments
+  for (let i = 0; i < barSegments; i++) {
+    sg.append("rect")
+      .attr("x", bx + i * segLen).attr("y", by)
+      .attr("width", segLen).attr("height", barH)
+      .attr("fill", i % 2 === 0 ? INK : PARCHMENT)
+      .attr("stroke", INK).attr("stroke-width", 0.8);
+  }
+
+  // Tick labels
+  for (let i = 0; i <= barSegments; i++) {
+    sg.append("text")
+      .attr("x", bx + i * segLen).attr("y", by + barH + 12)
+      .attr("text-anchor", "middle")
+      .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
+      .attr("font-size", "8px")
+      .attr("fill", INK)
+      .text(i * milesPerInch);
+  }
+
+  // "Miles" label
+  sg.append("text")
+    .attr("x", bx + barW / 2).attr("y", by + barH + 24)
+    .attr("text-anchor", "middle")
+    .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
+    .attr("font-size", "9px")
+    .attr("font-style", "italic")
+    .attr("fill", INK)
+    .text("Miles");
+}
+
+// --- Compass rose ---
+function renderCompass(container, x, y) {
+  const g = container.append("g")
+    .attr("transform", `translate(${x}, ${y})`)
+    .attr("opacity", 0.5);
+
+  const size = 30;
+  // North arrow
+  g.append("path")
+    .attr("d", `M 0 ${-size} L ${size * 0.15} ${-size * 0.3} L 0 ${-size * 0.15} L ${-size * 0.15} ${-size * 0.3} Z`)
+    .attr("fill", INK);
+  // South
+  g.append("path")
+    .attr("d", `M 0 ${size} L ${size * 0.15} ${size * 0.3} L 0 ${size * 0.15} L ${-size * 0.15} ${size * 0.3} Z`)
+    .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.8);
+  // East
+  g.append("path")
+    .attr("d", `M ${size} 0 L ${size * 0.3} ${-size * 0.15} L ${size * 0.15} 0 L ${size * 0.3} ${size * 0.15} Z`)
+    .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.8);
+  // West
+  g.append("path")
+    .attr("d", `M ${-size} 0 L ${-size * 0.3} ${-size * 0.15} L ${-size * 0.15} 0 L ${-size * 0.3} ${size * 0.15} Z`)
+    .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.8);
+
+  // N label
+  g.append("text")
+    .attr("x", 0).attr("y", -size - 6)
+    .attr("text-anchor", "middle")
+    .attr("font-family", "'Palatino Linotype', serif")
+    .attr("font-size", "12px")
+    .attr("font-weight", "bold")
+    .attr("fill", INK)
+    .text("N");
+}
+
+// --- Detail panel ---
+let graphData = null;
+
+function showDetail(node) {
+  const panel = document.getElementById("detail-panel");
+  document.getElementById("panel-name").textContent = node.name;
+  document.getElementById("panel-type").textContent =
+    node.point_type.charAt(0).toUpperCase() + node.point_type.slice(1) +
+    (node.terrain ? " \u2022 " + node.terrain : "");
+  document.getElementById("panel-desc").textContent = node.description || "";
+
+  // Find connections
+  const connections = graphData.links.filter(l =>
+    (l.source.id || l.source) === node.id || (l.target.id || l.target) === node.id
+  );
+  const connHTML = connections.map(l => {
+    const other = (l.source.id || l.source) === node.id ? l.target : l.source;
+    const name = other.name || other.id || other;
+    const days = l.days ? ` (${l.days} ${l.days === 1 ? "day" : "days"})` : "";
+    const type = l.path_type ? ` \u2014 ${l.path_type}` : "";
+    return `<li>\u2192 ${name}${days}${type}</li>`;
+  }).join("");
+  document.getElementById("panel-connections").innerHTML =
+    connections.length ? `<h3>Paths</h3><ul>${connHTML}</ul>` : "";
+
+  panel.classList.add("open");
+}
+
+function closePanel() {
+  document.getElementById("detail-panel").classList.remove("open");
+}
+
+// --- Main ---
+async function initMap() {
+  const params = new URLSearchParams(window.location.search);
+  const campaign = params.get("map")?.replace(/\.json$/, "") || "Basilisk";
+  const mapFile = campaign + "/" + campaign + ".json";
+  const response = await fetch(mapFile);
+  graphData = await response.json();
+
+  // Filter visible only
+  const nodes = graphData.nodes.filter(n => n.visible !== false);
+  const nodeIds = new Set(nodes.map(n => n.id));
+  const links = graphData.links.filter(l => l.visible !== false && nodeIds.has(l.source) && nodeIds.has(l.target));
+
+  // Seed positions from hints
+  nodes.forEach(n => {
+    if (n.x_hint !== undefined) n.x = n.x_hint * HINT_SCALE + WIDTH / 2;
+    if (n.y_hint !== undefined) n.y = n.y_hint * HINT_SCALE + HEIGHT / 2;
+  });
+
+  // Force simulation
+  const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(d => Math.max(40, (d.days || 1) * DAY_SCALE)).strength(0.05))
+    .force("charge", d3.forceManyBody().strength(-50))
+    .force("collide", d3.forceCollide(15))
+    .force("x", d3.forceX(d => (d.x_hint || 0) * HINT_SCALE + WIDTH / 2).strength(0.9))
+    .force("y", d3.forceY(d => (d.y_hint || 0) * HINT_SCALE + HEIGHT / 2).strength(0.9));
+
+  // Run to convergence
+  simulation.stop();
+  for (let i = 0; i < 300; i++) simulation.tick();
+
+  // Store resolved links back
+  graphData.links = links;
+  graphData.nodes = nodes;
+
+  // Create SVG
+  const svg = d3.select("#map")
+    .attr("width", WIDTH)
+    .attr("height", HEIGHT);
+
+  const defs = svg.append("defs");
+
+  // Zoom group
+  const g = svg.append("g");
+
+  const zoom = d3.zoom()
+    .scaleExtent([0.3, 4])
+    .on("zoom", (event) => g.attr("transform", event.transform));
+  svg.call(zoom);
+  svg.on("click", () => closePanel());
+
+  // Render layers
+  renderBackground(g, defs);
+  renderHexGrid(g, nodes);
+  renderLinks(g, links);
+  renderTerrainSymbols(g, nodes, links);
+  renderNodes(g, nodes);
+  renderLabels(g, nodes);
+  renderDayLabels(g, links);
+
+  // Compass rose in upper-right area
+  const bounds = computeBounds(nodes);
+  renderCompass(g, bounds.maxX + 60, bounds.minY - 20);
+  renderScaleBar(g, bounds);
+
+  // Title bar
+  document.getElementById("title-bar").textContent =
+    `${graphData.meta.campaign} \u2014 ${graphData.meta.region}, ${graphData.meta.world} \u2014 ${graphData.meta.era}`;
+
+  // Center the view
+  const cx = (bounds.minX + bounds.maxX) / 2;
+  const cy = (bounds.minY + bounds.maxY) / 2;
+  const initialTransform = d3.zoomIdentity
+    .translate(WIDTH / 2 - cx, HEIGHT / 2 - cy);
+  svg.call(zoom.transform, initialTransform);
+}
+
+function computeBounds(nodes) {
+  return {
+    minX: d3.min(nodes, d => d.x) - 50,
+    maxX: d3.max(nodes, d => d.x) + 50,
+    minY: d3.min(nodes, d => d.y) - 50,
+    maxY: d3.max(nodes, d => d.y) + 50,
+  };
+}
+
+function exportSVG() {
+  const svgEl = document.getElementById("map");
+  const clone = svgEl.cloneNode(true);
+
+  // Compute bounds from content groups only (skip the oversized background rect)
+  const g = svgEl.querySelector("g");
+  const contentSelectors = [".links", ".terrain", ".nodes", ".labels", ".day-labels"];
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  contentSelectors.forEach(sel => {
+    const el = g.querySelector(sel);
+    if (!el) return;
+    const bb = el.getBBox();
+    minX = Math.min(minX, bb.x);
+    minY = Math.min(minY, bb.y);
+    maxX = Math.max(maxX, bb.x + bb.width);
+    maxY = Math.max(maxY, bb.y + bb.height);
+  });
+  const pad = 80;
+  const vbX = minX - pad, vbY = minY - pad;
+  const vbW = maxX - minX + pad * 2, vbH = maxY - minY + pad * 2;
+
+  clone.setAttribute("viewBox", `${vbX} ${vbY} ${vbW} ${vbH}`);
+  clone.setAttribute("width", vbW);
+  clone.setAttribute("height", vbH);
+  clone.querySelector("g").removeAttribute("transform");
+
+  // Resize the background rect to match the viewBox
+  const bgRect = clone.querySelector("g > rect");
+  if (bgRect) {
+    bgRect.setAttribute("x", vbX);
+    bgRect.setAttribute("y", vbY);
+    bgRect.setAttribute("width", vbW);
+    bgRect.setAttribute("height", vbH);
+  }
+
+  clone.querySelectorAll("text").forEach(t => {
+    if (!t.getAttribute("font-family")) {
+      t.setAttribute("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif");
+    }
+  });
+
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+
+  const data = new XMLSerializer().serializeToString(clone);
+  const blob = new Blob([data], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  const dlCampaign = new URLSearchParams(window.location.search).get("map")?.replace(/\.json$/, "") || "Basilisk";
+  a.download = dlCampaign + "-original.svg";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+initMap();
+</script>
+</body>
+</html>

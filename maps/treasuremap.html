@@ -668,6 +668,49 @@ function renderRunicBorder(container, bounds) {
   drawRuneRow(y + h + 8, 271);
 }
 
+// --- Scale bar (bottom-right) ---
+function renderScaleBar(container, bounds) {
+  const milesPerInch = 6;
+  const barSegments = 3; // 3 segments of 6 miles each = 18 miles
+  const segLen = HINT_SCALE; // 1 inch = 100px
+  const barW = barSegments * segLen;
+  const barH = 6;
+  const bx = bounds.maxX - barW - 10;
+  const by = bounds.maxY + 30;
+
+  const sg = container.append("g").attr("class", "scale-bar");
+
+  // Alternating black/white segments
+  for (let i = 0; i < barSegments; i++) {
+    sg.append("rect")
+      .attr("x", bx + i * segLen).attr("y", by)
+      .attr("width", segLen).attr("height", barH)
+      .attr("fill", i % 2 === 0 ? BLUE_INK : PARCHMENT)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.8);
+  }
+
+  // Tick labels
+  for (let i = 0; i <= barSegments; i++) {
+    sg.append("text")
+      .attr("x", bx + i * segLen).attr("y", by + barH + 12)
+      .attr("text-anchor", "middle")
+      .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
+      .attr("font-size", "8px")
+      .attr("fill", BLUE_INK)
+      .text(i * milesPerInch);
+  }
+
+  // "Miles" label
+  sg.append("text")
+    .attr("x", bx + barW / 2).attr("y", by + barH + 24)
+    .attr("text-anchor", "middle")
+    .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
+    .attr("font-size", "9px")
+    .attr("font-style", "italic")
+    .attr("fill", BLUE_INK)
+    .text("Miles");
+}
+
 // --- Title cartouche (bottom-left, like "Thror's Map") ---
 function renderCartouche(container, bounds, meta) {
   const bx = bounds.minX - 30;
@@ -1062,6 +1105,7 @@ async function initMap() {
   renderBeastSymbol(g, nodes);
   renderBeastMark(g, nodes);
   renderCompass(g, bounds.maxX + 15, bounds.minY - 15);
+  renderScaleBar(g, bounds);
   renderCartouche(g, bounds, graphData.meta);
 
   // Title bar

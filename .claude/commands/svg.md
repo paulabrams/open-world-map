@@ -12,7 +12,8 @@ Use Playwright to open each of the four map styles in a headless browser, wait f
 
 For each style, use the `exportSVG()` function built into the page — or extract the SVG element directly — and write the result to disk:
 
-- `http://localhost:8787/original.html?map=$ARGUMENTS` → `maps/$ARGUMENTS/$ARGUMENTS-original.svg`
+- `http://localhost:8787/grid.html?map=$ARGUMENTS` → `maps/$ARGUMENTS/$ARGUMENTS-grid.svg`
+- `http://localhost:8787/hex.html?map=$ARGUMENTS` → `maps/$ARGUMENTS/$ARGUMENTS-hex.svg`
 - `http://localhost:8787/treasuremap.html?map=$ARGUMENTS` → `maps/$ARGUMENTS/$ARGUMENTS-treasuremap.svg`
 - `http://localhost:8787/wilderland.html?map=$ARGUMENTS` → `maps/$ARGUMENTS/$ARGUMENTS-wilderland.svg`
 - `http://localhost:8787/world.html?map=$ARGUMENTS` → `maps/$ARGUMENTS/$ARGUMENTS-world.svg`

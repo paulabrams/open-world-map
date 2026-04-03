@@ -803,6 +803,48 @@ function renderBorder(container, bounds) {
 }
 
 // --- Title cartouche ---
+function renderScaleBar(container, bounds) {
+  const milesPerInch = 6;
+  const barSegments = 3; // 3 segments of 6 miles each = 18 miles
+  const segLen = HINT_SCALE; // 1 inch = 100px
+  const barW = barSegments * segLen;
+  const barH = 6;
+  const bx = bounds.maxX - barW - 10;
+  const by = bounds.maxY + 30;
+
+  const sg = container.append("g").attr("class", "scale-bar");
+
+  // Alternating black/white segments
+  for (let i = 0; i < barSegments; i++) {
+    sg.append("rect")
+      .attr("x", bx + i * segLen).attr("y", by)
+      .attr("width", segLen).attr("height", barH)
+      .attr("fill", i % 2 === 0 ? INK : PARCHMENT)
+      .attr("stroke", INK).attr("stroke-width", 0.8);
+  }
+
+  // Tick labels
+  for (let i = 0; i <= barSegments; i++) {
+    sg.append("text")
+      .attr("x", bx + i * segLen).attr("y", by + barH + 12)
+      .attr("text-anchor", "middle")
+      .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
+      .attr("font-size", "8px")
+      .attr("fill", INK)
+      .text(i * milesPerInch);
+  }
+
+  // "Miles" label
+  sg.append("text")
+    .attr("x", bx + barW / 2).attr("y", by + barH + 24)
+    .attr("text-anchor", "middle")
+    .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
+    .attr("font-size", "9px")
+    .attr("font-style", "italic")
+    .attr("fill", INK)
+    .text("Miles");
+}
+
 function renderCartouche(container, bounds, meta) {
   const boxW = 180;
   const boxH = 50;
@@ -1065,6 +1107,7 @@ async function initMap() {
   renderLabels(g, nodes);
   renderDayLabels(g, links);
   renderCompass(g, bounds.maxX + 20, bounds.minY - 10);
+  renderScaleBar(g, bounds);
   renderCartouche(g, bounds, graphData.meta);
   renderEdgeAnnotations(g, bounds, graphData.meta);
 

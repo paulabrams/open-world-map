@@ -26,6 +26,7 @@ Current campaign: **The Basilisk Campaign** (Blackwater Crossing region, Belerio
 ```sh
 cd maps && python3 -m http.server 8787
 ```
+
 Then open http://localhost:8787/wilderland.html?map=Basilisk
 
 ## Rebuild the Map JSON
@@ -50,7 +51,7 @@ Always update **both** the database AND the JSON to keep them in sync:
 
 ```
 { meta: { campaign, world, region, era },
-  nodes: [{ id, name, point_type, terrain, visible, description, x_hint, y_hint }],
+  nodes: [{ id, name, point_type, terrain, visible, description, x_hint, y_hint, hex }],
   links: [{ source, target, name, days, path_type, terrain_difficulty, visible }] }
 ```
 
