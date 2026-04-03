@@ -8,7 +8,7 @@ window.MapGrids = {};
 // --- Constants ---
 const HINT_SCALE = 100; // 1 unit = 1 inch on the hand-drawn 8.5x11 map
 const DAY_SCALE = 100;
-const FONT = "'Palatino Linotype', 'Book Antiqua', Palatino, serif";
+const FONT = "Palatino, 'Palatino Linotype', 'Book Antiqua', 'Times New Roman', serif";
 
 // --- Terrain types that are interior locations (not shown on overland map) ---
 const INTERIOR_TERRAINS = new Set(["town", "city", "village", "keep", "stronghold", "castle", "ruin-interior", "underground"]);

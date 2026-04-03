@@ -7,14 +7,16 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: var(--bg-color, #2a1f14);
-    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    background: var(--bg-color, #f4e8d1);
+    font-family: Palatino, "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
     overflow: hidden;
+    -webkit-text-size-adjust: 100%;
   }
   #map-container {
     width: 100vw;
     height: 100vh;
     cursor: grab;
+    touch-action: none;
   }
   #map-container:active { cursor: grabbing; }
 
@@ -93,7 +95,7 @@
     padding: 8px 16px;
     background: var(--btn-bg, #f4e8d1);
     border: 2px solid var(--btn-border, #2a1f14);
-    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    font-family: Palatino, "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
     font-size: 13px;
     color: var(--btn-text, #2a1f14);
     cursor: pointer;
@@ -117,9 +119,9 @@
     opacity: 0.8;
   }
   #controls select {
-    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
-    font-size: 11px;
-    padding: 3px 6px;
+    font-family: Palatino, "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
+    font-size: 14px;
+    padding: 6px 10px;
     background: var(--btn-bg, #f4e8d1);
     border: 1px solid var(--btn-border, #2a1f14);
     color: var(--btn-text, #2a1f14);
