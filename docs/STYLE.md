@@ -63,7 +63,7 @@ All paths are ink-colored SVG quadratic beziers with slight curvature (seeded ra
 | road | Solid, width 2.5 |
 | trail | Dashed (`8 4`), width 1.5 |
 | wilderness | Dotted (`3 5`), width 1 |
-| river | Solid, width 2, `opacity: 0.7`, wavy (8-segment multi-curve) |
+| river | Double-line channel: two parallel bank lines (offset 3.5px from sinuous spine, 20-segment `curveBasis`), each stroke-width 1.2, ink color |
 
 ## Terrain Symbols
 

@@ -85,6 +85,20 @@
     opacity: 0.7;
     pointer-events: none;
   }
+  #export-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    background: #f4e8d1;
+    border: 2px solid #2a1f14;
+    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    font-size: 13px;
+    color: #2a1f14;
+    cursor: pointer;
+    opacity: 0.8;
+  }
+  #export-btn:hover { opacity: 1; }
 </style>
 </head>
 <body>
@@ -102,6 +116,7 @@
 </div>
 
 <div id="title-bar"></div>
+<button id="export-btn" onclick="exportSVG()">Save SVG</button>
 
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script>
@@ -381,28 +396,44 @@ function renderLinks(container, links) {
     const cx = (sx + tx) / 2 + nx * curvature;
     const cy = (sy + ty) / 2 + ny * curvature;
 
-    let pathD;
     if (link.path_type === "river") {
-      // Wavy river path using multiple curves
-      const segments = 8;
-      let pts = [`M ${sx} ${sy}`];
-      for (let i = 1; i <= segments; i++) {
+      // Double-line river channel (Tolkien style: two parallel bank lines)
+      const segments = 20;
+      const spine = [];
+      for (let i = 0; i <= segments; i++) {
         const t = i / segments;
-        const tPrev = (i - 0.5) / segments;
-        // Point on the quadratic bezier
-        const px = (1 - tPrev) * (1 - tPrev) * sx + 2 * (1 - tPrev) * tPrev * cx + tPrev * tPrev * tx;
-        const py = (1 - tPrev) * (1 - tPrev) * sy + 2 * (1 - tPrev) * tPrev * cy + tPrev * tPrev * ty;
-        const ex = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * cx + t * t * tx;
-        const ey = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * cy + t * t * ty;
-        const wave = (i % 2 === 0 ? 1 : -1) * 5;
-        const cpx = px + nx * wave;
-        const cpy = py + ny * wave;
-        pts.push(`Q ${cpx} ${cpy} ${ex} ${ey}`);
+        const bx = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * cx + t * t * tx;
+        const by = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * cy + t * t * ty;
+        const wave = Math.sin(t * Math.PI * 3) * 4;
+        spine.push({ x: bx + nx * wave, y: by + ny * wave });
       }
-      pathD = pts.join(" ");
-    } else {
-      pathD = `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`;
+
+      const bankWidth = 3.5;
+      function offsetBank(pts, sign) {
+        const result = [];
+        for (let i = 0; i < pts.length; i++) {
+          let lnx, lny;
+          if (i === 0) { lnx = pts[1].x - pts[0].x; lny = pts[1].y - pts[0].y; }
+          else if (i === pts.length - 1) { lnx = pts[i].x - pts[i-1].x; lny = pts[i].y - pts[i-1].y; }
+          else { lnx = pts[i+1].x - pts[i-1].x; lny = pts[i+1].y - pts[i-1].y; }
+          const ll = Math.sqrt(lnx * lnx + lny * lny) || 1;
+          result.push({ x: pts[i].x + sign * (-lny / ll) * bankWidth, y: pts[i].y + sign * (lnx / ll) * bankWidth });
+        }
+        return result;
+      }
+
+      const lineGen = d3.line().x(d => d.x).y(d => d.y).curve(d3.curveBasis);
+
+      linkGroup.append("path").attr("d", lineGen(offsetBank(spine, 1)))
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2)
+        .attr("stroke-linecap", "round").attr("opacity", 0.7);
+      linkGroup.append("path").attr("d", lineGen(offsetBank(spine, -1)))
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2)
+        .attr("stroke-linecap", "round").attr("opacity", 0.7);
+      return;
     }
+
+    const pathD = `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`;
 
     const path = linkGroup.append("path")
       .attr("d", pathD)
@@ -419,9 +450,6 @@ function renderLinks(container, links) {
         break;
       case "wilderness":
         path.attr("stroke-width", 1).attr("stroke-dasharray", "3 5");
-        break;
-      case "river":
-        path.attr("stroke-width", 2).attr("opacity", 0.7);
         break;
       default:
         path.attr("stroke-width", 1.5);
@@ -607,7 +635,8 @@ function closePanel() {
 // --- Main ---
 async function initMap() {
   const params = new URLSearchParams(window.location.search);
-  const mapFile = params.get("map") || "Basilisk.json";
+  const campaign = params.get("map")?.replace(/\.json$/, "") || "Basilisk";
+  const mapFile = campaign + "/" + campaign + ".json";
   const response = await fetch(mapFile);
   graphData = await response.json();
 
@@ -686,6 +715,63 @@ function computeBounds(nodes) {
     minY: d3.min(nodes, d => d.y) - 50,
     maxY: d3.max(nodes, d => d.y) + 50,
   };
+}
+
+function exportSVG() {
+  const svgEl = document.getElementById("map");
+  const clone = svgEl.cloneNode(true);
+
+  // Compute bounds from content groups only (skip the oversized background rect)
+  const g = svgEl.querySelector("g");
+  const contentSelectors = [".links", ".terrain", ".nodes", ".labels", ".day-labels"];
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  contentSelectors.forEach(sel => {
+    const el = g.querySelector(sel);
+    if (!el) return;
+    const bb = el.getBBox();
+    minX = Math.min(minX, bb.x);
+    minY = Math.min(minY, bb.y);
+    maxX = Math.max(maxX, bb.x + bb.width);
+    maxY = Math.max(maxY, bb.y + bb.height);
+  });
+  const pad = 80;
+  const vbX = minX - pad, vbY = minY - pad;
+  const vbW = maxX - minX + pad * 2, vbH = maxY - minY + pad * 2;
+
+  clone.setAttribute("viewBox", `${vbX} ${vbY} ${vbW} ${vbH}`);
+  clone.setAttribute("width", vbW);
+  clone.setAttribute("height", vbH);
+  clone.querySelector("g").removeAttribute("transform");
+
+  // Resize the background rect to match the viewBox
+  const bgRect = clone.querySelector("g > rect");
+  if (bgRect) {
+    bgRect.setAttribute("x", vbX);
+    bgRect.setAttribute("y", vbY);
+    bgRect.setAttribute("width", vbW);
+    bgRect.setAttribute("height", vbH);
+  }
+
+  clone.querySelectorAll("text").forEach(t => {
+    if (!t.getAttribute("font-family")) {
+      t.setAttribute("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif");
+    }
+  });
+
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+
+  const data = new XMLSerializer().serializeToString(clone);
+  const blob = new Blob([data], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  const dlCampaign = new URLSearchParams(window.location.search).get("map")?.replace(/\.json$/, "") || "Basilisk";
+  a.download = dlCampaign + "-original.svg";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 initMap();

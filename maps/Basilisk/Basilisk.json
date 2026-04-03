@@ -70,9 +70,9 @@
       "point_type": "settlement",
       "terrain": "plains",
       "visible": true,
-      "description": "Farms along the Old Northern Trade Road near Blackwater Crossing. Small buildings, fields, and tilled land supporting the town.",
-      "x_hint": 0,
-      "y_hint": -20
+      "description": "Farms surround Blackwater Crossing in all directions. Most are concentrated along the Blackwater River, along the Old Northern Trade Road heading north, and along the Trade Road heading south. Farms are sparse in areas without a river or road. The farmlands form a ring around the town.",
+      "x_hint": 10,
+      "y_hint": -18
     },
     {
       "id": "abandoned-farmhouse",
@@ -91,7 +91,7 @@
       "terrain": "plains",
       "visible": true,
       "description": "A Graveyard is located on the Old Northern Trade Road, about 2 hours south of the Old Forest edge. It serves as a landmark for navigation to the Kalla Cave.",
-      "x_hint": 0,
+      "x_hint": 5,
       "y_hint": -38
     },
     {
@@ -111,7 +111,7 @@
       "terrain": "forest",
       "visible": true,
       "description": "A dense, ancient woodland north and northeast of Blackwater Crossing. The Old Northern Trade Road passes through it. Contains dire wolves, giant spiders, kobold hunters, porcs, shadow mastiffs, pine trolls, a vampire runestone, barrow wights, and corrupted groves. Also called the Old Wood.",
-      "x_hint": 15,
+      "x_hint": 5,
       "y_hint": -55
     },
     {
@@ -182,7 +182,7 @@
       "visible": true,
       "description": "A stone fortress atop a tall hill in the Old Forest, commanding views of the river and surrounding woodland. Reached by traveling north along the Old Northern Trade Road from Blackwater Crossing (about 1 day to the forest edge), then taking a well-maintained road west for about 4 hours (~1.5 days total). The main north-south road is visible from the keep's towers. Contains an Outer Bailey with a Traveler's Inn, a Main Gate, and a Chapel of Muir. The Castellan governs from the Inner Bailey.",
       "x_hint": -55,
-      "y_hint": -100
+      "y_hint": -58
     },
     {
       "id": "ravens-perch",
@@ -190,9 +190,9 @@
       "point_type": "ruin",
       "terrain": "forest",
       "visible": true,
-      "description": "An abandoned watchtower north of Thornespire Keep. It was the site where the Castellan's missing scouts disappeared. The party investigated and rescued three scouts. The Castellan held a feast to celebrate and granted the party passes to the Inner Bailey.",
-      "x_hint": -65,
-      "y_hint": -120
+      "description": "An abandoned watchtower in the Old Forest, accessed from the Old Northern Trade Road north of the Thornespire Keep turnoff. It is off the main Trade Road, not off Thornespire Keep. The party investigated the disappearance of the Castellan's scouts here and rescued three of them. The Castellan held a feast to celebrate and granted the party passes to the Inner Bailey.",
+      "x_hint": -20,
+      "y_hint": -100
     },
     {
       "id": "the-swamp",
@@ -201,8 +201,8 @@
       "terrain": "swamp",
       "visible": true,
       "description": "Northwest of Blackwater Crossing. It has lizardmen and a crazy old hermit who drinks ice wine and knows things. The region was once populated until it was flooded — good place to look for treasure.",
-      "x_hint": -70,
-      "y_hint": -40
+      "x_hint": -80,
+      "y_hint": -75
     },
     {
       "id": "mistwood-glen",
@@ -211,8 +211,8 @@
       "terrain": "forest",
       "visible": true,
       "description": "A mystical sanctuary deep in the woods, about 2-3 days southwest of Blackwater Crossing through tough forest terrain. The Kalla'din is a pocket realm / Node that exists partially outside normal space and time — an aerial sanctuary woven between three massive oak trees, with platforms 20 feet above scorched ground, floating rune-carved stones, upward-flowing waterfalls, and luminous silver-bark trees. Home to seven immortal Dwur Eldar called the Thornbeard Circle, led by Gunnar \"Brambleheart.\" Snezynja is an Aethiiri sorceress from the stellar courts. The Stone-Nose Clan are ancient forest trolls dwelling at the Standing Stones.",
-      "x_hint": -80,
-      "y_hint": 80
+      "x_hint": -50,
+      "y_hint": 65
     },
     {
       "id": "serpents-teeth-crags",
@@ -221,24 +221,24 @@
       "terrain": "mountains",
       "visible": true,
       "description": "The Serpent's Teeth Crags is a massive jagged mountain range south of Blackwater Crossing. The crags span a week of travel in both directions on each side of the Old Northern Trade Road — an enormous range. The road passes through a mountain pass here. About 2 days travel south from Blackwater Crossing to the road pass. Contains gargoyles, a brigands' camp, an obsidian quarry, and the Vault of First Light (1 day overland from the road into a pass between crags).",
-      "x_hint": 30,
+      "x_hint": 10,
       "y_hint": 120
     },
     {
       "id": "south-road-mountain-watch",
       "name": "Brunhilde's Mountain Watch Camp",
       "point_type": "waypoint",
-      "terrain": "mountains",
+      "terrain": "plains",
       "visible": true,
       "description": "Brunhilde Ironfoot's Mountain Watch Camp & Inn, a waypoint and recruiting camp along the south road in the Serpent's Teeth foothills. Brunhilde runs both the inn and recruits for the Mountain Watch. Has a moat (which contained a gelatinous ooze). Encounters in the area include lightning blights and wyverns. Baron Thornwise (gold wheat sheaf on blue banner) claims jurisdiction via a tax collector agent. Dwur patrols operate in the nearby mountain foothills.",
-      "x_hint": 15,
+      "x_hint": 5,
       "y_hint": 80
     },
     {
       "id": "bandit-camp",
       "name": "The Bandit Camp",
       "point_type": "lair",
-      "terrain": "mountains",
+      "terrain": "forest",
       "visible": true,
       "description": "The Bandit Camp at Hangman Hill is located directly north of the Tower of the Stargazer, about 1 hour walk, just inside the edge of the Old Forest. A large operation: 120 people total — 48 bandits and 72 slaves. Key NPCs: Krin \"The Cunning\" (strike force leader, natural tactician, commands 20-person raiding force), Rath \"Iron-Will\" (slaver boss/quarry overseer, carries dubious legal writ for \"contract labor\"), Corth \"Whip-Crack\" (the pit whip, doesn't speak). The obsidian quarry is a crater gouged into shale with a single large obsidian spire at its center that may be hollow or deeper than it appears — digging at the spire base is forbidden on pain of death. Bandit Hill is a separate ambush site overlooking the main road, connected to Hangman Hill's water grotto via underground streambed. Bandits marked trees with carved serpent symbols, suggesting plans beyond lumber cutting. The camp was ultimately destroyed by lightning from the Tower of the Stargazer.",
       "x_hint": -25,
@@ -248,7 +248,7 @@
       "id": "tower-of-stargazer",
       "name": "Tower of the Stargazer",
       "point_type": "tower",
-      "terrain": "mountains",
+      "terrain": "plains",
       "visible": true,
       "description": "Home of Sir Uravulon Calcidius, an evil wizard corrupted by contact with beings from other worlds. Located about 2 days south of Blackwater Crossing along the Old Northern Trade Road, then half a day west, in the foothills north of the Serpent's Teeth Crags. The tower is 80 feet tall, solid stone blocks, no visible windows. Top section resembles a globe with layered metal plate dome. Ring of steel spikes around the rim, and four 40-foot steel spikes jut from the ground 50 feet from the base, all leaning inward. The area between the spikes is a blasted lunar-like wasteland. Lightning strikes constantly, even in cloudless weather.",
       "x_hint": -20,
@@ -263,6 +263,36 @@
       "description": "The Vault of First Light is an ancient dwarven dungeon in the Serpent's Teeth. Reached by traveling 2 days south from Blackwater Crossing along the Old Northern Trade Road, then 1 day overland through hills and up into a pass between crags. The party has explored it and returned with a magical candle that speaks in ancient tongues. Contains rooms, traps, the Fallen (undead dwur), and connections to cosmic forces.",
       "x_hint": 50,
       "y_hint": 150
+    },
+    {
+      "id": "north-road",
+      "name": "The North Road",
+      "point_type": "waypoint",
+      "terrain": "forest",
+      "visible": true,
+      "description": "The Old Northern Trade Road continues north through the Old Forest beyond explored territory.",
+      "x_hint": 5,
+      "y_hint": -130
+    },
+    {
+      "id": "lower-blackwater",
+      "name": "Lower Blackwater",
+      "point_type": "waypoint",
+      "terrain": "plains",
+      "visible": true,
+      "description": "The Blackwater River continues southeast past Blackwater Crossing, flowing through plains toward the hills north of the Serpent's Teeth before bending east and exiting the region.",
+      "x_hint": 50,
+      "y_hint": 50
+    },
+    {
+      "id": "south-pass",
+      "name": "The South Pass",
+      "point_type": "waypoint",
+      "terrain": "mountains",
+      "visible": true,
+      "description": "The Old Northern Trade Road emerges from the Serpent's Teeth mountain pass and continues south to lands beyond.",
+      "x_hint": 10,
+      "y_hint": 170
     }
   ],
   "links": [
@@ -348,19 +378,27 @@
       "visible": true
     },
     {
-      "source": "blackwater-crossing",
-      "target": "the-swamp",
-      "name": "Path to the Swamp",
-      "days": 1,
-      "path_type": "trail",
+      "source": "the-swamp",
+      "target": "blackwater-crossing",
+      "name": "Blackwater River",
+      "path_type": "river",
       "terrain_difficulty": "tough",
       "visible": true
     },
     {
-      "source": "the-swamp",
-      "target": "thornespire-keep",
+      "source": "blackwater-crossing",
+      "target": "lower-blackwater",
       "name": "Blackwater River",
       "path_type": "river",
+      "terrain_difficulty": "easy",
+      "visible": true
+    },
+    {
+      "source": "thornespire-keep",
+      "target": "the-swamp",
+      "name": "Trail along the River",
+      "days": 1,
+      "path_type": "trail",
       "terrain_difficulty": "tough",
       "visible": true
     },
@@ -455,10 +493,10 @@
       "visible": true
     },
     {
-      "source": "thornespire-keep",
+      "source": "north-road",
       "target": "ravens-perch",
-      "name": "Northern Road",
-      "days": 0.5,
+      "name": "Forest Trail to Raven's Perch",
+      "days": 0.25,
       "path_type": "trail",
       "terrain_difficulty": "tough",
       "visible": true
@@ -488,6 +526,24 @@
       "days": 0.1,
       "path_type": "trail",
       "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "old-forest",
+      "target": "north-road",
+      "name": "Old Northern Trade Road",
+      "days": 1,
+      "path_type": "road",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "serpents-teeth-crags",
+      "target": "south-pass",
+      "name": "Old Northern Trade Road",
+      "days": 0.5,
+      "path_type": "road",
+      "terrain_difficulty": "perilous",
       "visible": true
     },
     {

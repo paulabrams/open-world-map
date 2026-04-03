@@ -821,7 +821,8 @@ function closePanel() {
 // --- Main ---
 async function initMap() {
   const params = new URLSearchParams(window.location.search);
-  const mapFile = params.get("map") || "Basilisk.json";
+  const campaign = params.get("map")?.replace(/\.json$/, "") || "Basilisk";
+  const mapFile = campaign + "/" + campaign + ".json";
   const response = await fetch(mapFile);
   graphData = await response.json();
 
@@ -945,8 +946,8 @@ function exportSVG() {
 
   const a = document.createElement("a");
   a.href = url;
-  const mapFile = new URLSearchParams(window.location.search).get("map") || "Basilisk";
-  a.download = mapFile.replace(/\.json$/, "") + ".svg";
+  const dlCampaign = new URLSearchParams(window.location.search).get("map")?.replace(/\.json$/, "") || "Basilisk";
+  a.download = dlCampaign + "-world.svg";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
