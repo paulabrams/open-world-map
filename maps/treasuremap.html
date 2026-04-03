@@ -139,7 +139,7 @@ const DARK_INK = "#3a3a30";
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
-const HINT_SCALE = 3;
+const HINT_SCALE = 100; // 1 unit = 1 inch on the hand-drawn 8.5x11 map
 const DAY_SCALE = 100;
 
 // --- Seeded random ---
@@ -634,6 +634,20 @@ function renderCartouche(container, bounds, meta) {
       .text(meta.region + (meta.world ? ", " + meta.world : ""));
   }
 
+  // Era below region
+  if (meta.era) {
+    container.append("text")
+      .attr("x", bx)
+      .attr("y", by + 28)
+      .attr("text-anchor", "start")
+      .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
+      .attr("font-size", "9px")
+      .attr("font-style", "italic")
+      .attr("fill", BLUE_LIGHT)
+      .attr("opacity", 0.5)
+      .text(meta.era);
+  }
+
   // Underline
   const textLen = meta.campaign.length * 6.5;
   container.append("line")
@@ -701,7 +715,7 @@ function renderAnnotations(container, nodes) {
       .attr("text-anchor", "middle")
       .attr("transform", `rotate(${rotation}, ${ax}, ${ay})`)
       .attr("font-family", "'Palatino Linotype', serif")
-      .attr("font-size", "9px")
+      .attr("font-size", "10px")
       .attr("font-style", "italic")
       .attr("fill", color)
       .attr("stroke", PARCHMENT)
@@ -944,11 +958,11 @@ async function initMap() {
   });
 
   const simulation = d3.forceSimulation(nodes)
-    .force("link", d3.forceLink(links).id(d => d.id).distance(d => Math.max(40, (d.days || 1) * DAY_SCALE)))
-    .force("charge", d3.forceManyBody().strength(-200))
-    .force("collide", d3.forceCollide(25))
-    .force("x", d3.forceX(d => (d.x_hint || 0) * HINT_SCALE + WIDTH / 2).strength(0.3))
-    .force("y", d3.forceY(d => (d.y_hint || 0) * HINT_SCALE + HEIGHT / 2).strength(0.3));
+    .force("link", d3.forceLink(links).id(d => d.id).distance(d => Math.max(40, (d.days || 1) * DAY_SCALE)).strength(0.05))
+    .force("charge", d3.forceManyBody().strength(-50))
+    .force("collide", d3.forceCollide(15))
+    .force("x", d3.forceX(d => (d.x_hint || 0) * HINT_SCALE + WIDTH / 2).strength(0.9))
+    .force("y", d3.forceY(d => (d.y_hint || 0) * HINT_SCALE + HEIGHT / 2).strength(0.9));
 
   simulation.stop();
   for (let i = 0; i < 300; i++) simulation.tick();

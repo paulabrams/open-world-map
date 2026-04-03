@@ -132,7 +132,7 @@ const PARCHMENT_DARK = "#d4c4a0";
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
-const HINT_SCALE = 3;
+const HINT_SCALE = 100; // 1 unit = 1 inch on the hand-drawn 8.5x11 map
 const DAY_SCALE = 100;
 
 // --- Seeded random ---
@@ -216,7 +216,7 @@ function drawForestHatch(g, x, y, size, rng) {
         .attr("x2", x + hWidth).attr("y2", ly)
         .attr("stroke", INK)
         .attr("stroke-width", 0.5)
-        .attr("opacity", 0.85);
+        .attr("opacity", 0.9);
     }
   }
 
@@ -226,7 +226,7 @@ function drawForestHatch(g, x, y, size, rng) {
     .attr("rx", rx).attr("ry", ry)
     .attr("fill", "none")
     .attr("stroke", INK)
-    .attr("stroke-width", 0.6)
+    .attr("stroke-width", 0.8)
     .attr("opacity", 0.8);
 }
 
@@ -836,11 +836,11 @@ async function initMap() {
   });
 
   const simulation = d3.forceSimulation(nodes)
-    .force("link", d3.forceLink(links).id(d => d.id).distance(d => Math.max(40, (d.days || 1) * DAY_SCALE)))
-    .force("charge", d3.forceManyBody().strength(-200))
-    .force("collide", d3.forceCollide(25))
-    .force("x", d3.forceX(d => (d.x_hint || 0) * HINT_SCALE + WIDTH / 2).strength(0.3))
-    .force("y", d3.forceY(d => (d.y_hint || 0) * HINT_SCALE + HEIGHT / 2).strength(0.3));
+    .force("link", d3.forceLink(links).id(d => d.id).distance(d => Math.max(40, (d.days || 1) * DAY_SCALE)).strength(0.05))
+    .force("charge", d3.forceManyBody().strength(-50))
+    .force("collide", d3.forceCollide(15))
+    .force("x", d3.forceX(d => (d.x_hint || 0) * HINT_SCALE + WIDTH / 2).strength(0.9))
+    .force("y", d3.forceY(d => (d.y_hint || 0) * HINT_SCALE + HEIGHT / 2).strength(0.9));
 
   simulation.stop();
   for (let i = 0; i < 300; i++) simulation.tick();

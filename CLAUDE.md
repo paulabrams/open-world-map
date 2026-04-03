@@ -58,7 +58,7 @@ Always update **both** the database AND the JSON to keep them in sync:
 - `terrain`: plains, forest, mountains, swamp
 - `path_type`: road, trail, wilderness, river
 - `terrain_difficulty`: easy, tough, perilous
-- `x_hint`/`y_hint`: relative coordinates seeding the D3 force layout. 0,0 is center.
+- `x_hint`/`y_hint`: position in inches relative to Blackwater Crossing (0,0). Positive x = east, positive y = south. Based on the hand-drawn 8.5"×11" campaign map.
 
 ## Known DB Issues
 

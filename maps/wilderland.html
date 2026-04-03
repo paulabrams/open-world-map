@@ -130,7 +130,7 @@ const PARCHMENT_DARK = "#ddd0b4";
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
-const HINT_SCALE = 3;
+const HINT_SCALE = 100; // 1 unit = 1 inch on the hand-drawn 8.5x11 map
 const DAY_SCALE = 100;
 
 // --- Seeded random for deterministic symbol placement ---
@@ -276,8 +276,8 @@ function drawRocks(g, x, y, size, rng) {
   // Scattered small pebble circles — distinctive Wilderland texture
   const count = 9 + Math.floor(rng() * 8);
   for (let i = 0; i < count; i++) {
-    const rx = x + (rng() - 0.5) * size * 1.8;
-    const ry = y + (rng() - 0.5) * size * 1.5;
+    const rx = x + (rng() - 0.5) * size * 2.2;
+    const ry = y + (rng() - 0.5) * size * 1.9;
     const r = 1.5 + rng() * 2.5;
     g.append("circle")
       .attr("cx", rx).attr("cy", ry)
@@ -431,7 +431,7 @@ function renderTerrainSymbols(container, nodes, links) {
         const r = offset * (0.15 + rng() * 0.5);
         const tx = node.x + Math.cos(a) * r;
         const ty = node.y + Math.sin(a) * r;
-        drawTreeCanopy(terrainGroup, tx, ty, 10 + rng() * 5, rng);
+        drawTreeCanopy(terrainGroup, tx, ty, 13 + rng() * 5, rng);
       }
       // Second cluster — deeper forest layer at larger radius
       const count2 = 10 + Math.floor(rng() * 6);
@@ -440,7 +440,7 @@ function renderTerrainSymbols(container, nodes, links) {
         const r = offset * (0.8 + rng() * 0.4);
         const tx = node.x + Math.cos(a) * r;
         const ty = node.y + Math.sin(a) * r;
-        drawTreeCanopy(terrainGroup, tx, ty, 10 + rng() * 5, rng);
+        drawTreeCanopy(terrainGroup, tx, ty, 13 + rng() * 5, rng);
       }
       // Spiderwebs scattered among the trees
       const webCount = 1 + Math.floor(rng() * 2);
@@ -952,11 +952,11 @@ async function initMap() {
   });
 
   const simulation = d3.forceSimulation(nodes)
-    .force("link", d3.forceLink(links).id(d => d.id).distance(d => Math.max(40, (d.days || 1) * DAY_SCALE)))
-    .force("charge", d3.forceManyBody().strength(-200))
-    .force("collide", d3.forceCollide(25))
-    .force("x", d3.forceX(d => (d.x_hint || 0) * HINT_SCALE + WIDTH / 2).strength(0.3))
-    .force("y", d3.forceY(d => (d.y_hint || 0) * HINT_SCALE + HEIGHT / 2).strength(0.3));
+    .force("link", d3.forceLink(links).id(d => d.id).distance(d => Math.max(40, (d.days || 1) * DAY_SCALE)).strength(0.05))
+    .force("charge", d3.forceManyBody().strength(-50))
+    .force("collide", d3.forceCollide(15))
+    .force("x", d3.forceX(d => (d.x_hint || 0) * HINT_SCALE + WIDTH / 2).strength(0.9))
+    .force("y", d3.forceY(d => (d.y_hint || 0) * HINT_SCALE + HEIGHT / 2).strength(0.9));
 
   simulation.stop();
   for (let i = 0; i < 300; i++) simulation.tick();
