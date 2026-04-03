@@ -36,7 +36,7 @@ window.MapStyles.moonletters = {
 
   /* ── Node visibility filter ─────────────────────────────────── */
   filterNodes(nodes) {
-    return nodes.filter(n => n.visible !== false);
+    return nodes.filter(isOverlandNode);
   },
 
   /* ── Master render (called by core) ─────────────────────────── */

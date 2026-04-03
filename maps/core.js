@@ -10,6 +10,17 @@ const HINT_SCALE = 100; // 1 unit = 1 inch on the hand-drawn 8.5x11 map
 const DAY_SCALE = 100;
 const FONT = "'Palatino Linotype', 'Book Antiqua', Palatino, serif";
 
+// --- Terrain types that are interior locations (not shown on overland map) ---
+const INTERIOR_TERRAINS = new Set(["town", "city", "village", "keep", "stronghold", "castle", "ruin-interior"]);
+
+function isOverlandNode(n) {
+  if (n.visible === false) return false;
+  if (n.scale === "local") return false;
+  if (n.parent) return false;
+  if (INTERIOR_TERRAINS.has(n.terrain)) return false;
+  return true;
+}
+
 // --- Seeded random for deterministic symbol placement ---
 function mulberry32(a) {
   return function() {
@@ -89,7 +100,7 @@ function runSimulation(rawData, filterFn) {
 
   const nodes = filterFn
     ? filterFn(freshNodes)
-    : freshNodes.filter(n => n.visible !== false);
+    : freshNodes.filter(isOverlandNode);
   const nodeIds = new Set(nodes.map(n => n.id));
   const links = freshLinks.filter(l => l.visible !== false && nodeIds.has(l.source) && nodeIds.has(l.target));
 
@@ -186,7 +197,9 @@ function renderMap(styleName, gridName) {
     meta: sim.meta,
     colors: style.colors,
     WIDTH, HEIGHT, HINT_SCALE, DAY_SCALE,
-    mulberry32, seedFromString, FONT
+    mulberry32, seedFromString, FONT,
+    riverPath: graphData.river_path || [],
+    hexTerrain: graphData.hex_terrain || {}
   };
 
   // Run the style's render pipeline
@@ -264,8 +277,8 @@ function exportSVG() {
 
 // Expose for global access
 Object.assign(MapCore, {
-  HINT_SCALE, DAY_SCALE, FONT,
-  mulberry32, seedFromString, computeBounds,
+  HINT_SCALE, DAY_SCALE, FONT, INTERIOR_TERRAINS,
+  isOverlandNode, mulberry32, seedFromString, computeBounds,
   showDetail, closePanel,
   loadData, runSimulation, setupSVG, centerView,
   renderMap, applyTheme, exportSVG,

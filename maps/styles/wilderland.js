@@ -33,7 +33,7 @@ window.MapStyles.wilderland = {
 
   /* ── Node visibility filter ─────────────────────────────────── */
   filterNodes(nodes) {
-    return nodes.filter(n => n.visible !== false && n.scale !== "local");
+    return nodes.filter(isOverlandNode);
   },
 
   /* ── Master render (called by core) ─────────────────────────── */

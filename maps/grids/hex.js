@@ -101,7 +101,7 @@ window.MapGrids.hex = {
         .attr("stroke-width", isBCHex ? 1.5 : hasContent ? 0.8 : 0.4);
 
       // Label: CCRR format
-      const label = String(col + 1).padStart(2, "0") + String(row + 1).padStart(2, "0");
+      const label = String(col).padStart(2, "0") + String(row).padStart(2, "0");
       gridGroup.append("text")
         .attr("x", hx).attr("y", hy + 3)
         .attr("text-anchor", "middle")
