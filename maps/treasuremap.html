@@ -285,7 +285,26 @@ function renderNodes(container, nodes) {
     const isDanger = node.point_type === "lair" || node.point_type === "dungeon";
     const color = isDanger ? RED_INK : BLUE_INK;
 
-    switch (node.point_type) {
+    // Farm override — outlined farmhouse for any farm-named node
+    if (node.name && node.name.toLowerCase().includes("farm")) {
+      // House body (outline only)
+      g.append("rect").attr("x", -s).attr("y", -s*0.5).attr("width", s*2).attr("height", s*1.5)
+        .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+      // Roof (triangle, outline only)
+      g.append("path")
+        .attr("d", `M ${-s-1} ${-s*0.5} L 0 ${-s*1.5} L ${s+1} ${-s*0.5}`)
+        .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+      // Door (small line)
+      g.append("line").attr("x1", 0).attr("y1", s*0.1).attr("x2", 0).attr("y2", s*1.0)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+      // Small field lines to the right
+      for (let fi = 0; fi < 3; fi++) {
+        g.append("line")
+          .attr("x1", s + 3 + fi * 3).attr("y1", s*0.5)
+          .attr("x2", s + 3 + fi * 3).attr("y2", s*1.0)
+          .attr("stroke", BLUE_INK).attr("stroke-width", 0.5).attr("opacity", 0.5);
+      }
+    } else switch (node.point_type) {
       case "heart":
         g.append("circle").attr("r", 6).attr("fill", color).attr("stroke", "none").attr("opacity", 0.8);
         g.append("circle").attr("r", 8).attr("fill", "none").attr("stroke", color).attr("stroke-width", 1.0);
@@ -299,13 +318,38 @@ function renderNodes(container, nodes) {
         g.append("path").attr("d", `M 0 ${-s - 6} L 4 ${-s - 4.5} L 0 ${-s - 3}`)
           .attr("fill", color).attr("opacity", 0.7);
         break;
-      case "tavern":
-        g.append("rect").attr("x", -2.5).attr("y", -2.5).attr("width", 5).attr("height", 5)
-          .attr("fill", color).attr("stroke", "none").attr("opacity", 0.7);
+      case "tavern": {
+        const hs = isLocal ? 2.5 : 3.5;
+        // Building body
+        g.append("rect").attr("x", -hs*0.7).attr("y", -hs*0.3).attr("width", hs*1.4).attr("height", hs)
+          .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+        // Roof
+        g.append("path")
+          .attr("d", `M ${-hs*0.8} ${-hs*0.3} L 0 ${-hs*1.1} L ${hs*0.8} ${-hs*0.3}`)
+          .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+        // Hanging sign
+        g.append("line").attr("x1", hs*0.7).attr("y1", -hs*0.1).attr("x2", hs*1.2).attr("y2", -hs*0.1)
+          .attr("stroke", BLUE_INK).attr("stroke-width", 0.4);
+        g.append("rect").attr("x", hs*1.0).attr("y", -hs*0.1).attr("width", hs*0.4).attr("height", hs*0.35)
+          .attr("fill", BLUE_INK).attr("stroke", "none").attr("opacity", 0.5);
         break;
-      case "settlement":
-        g.append("circle").attr("r", s).attr("fill", color).attr("stroke", "none").attr("opacity", 0.7);
+      }
+      case "settlement": {
+        // Cluster of 2 tiny outlined houses
+        const hs = isLocal ? 2.5 : 3.5;
+        for (let hi = 0; hi < 2; hi++) {
+          const hx = (hi - 0.5) * hs * 1.4;
+          const hy = (hi % 2) * hs * 0.3;
+          // House body
+          g.append("rect").attr("x", hx - hs*0.6).attr("y", hy - hs*0.3).attr("width", hs*1.2).attr("height", hs*0.9)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+          // Roof
+          g.append("path")
+            .attr("d", `M ${hx - hs*0.7} ${hy - hs*0.3} L ${hx} ${hy - hs} L ${hx + hs*0.7} ${hy - hs*0.3}`)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+        }
         break;
+      }
       case "wilderness":
         g.append("circle").attr("r", s).attr("fill", "none").attr("stroke", color).attr("stroke-width", 0.8);
         break;
