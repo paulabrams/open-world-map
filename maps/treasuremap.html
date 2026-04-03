@@ -110,9 +110,9 @@
 <script>
 // --- Thror's Map / Treasure Map Style Constants ---
 // Pale faded blue ink — the dominant color, like old blueprint ink
-const BLUE_INK = "#5a7a9a";
-const BLUE_LIGHT = "#8aaac8";
-const BLUE_FAINT = "#b0c8dd";
+const BLUE_INK = "#3a6590";
+const BLUE_LIGHT = "#6a90b0";
+const BLUE_FAINT = "#90b0cc";
 // Red accent — for key features, danger, dragons
 const RED_INK = "#a03020";
 const RED_LIGHT = "#c05040";
@@ -265,15 +265,15 @@ function renderNodes(container, nodes) {
       .on("click", (event) => { event.stopPropagation(); showDetail(node); });
 
     const isLocal = node.scale === "local";
-    const s = isLocal ? 3 : 4;
+    const s = isLocal ? 3.5 : 5;
     // Lairs and dungeons get red; everything else blue
     const isDanger = node.point_type === "lair" || node.point_type === "dungeon";
     const color = isDanger ? RED_INK : BLUE_INK;
 
     switch (node.point_type) {
       case "heart":
-        g.append("circle").attr("r", 5).attr("fill", color).attr("stroke", "none").attr("opacity", 0.8);
-        g.append("circle").attr("r", 7.5).attr("fill", "none").attr("stroke", color).attr("stroke-width", 1.0);
+        g.append("circle").attr("r", 6).attr("fill", color).attr("stroke", "none").attr("opacity", 0.8);
+        g.append("circle").attr("r", 8).attr("fill", "none").attr("stroke", color).attr("stroke-width", 1.0);
         break;
       case "fortress":
         g.append("rect").attr("x", -s).attr("y", -s).attr("width", s*2).attr("height", s*2)
@@ -382,19 +382,19 @@ function renderLinks(container, links) {
 
     switch (link.path_type) {
       case "road":
-        path.attr("stroke-width", 1.5);
+        path.attr("stroke-width", 2.0);
         break;
       case "trail":
-        path.attr("stroke-width", 0.8).attr("stroke-dasharray", "5 4");
+        path.attr("stroke-width", 1.0).attr("stroke-dasharray", "5 4");
         break;
       case "wilderness":
-        path.attr("stroke-width", 0.6).attr("stroke-dasharray", "2 4");
+        path.attr("stroke-width", 0.8).attr("stroke-dasharray", "2 4");
         break;
       case "river":
-        path.attr("stroke-width", 1.8);
+        path.attr("stroke-width", 2.0);
         break;
       default:
-        path.attr("stroke-width", 1.0);
+        path.attr("stroke-width", 1.2);
     }
   });
 }
@@ -435,7 +435,7 @@ function renderLabels(container, nodes) {
     const isLocal = node.scale === "local";
     const isDanger = node.point_type === "lair" || node.point_type === "dungeon";
     const isImportant = node.point_type === "heart" || node.point_type === "fortress";
-    const fontSize = isLocal ? 9 : (isImportant ? 14 : 12);
+    const fontSize = isLocal ? 10 : (isImportant ? 16 : 13);
     const color = isDanger ? RED_INK : (isLocal ? BLUE_LIGHT : BLUE_INK);
     const yOffset = isLocal ? 12 : 16;
 
@@ -454,7 +454,7 @@ function renderLabels(container, nodes) {
 
     // Important places get slight letter-spacing
     if (isImportant) {
-      text.attr("letter-spacing", "1.5px");
+      text.attr("letter-spacing", "2.5px");
     }
   });
 }
@@ -467,17 +467,17 @@ function renderRunicBorder(container, bounds) {
   const w = bounds.maxX - bounds.minX + pad * 2;
   const h = bounds.maxY - bounds.minY + pad * 2;
 
-  // Single thin blue border
+  // Single thin blue border — strengthened
   container.append("rect")
     .attr("x", x).attr("y", y)
     .attr("width", w).attr("height", h)
     .attr("fill", "none")
     .attr("stroke", BLUE_LIGHT)
-    .attr("stroke-width", 0.8)
-    .attr("opacity", 0.6);
+    .attr("stroke-width", 1.2)
+    .attr("opacity", 0.8);
 
-  // Decorative corner marks
-  const cm = 8;
+  // Decorative corner marks — larger
+  const cm = 12;
   const corners = [
     [x, y], [x + w, y], [x, y + h], [x + w, y + h]
   ];
@@ -494,35 +494,82 @@ function renderRunicBorder(container, bounds) {
       .attr("stroke", BLUE_INK).attr("stroke-width", 1.0);
   });
 
-  // Runic decoration along left side — small tick marks suggesting runes
+  // Runic decoration along left side — angular marks suggesting Dwarvish runes
   const rng = mulberry32(42);
   const runeY = y + 30;
   const runeH = h - 60;
-  const runeX = x - 15;
-  for (let i = 0; i < 18; i++) {
-    const ry = runeY + (i / 18) * runeH;
-    const rw = 4 + rng() * 6;
-    const rh = 6 + rng() * 4;
-    // Vertical stroke
-    container.append("line")
-      .attr("x1", runeX).attr("y1", ry)
-      .attr("x2", runeX).attr("y2", ry + rh)
-      .attr("stroke", BLUE_INK).attr("stroke-width", 0.6).attr("opacity", 0.4);
-    // Cross strokes
-    if (rng() > 0.3) {
-      const cy = ry + rh * (0.3 + rng() * 0.4);
-      container.append("line")
-        .attr("x1", runeX - rw * 0.3).attr("y1", cy)
-        .attr("x2", runeX + rw * 0.3).attr("y2", cy - 2)
-        .attr("stroke", BLUE_INK).attr("stroke-width", 0.5).attr("opacity", 0.4);
-    }
-    if (rng() > 0.5) {
+  const runeXL = x - 15;
+  const runeXR = x + w + 15;
+
+  function drawRuneColumn(runeX, seed) {
+    const r = mulberry32(seed);
+    for (let i = 0; i < 18; i++) {
+      const ry = runeY + (i / 18) * runeH;
+      const rw = 10 + r() * 10;
+      const rh = 12 + r() * 4;
+      // Vertical stroke — tall and prominent
       container.append("line")
         .attr("x1", runeX).attr("y1", ry)
-        .attr("x2", runeX + rw * 0.4).attr("y2", ry + rh * 0.5)
-        .attr("stroke", BLUE_INK).attr("stroke-width", 0.5).attr("opacity", 0.4);
+        .attr("x2", runeX).attr("y2", ry + rh)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 1.2).attr("opacity", 0.7);
+      // Cross strokes — angular, wider
+      if (r() > 0.25) {
+        const cy = ry + rh * (0.3 + r() * 0.4);
+        container.append("line")
+          .attr("x1", runeX - rw * 0.5).attr("y1", cy)
+          .attr("x2", runeX + rw * 0.5).attr("y2", cy - 4)
+          .attr("stroke", BLUE_INK).attr("stroke-width", 1.0).attr("opacity", 0.7);
+      }
+      // Diagonal stroke
+      if (r() > 0.4) {
+        container.append("line")
+          .attr("x1", runeX).attr("y1", ry)
+          .attr("x2", runeX + rw * 0.5).attr("y2", ry + rh * 0.5)
+          .attr("stroke", BLUE_INK).attr("stroke-width", 1.0).attr("opacity", 0.7);
+      }
+      // Extra angular mark for variety
+      if (r() > 0.6) {
+        container.append("line")
+          .attr("x1", runeX - rw * 0.25).attr("y1", ry + rh)
+          .attr("x2", runeX + rw * 0.35).attr("y2", ry + rh * 0.6)
+          .attr("stroke", BLUE_INK).attr("stroke-width", 0.9).attr("opacity", 0.7);
+      }
     }
   }
+
+  drawRuneColumn(runeXL, 42);
+  drawRuneColumn(runeXR, 137);
+
+  // Runes along the bottom
+  function drawRuneRow(runeYPos, seed) {
+    const r = mulberry32(seed);
+    const runeW = w - 60;
+    const startX = x + 30;
+    for (let i = 0; i < 14; i++) {
+      const rx = startX + (i / 14) * runeW;
+      const rw = 10 + r() * 8;
+      const rh = 12 + r() * 4;
+      container.append("line")
+        .attr("x1", rx).attr("y1", runeYPos)
+        .attr("x2", rx).attr("y2", runeYPos + rh)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 1.2).attr("opacity", 0.7);
+      if (r() > 0.3) {
+        const cy = runeYPos + rh * (0.3 + r() * 0.4);
+        container.append("line")
+          .attr("x1", rx - rw * 0.4).attr("y1", cy)
+          .attr("x2", rx + rw * 0.4).attr("y2", cy - 3)
+          .attr("stroke", BLUE_INK).attr("stroke-width", 1.0).attr("opacity", 0.7);
+      }
+      if (r() > 0.5) {
+        container.append("line")
+          .attr("x1", rx).attr("y1", runeYPos)
+          .attr("x2", rx + rw * 0.4).attr("y2", runeYPos + rh * 0.5)
+          .attr("stroke", BLUE_INK).attr("stroke-width", 0.9).attr("opacity", 0.7);
+      }
+    }
+  }
+
+  drawRuneRow(y + h + 8, 271);
 }
 
 // --- Title cartouche (bottom-left, like "Thror's Map") ---
@@ -536,47 +583,210 @@ function renderCartouche(container, bounds, meta) {
     .attr("y", by)
     .attr("text-anchor", "start")
     .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
-    .attr("font-size", "11px")
+    .attr("font-size", "13px")
     .attr("font-style", "italic")
     .attr("fill", BLUE_INK)
     .attr("opacity", 0.7)
     .text(meta.campaign);
 
+  // Region name below
+  if (meta.region) {
+    container.append("text")
+      .attr("x", bx)
+      .attr("y", by + 15)
+      .attr("text-anchor", "start")
+      .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
+      .attr("font-size", "10px")
+      .attr("font-style", "italic")
+      .attr("fill", BLUE_LIGHT)
+      .attr("opacity", 0.6)
+      .text(meta.region + (meta.world ? ", " + meta.world : ""));
+  }
+
   // Underline
-  const textLen = meta.campaign.length * 5.5;
+  const textLen = meta.campaign.length * 6.5;
   container.append("line")
     .attr("x1", bx).attr("y1", by + 3)
     .attr("x2", bx + textLen).attr("y2", by + 3)
     .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.5);
 }
 
-// --- Annotation: "here be..." text for flavor ---
+// --- Annotation: flowing handwritten text scattered across the map ---
 function renderAnnotations(container, nodes) {
   const annotGroup = container.append("g").attr("class", "annotations");
 
-  // Add flavor annotations near danger nodes
   nodes.forEach(node => {
-    if (node.point_type !== "lair" && node.point_type !== "dungeon") return;
+    const isLocal = node.scale === "local";
+    if (isLocal) return; // skip local-scale nodes
 
     const rng = mulberry32(seedFromString(node.id + "-annotation"));
-    const angle = -Math.PI / 4 + (rng() - 0.5) * 0.5;
-    const dist = 40 + rng() * 20;
+    const isDanger = node.point_type === "lair" || node.point_type === "dungeon";
+
+    // Vary angle and distance per node for a scattered, hand-written look
+    const angle = (rng() - 0.5) * Math.PI * 1.5;
+    const dist = 35 + rng() * 20;
 
     const ax = node.x + Math.cos(angle) * dist;
     const ay = node.y + Math.sin(angle) * dist;
 
-    const phrases = ["here be danger", "beware", "here dwells evil", "take heed"];
-    const phrase = phrases[Math.floor(rng() * phrases.length)];
+    // Use node description text, truncated to 35-45 chars
+    let phrase;
+    if (node.description) {
+      const limit = 35 + Math.floor(rng() * 10); // 35-44 chars
+      if (node.description.length > limit) {
+        let cut = node.description.lastIndexOf(" ", limit);
+        if (cut < 20) cut = limit;
+        phrase = node.description.slice(0, cut) + "\u2026";
+      } else {
+        phrase = node.description;
+      }
+    } else {
+      const flavorPhrases = [
+        "here of old was a place of note",
+        "known to few who wander far",
+        "travellers rest upon this ground",
+        "the road goes ever on from here"
+      ];
+      phrase = flavorPhrases[Math.floor(rng() * flavorPhrases.length)];
+    }
 
-    annotGroup.append("text")
+    const color = isDanger ? RED_INK : BLUE_INK;
+    const rotation = (rng() - 0.5) * 16; // slight angle, -8 to +8 degrees
+
+    // Split into 2 lines if long enough
+    let line1 = phrase, line2 = null;
+    if (phrase.length > 24) {
+      const mid = Math.floor(phrase.length / 2);
+      let splitAt = phrase.lastIndexOf(" ", mid + 5);
+      if (splitAt < mid - 8) splitAt = phrase.indexOf(" ", mid);
+      if (splitAt > 0) {
+        line1 = phrase.slice(0, splitAt);
+        line2 = phrase.slice(splitAt + 1);
+      }
+    }
+
+    const text = annotGroup.append("text")
       .attr("x", ax).attr("y", ay)
       .attr("text-anchor", "middle")
+      .attr("transform", `rotate(${rotation}, ${ax}, ${ay})`)
       .attr("font-family", "'Palatino Linotype', serif")
-      .attr("font-size", "8px")
+      .attr("font-size", "9px")
       .attr("font-style", "italic")
-      .attr("fill", RED_LIGHT)
-      .attr("opacity", 0.6)
-      .text(phrase);
+      .attr("fill", color)
+      .attr("stroke", PARCHMENT)
+      .attr("stroke-width", 2.5)
+      .attr("paint-order", "stroke");
+
+    text.append("tspan")
+      .attr("x", ax).attr("dy", 0)
+      .text(line1);
+
+    if (line2) {
+      text.append("tspan")
+        .attr("x", ax).attr("dy", "1.15em")
+        .text(line2);
+    }
+  });
+}
+
+// --- Decorative dragon/beast symbol near the most dangerous node ---
+function renderBeastSymbol(container, nodes) {
+  // Find a lair node; fall back to dungeon
+  let beast = nodes.find(n => n.point_type === "lair");
+  if (!beast) beast = nodes.find(n => n.point_type === "dungeon");
+  if (!beast) return;
+
+  const rng = mulberry32(seedFromString(beast.id + "-beast"));
+  // Place it offset from the node
+  const angle = rng() * Math.PI * 2;
+  const dist = 55 + rng() * 20;
+  const bx = beast.x + Math.cos(angle) * dist;
+  const by = beast.y + Math.sin(angle) * dist;
+
+  const g = container.append("g")
+    .attr("transform", `translate(${bx}, ${by}) scale(0.9)`)
+    .attr("opacity", 0.6);
+
+  // Simple dragon silhouette: serpentine body with wings
+  // Body — sinuous S-curve
+  g.append("path")
+    .attr("d", "M 0 0 C 6 -8, 14 -4, 18 -10 C 22 -16, 28 -12, 32 -8 C 36 -4, 30 2, 24 0")
+    .attr("fill", "none")
+    .attr("stroke", RED_INK)
+    .attr("stroke-width", 1.8)
+    .attr("stroke-linecap", "round");
+
+  // Left wing — swept back
+  g.append("path")
+    .attr("d", "M 14 -8 C 8 -22, 2 -26, -4 -20 C -2 -16, 4 -14, 14 -8")
+    .attr("fill", RED_INK)
+    .attr("opacity", 0.25)
+    .attr("stroke", RED_INK)
+    .attr("stroke-width", 0.8);
+
+  // Right wing — swept forward
+  g.append("path")
+    .attr("d", "M 22 -12 C 28 -26, 36 -28, 40 -20 C 36 -16, 28 -14, 22 -12")
+    .attr("fill", RED_INK)
+    .attr("opacity", 0.25)
+    .attr("stroke", RED_INK)
+    .attr("stroke-width", 0.8);
+
+  // Head — small pointed triangle
+  g.append("path")
+    .attr("d", "M 0 0 L -4 -3 L -2 2 Z")
+    .attr("fill", RED_INK)
+    .attr("opacity", 0.5);
+
+  // Tail tip
+  g.append("path")
+    .attr("d", "M 24 0 C 26 4, 30 6, 34 4")
+    .attr("fill", "none")
+    .attr("stroke", RED_INK)
+    .attr("stroke-width", 1.2)
+    .attr("stroke-linecap", "round");
+}
+
+// --- Serpent/dragon marks near ALL lair nodes ---
+function renderBeastMark(container, nodes) {
+  const lairs = nodes.filter(n => n.point_type === "lair");
+  if (!lairs.length) return;
+
+  lairs.forEach(lair => {
+    const rng = mulberry32(seedFromString(lair.id + "-beastmark"));
+    const angle = rng() * Math.PI * 2;
+    const dist = 50 + rng() * 25;
+    const bx = lair.x + Math.cos(angle) * dist;
+    const by = lair.y + Math.sin(angle) * dist;
+    const flip = rng() > 0.5 ? -1 : 1;
+
+    const g = container.append("g")
+      .attr("transform", `translate(${bx}, ${by}) scale(${flip * 0.8}, 0.8)`)
+      .attr("opacity", 0.5);
+
+    // Serpentine body — sinuous S-curve
+    g.append("path")
+      .attr("d", "M 0 0 C 5 -10, 15 -6, 20 -12 C 25 -18, 32 -10, 28 -4")
+      .attr("fill", "none")
+      .attr("stroke", RED_INK)
+      .attr("stroke-width", 1.6)
+      .attr("stroke-linecap", "round");
+
+    // Pointed tail
+    g.append("path")
+      .attr("d", "M 28 -4 C 32 0, 36 4, 40 2 L 38 5")
+      .attr("fill", "none")
+      .attr("stroke", RED_INK)
+      .attr("stroke-width", 1.0)
+      .attr("stroke-linecap", "round");
+
+    // Small wing suggestion
+    g.append("path")
+      .attr("d", "M 12 -9 C 8 -20, 2 -22, -2 -16 C 2 -14, 8 -12, 12 -9")
+      .attr("fill", RED_INK)
+      .attr("opacity", 0.2)
+      .attr("stroke", RED_INK)
+      .attr("stroke-width", 0.6);
   });
 }
 
@@ -738,6 +948,8 @@ async function initMap() {
   renderLabels(g, nodes);
   renderDayLabels(g, links);
   renderAnnotations(g, nodes);
+  renderBeastSymbol(g, nodes);
+  renderBeastMark(g, nodes);
   renderCompass(g, bounds.maxX + 15, bounds.minY - 15);
   renderCartouche(g, bounds, graphData.meta);
 

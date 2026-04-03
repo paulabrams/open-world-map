@@ -108,7 +108,7 @@
 // --- Wilderland Style Constants ---
 const INK = "#2a1f14";
 const INK_LIGHT = "#6b5d4d";
-const BLUE = "#4a6a8a";          // Muted old-ink blue for water and geographic labels
+const BLUE = "#3a6090";          // Stronger old-ink blue for water and geographic labels
 const BLUE_LIGHT = "#7a9ab8";
 const PARCHMENT = "#f5edd6";     // Warmer, more yellowed than original
 const PARCHMENT_DARK = "#ddd0b4";
@@ -150,7 +150,7 @@ function drawMountain(g, x, y, size, rng) {
     .attr("stroke-width", 1.0);
 
   // Hatching lines on left (shadow) side — short parallel strokes
-  const hatchCount = 3 + Math.floor(rng() * 3);
+  const hatchCount = 4 + Math.floor(rng() * 4);
   for (let i = 1; i <= hatchCount; i++) {
     const t = i / (hatchCount + 1);
     // Point on left slope
@@ -163,13 +163,13 @@ function drawMountain(g, x, y, size, rng) {
       .attr("x2", lx + hLen).attr("y2", ly + hLen * 0.3)
       .attr("stroke", INK)
       .attr("stroke-width", 0.6)
-      .attr("opacity", 0.7);
+      .attr("opacity", 0.8);
   }
 }
 
 function drawTreeCanopy(g, x, y, size, rng) {
   // Round canopy blob — top-down view, like in the Wilderland map
-  const r = size * (0.3 + rng() * 0.2);
+  const r = size * (0.45 + rng() * 0.25);
   // Slightly irregular circle using a few control points
   const wobble = r * 0.15;
   const points = [];
@@ -181,13 +181,20 @@ function drawTreeCanopy(g, x, y, size, rng) {
   }
   const line = d3.line().curve(d3.curveBasisClosed);
 
-  // Filled canopy with slight transparency
+  // Outlined canopy circle — distinct open circles like the Wilderland reference
   g.append("path")
     .attr("d", line(points))
-    .attr("fill", INK)
+    .attr("fill", "none")
     .attr("stroke", INK)
-    .attr("stroke-width", 0.5)
-    .attr("opacity", 0.7);
+    .attr("stroke-width", 0.8)
+    .attr("opacity", 0.8);
+
+  // Tiny center dot for texture
+  g.append("circle")
+    .attr("cx", x).attr("cy", y)
+    .attr("r", 1)
+    .attr("fill", INK)
+    .attr("opacity", 0.6);
 }
 
 function drawSwampReeds(g, x, y, size, rng) {
@@ -242,18 +249,18 @@ function drawGrassTuft(g, x, y, size, rng) {
 
 function drawRocks(g, x, y, size, rng) {
   // Scattered small pebble circles — distinctive Wilderland texture
-  const count = 5 + Math.floor(rng() * 6);
+  const count = 9 + Math.floor(rng() * 8);
   for (let i = 0; i < count; i++) {
-    const rx = x + (rng() - 0.5) * size * 1.2;
-    const ry = y + (rng() - 0.5) * size * 1.0;
+    const rx = x + (rng() - 0.5) * size * 1.8;
+    const ry = y + (rng() - 0.5) * size * 1.5;
     const r = 1.5 + rng() * 2.5;
     g.append("circle")
       .attr("cx", rx).attr("cy", ry)
       .attr("r", r)
       .attr("fill", "none")
       .attr("stroke", INK)
-      .attr("stroke-width", 0.6)
-      .attr("opacity", 0.5);
+      .attr("stroke-width", 0.8)
+      .attr("opacity", 0.6);
   }
 }
 
@@ -284,24 +291,47 @@ function renderTerrainSymbols(container, nodes, links) {
     const offset = 35;
 
     if (node.terrain === "mountains") {
-      const count = 3 + Math.floor(rng() * 2);
+      // Front row of peaks
+      const count = 5 + Math.floor(rng() * 3);
       for (let i = 0; i < count; i++) {
-        const spread = (i - (count - 1) / 2) * 16;
+        const spread = (i - (count - 1) / 2) * 14;
         const mx = node.x + Math.cos(placeAngle) * offset + Math.cos(placeAngle + Math.PI / 2) * spread;
         const my = node.y + Math.sin(placeAngle) * offset + Math.sin(placeAngle + Math.PI / 2) * spread;
-        drawMountain(terrainGroup, mx, my, 10 + rng() * 5, rng);
+        drawMountain(terrainGroup, mx, my, 13 + rng() * 6, rng);
       }
-      // Add scattered rocks at mountain base
+      // Back row of peaks for depth
+      const backCount = 3 + Math.floor(rng() * 3);
+      const backOffset = offset + 18;
+      for (let i = 0; i < backCount; i++) {
+        const spread = (i - (backCount - 1) / 2) * 16;
+        const mx = node.x + Math.cos(placeAngle) * backOffset + Math.cos(placeAngle + Math.PI / 2) * spread;
+        const my = node.y + Math.sin(placeAngle) * backOffset + Math.sin(placeAngle + Math.PI / 2) * spread;
+        drawMountain(terrainGroup, mx, my, 11 + rng() * 5, rng);
+      }
+      // Add scattered rocks at mountain base — more pebbles, wider spread
       drawRocks(terrainGroup,
-        node.x + Math.cos(placeAngle) * (offset + 15),
-        node.y + Math.sin(placeAngle) * (offset + 15),
-        15, rng);
+        node.x + Math.cos(placeAngle) * (offset + 28),
+        node.y + Math.sin(placeAngle) * (offset + 28),
+        25, rng);
+      drawRocks(terrainGroup,
+        node.x + Math.cos(placeAngle) * (offset + 10) + Math.cos(placeAngle + Math.PI / 2) * 20,
+        node.y + Math.sin(placeAngle) * (offset + 10) + Math.sin(placeAngle + Math.PI / 2) * 20,
+        18, rng);
     } else if (node.terrain === "forest") {
-      // Dense cluster of round canopy blobs
-      const count = 6 + Math.floor(rng() * 5);
+      // Dense packed wall of round canopy circles — Mirkwood density, tightly overlapping
+      const count = 20 + Math.floor(rng() * 12);
       for (let i = 0; i < count; i++) {
-        const a = placeAngle + (rng() - 0.5) * 1.4;
-        const r = offset * (0.5 + rng() * 0.7);
+        const a = placeAngle + (rng() - 0.5) * 2.2;
+        const r = offset * (0.15 + rng() * 0.5);
+        const tx = node.x + Math.cos(a) * r;
+        const ty = node.y + Math.sin(a) * r;
+        drawTreeCanopy(terrainGroup, tx, ty, 10 + rng() * 5, rng);
+      }
+      // Second cluster — deeper forest layer at larger radius
+      const count2 = 10 + Math.floor(rng() * 6);
+      for (let i = 0; i < count2; i++) {
+        const a = placeAngle + (rng() - 0.5) * 2.2;
+        const r = offset * (0.8 + rng() * 0.4);
         const tx = node.x + Math.cos(a) * r;
         const ty = node.y + Math.sin(a) * r;
         drawTreeCanopy(terrainGroup, tx, ty, 10 + rng() * 5, rng);
@@ -501,9 +531,9 @@ function renderLabels(container, nodes) {
 
   nodes.forEach(node => {
     const isLocal = node.scale === "local";
-    const fontSize = isLocal ? 10 : 13;
-    const fontWeight = (node.point_type === "heart" || node.point_type === "fortress") ? "bold" : "normal";
     const isBlue = blueTypes.has(node.point_type) || node.terrain === "swamp";
+    const fontSize = isLocal ? 10 : (isBlue ? 14 : 13);
+    const fontWeight = (node.point_type === "heart" || node.point_type === "fortress") ? "bold" : "normal";
     const color = isLocal ? INK_LIGHT : (isBlue ? BLUE : INK);
     const yOffset = isLocal ? 14 : 18;
 
@@ -536,7 +566,7 @@ function renderBorder(container, bounds) {
     .attr("width", w).attr("height", h)
     .attr("fill", "none")
     .attr("stroke", INK)
-    .attr("stroke-width", 1.5);
+    .attr("stroke-width", 1.2);
 
   // Inner ruled line
   container.append("rect")
@@ -544,7 +574,24 @@ function renderBorder(container, bounds) {
     .attr("width", w - 8).attr("height", h - 8)
     .attr("fill", "none")
     .attr("stroke", INK)
-    .attr("stroke-width", 0.5);
+    .attr("stroke-width", 0.6);
+
+  // Corner decorative marks — small cross/tick at each corner
+  const cm = 8; // corner mark length
+  const corners = [
+    [x, y], [x + w, y], [x, y + h], [x + w, y + h]
+  ];
+  corners.forEach(([cx, cy]) => {
+    // Small diagonal cross marks at each corner
+    container.append("line")
+      .attr("x1", cx - cm).attr("y1", cy - cm)
+      .attr("x2", cx + cm).attr("y2", cy + cm)
+      .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.6);
+    container.append("line")
+      .attr("x1", cx + cm).attr("y1", cy - cm)
+      .attr("x2", cx - cm).attr("y2", cy + cm)
+      .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.6);
+  });
 }
 
 // --- Title cartouche ---
