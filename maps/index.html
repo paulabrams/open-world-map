@@ -59,12 +59,6 @@
     color: #5a4a3a;
     margin-bottom: 12px;
   }
-  .campaign-card a {
-    color: #8b2500;
-    text-decoration: none;
-    font-size: 14px;
-  }
-  .campaign-card a:hover { text-decoration: underline; }
 
   .styles {
     max-width: 900px;
@@ -76,51 +70,98 @@
     color: #8b2500;
     border-bottom: 1px solid #d4c4a0;
     padding-bottom: 8px;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
   }
-  .style-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+
+  .style-row {
+    display: flex;
     gap: 24px;
+    margin-bottom: 40px;
+    align-items: flex-start;
   }
-  .style-card {
-    background: #faf3e6;
+  .style-row:nth-child(even) { flex-direction: row-reverse; }
+
+  .style-images {
+    flex: 0 0 50%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .style-images .rendered {
+    cursor: pointer;
     border: 1px solid #d4c4a0;
-    overflow: hidden;
+    transition: box-shadow 0.2s;
   }
-  .style-card img {
+  .style-images .rendered:hover {
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  }
+  .style-images .rendered img {
     width: 100%;
-    height: 200px;
-    object-fit: cover;
     display: block;
-    border-bottom: 1px solid #d4c4a0;
   }
-  .style-card .info {
-    padding: 16px;
+  .style-images .reference {
+    border: 1px solid #d4c4a0;
   }
-  .style-card h3 {
-    font-size: 16px;
-    color: #2a1f14;
-    margin-bottom: 4px;
+  .style-images .reference img {
+    width: 100%;
+    display: block;
+    opacity: 0.7;
   }
-  .style-card p {
-    font-size: 12px;
-    color: #5a4a3a;
-    line-height: 1.5;
-    margin-bottom: 8px;
-  }
-  .style-card .ref {
-    font-size: 11px;
+  .style-images .ref-label {
+    font-size: 10px;
     font-style: italic;
     color: #8b7b6b;
+    text-align: center;
+    padding: 4px;
+    background: #faf3e6;
+    border-top: 1px solid #d4c4a0;
   }
-  .style-card a {
+
+  .style-info {
+    flex: 1;
+    padding-top: 8px;
+  }
+  .style-info h3 {
+    font-size: 22px;
+    color: #2a1f14;
+    margin-bottom: 8px;
+  }
+  .style-info p {
+    font-size: 13px;
+    color: #5a4a3a;
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .style-info .links {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .style-info a {
     color: #8b2500;
     text-decoration: none;
     font-size: 13px;
-    font-weight: bold;
   }
-  .style-card a:hover { text-decoration: underline; }
+  .style-info a:hover { text-decoration: underline; }
+
+  /* Lightbox overlay */
+  #lightbox {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    cursor: zoom-out;
+    overflow: auto;
+    padding: 20px;
+  }
+  #lightbox.open { display: flex; align-items: center; justify-content: center; }
+  #lightbox img {
+    max-width: 95vw;
+    max-height: 95vh;
+    object-fit: contain;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+  }
 
   footer {
     text-align: center;
@@ -130,8 +171,11 @@
     font-style: italic;
   }
 
-  @media (max-width: 640px) {
-    .style-grid { grid-template-columns: 1fr; }
+  @media (max-width: 700px) {
+    .style-row, .style-row:nth-child(even) {
+      flex-direction: column;
+    }
+    .style-images { flex: 1; }
   }
 </style>
 </head>
@@ -147,53 +191,98 @@
   <div class="campaign-card">
     <h3>The Basilisk Campaign</h3>
     <div class="meta">Blackwater Crossing region, Belerion, Dragon Isles &mdash; Year 412</div>
-    <a href="map.html?map=Basilisk&style=wilderland">View Map &rarr;</a>
   </div>
 </div>
 
 <div class="styles">
   <h2>Map Styles</h2>
-  <div class="style-grid">
 
-    <div class="style-card">
-      <img src="style-references/wilderland.jpg" alt="Wilderland reference">
-      <div class="info">
-        <h3>Wilderland</h3>
-        <p>Tolkien-inspired hand-drawn aesthetic with tree canopies, mountain peaks, blue rivers, and an ornate border. The default style.</p>
-        <div class="ref">Inspired by Tolkien's Wilderland map from The Hobbit</div>
-        <br>
-        <a href="map.html?map=Basilisk&style=wilderland">View in Wilderland style &rarr;</a>
+  <!-- Wilderland -->
+  <div class="style-row">
+    <div class="style-images">
+      <div class="rendered" onclick="openLightbox(this.querySelector('img').src)">
+        <img src="Basilisk/screenshots/wilderland.png" alt="Wilderland rendered map">
+      </div>
+      <div class="reference">
+        <img src="style-references/wilderland.jpg" alt="Wilderland reference">
+        <div class="ref-label">Reference: Tolkien's Wilderland map, The Hobbit</div>
       </div>
     </div>
-
-    <div class="style-card">
-      <img src="style-references/middle-earth.webp" alt="World Atlas reference">
-      <div class="info">
-        <h3>Ambar</h3>
-        <p>Dense engraving-style with forest hatching, ridge-line mountains, region labels, and a dark parchment background.</p>
-        <div class="ref">Inspired by Pauline Baynes' Map of Middle-earth</div>
-        <br>
-        <a href="map.html?map=Basilisk&style=world">View in Ambar style &rarr;</a>
+    <div class="style-info">
+      <h3>Wilderland</h3>
+      <p>Tolkien-inspired hand-drawn aesthetic with round tree canopies, peaked mountains with shadow sides, blue rivers, and an ornate decorative border. Labels in warm brown and blue for geographic features. The default style.</p>
+      <div class="links">
+        <a href="map.html?map=Basilisk&style=wilderland">Open interactive map &rarr;</a>
+        <a href="Basilisk/Basilisk-wilderland.svg" target="_blank">Download SVG</a>
       </div>
     </div>
-
-    <div class="style-card">
-      <img src="style-references/thrors-map.jpg" alt="Treasure Map reference">
-      <div class="info">
-        <h3>Moon Letters</h3>
-        <p>Sparse blue-ink sketch with red danger markers, runic border, handwritten annotations, and sea-creature decorations.</p>
-        <div class="ref">Inspired by Thror's Map from The Hobbit</div>
-        <br>
-        <a href="map.html?map=Basilisk&style=treasuremap">View in Moon Letters style &rarr;</a>
-      </div>
-    </div>
-
   </div>
+
+  <!-- Ambar -->
+  <div class="style-row">
+    <div class="style-images">
+      <div class="rendered" onclick="openLightbox(this.querySelector('img').src)">
+        <img src="Basilisk/screenshots/world.png" alt="Ambar rendered map">
+      </div>
+      <div class="reference">
+        <img src="style-references/middle-earth.webp" alt="Ambar reference">
+        <div class="ref-label">Reference: Pauline Baynes' Map of Middle-earth</div>
+      </div>
+    </div>
+    <div class="style-info">
+      <h3>Ambar</h3>
+      <p>Dense engraving-style map with forest hatching, ridge-line mountains with scree, large region labels, and an ornate compass rose. Dark parchment background with warm tones. Named for the Quenya word for "world."</p>
+      <div class="links">
+        <a href="map.html?map=Basilisk&style=world">Open interactive map &rarr;</a>
+        <a href="Basilisk/Basilisk-world.svg" target="_blank">Download SVG</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Moon Letters -->
+  <div class="style-row">
+    <div class="style-images">
+      <div class="rendered" onclick="openLightbox(this.querySelector('img').src)">
+        <img src="Basilisk/screenshots/treasuremap.png" alt="Moon Letters rendered map">
+      </div>
+      <div class="reference">
+        <img src="style-references/thrors-map.jpg" alt="Moon Letters reference">
+        <div class="ref-label">Reference: Thror's Map, The Hobbit</div>
+      </div>
+    </div>
+    <div class="style-info">
+      <h3>Moon Letters</h3>
+      <p>Sparse blue-ink sketch on aged parchment with red danger markers, a runic border, handwritten annotations describing locations, and sea-creature decorations. Evokes a treasure map drawn by firelight.</p>
+      <div class="links">
+        <a href="map.html?map=Basilisk&style=treasuremap">Open interactive map &rarr;</a>
+        <a href="Basilisk/Basilisk-treasuremap.svg" target="_blank">Download SVG</a>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <footer>
   Open World Map &mdash; built with D3.js, Supabase, and the Open World MCP server
 </footer>
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="Full size map">
+</div>
+
+<script>
+function openLightbox(src) {
+  document.getElementById("lightbox-img").src = src;
+  document.getElementById("lightbox").classList.add("open");
+}
+function closeLightbox() {
+  document.getElementById("lightbox").classList.remove("open");
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeLightbox();
+});
+</script>
 
 </body>
 </html>

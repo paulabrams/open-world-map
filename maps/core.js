@@ -69,10 +69,13 @@ function closePanel() {
 }
 
 // --- Data loading and simulation ---
+let _rawData = null; // pristine copy for re-simulation
+
 async function loadData(campaign) {
   const mapFile = campaign + "/" + campaign + ".json";
   const response = await fetch(mapFile);
-  graphData = await response.json();
+  _rawData = await response.json();
+  graphData = _rawData;
   return graphData;
 }
 
@@ -80,11 +83,15 @@ function runSimulation(rawData, filterFn) {
   const WIDTH = window.innerWidth;
   const HEIGHT = window.innerHeight;
 
+  // Deep-copy from pristine data so D3 mutation doesn't persist
+  const freshNodes = JSON.parse(JSON.stringify(_rawData.nodes));
+  const freshLinks = JSON.parse(JSON.stringify(_rawData.links));
+
   const nodes = filterFn
-    ? filterFn(rawData.nodes)
-    : rawData.nodes.filter(n => n.visible !== false);
+    ? filterFn(freshNodes)
+    : freshNodes.filter(n => n.visible !== false);
   const nodeIds = new Set(nodes.map(n => n.id));
-  const links = rawData.links.filter(l => l.visible !== false && nodeIds.has(l.source) && nodeIds.has(l.target));
+  const links = freshLinks.filter(l => l.visible !== false && nodeIds.has(l.source) && nodeIds.has(l.target));
 
   nodes.forEach(n => {
     if (n.x_hint !== undefined) n.x = n.x_hint * HINT_SCALE + WIDTH / 2;
