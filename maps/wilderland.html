@@ -85,6 +85,20 @@
     opacity: 0.7;
     pointer-events: none;
   }
+  #export-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    background: #f4e8d1;
+    border: 2px solid #2a1f14;
+    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    font-size: 13px;
+    color: #2a1f14;
+    cursor: pointer;
+    opacity: 0.8;
+  }
+  #export-btn:hover { opacity: 1; }
 </style>
 </head>
 <body>
@@ -102,6 +116,7 @@
 </div>
 
 <div id="title-bar"></div>
+<button id="export-btn" onclick="exportSVG()">Save SVG</button>
 
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script>
@@ -136,34 +151,44 @@ function seedFromString(s) {
 // --- SVG Terrain Symbol Generators (Wilderland style) ---
 
 function drawMountain(g, x, y, size, rng) {
-  const w = size * (0.9 + rng() * 0.4);
-  const h = size * (1.4 + rng() * 0.5);
-  const skew = (rng() - 0.5) * w * 0.1;
+  const w = size * (0.5 + rng() * 0.3);  // Narrower than before
+  const h = size * (1.8 + rng() * 0.8);  // Taller, more peaked
+  const skew = (rng() - 0.5) * w * 0.08;
+
+  // Slight wobble on the peak
   const peakX = x + skew;
   const peakY = y - h;
+  const wobble = w * 0.03;
 
-  // Main outline
+  // Left slope — slight curve for hand-drawn feel
   g.append("path")
-    .attr("d", `M ${x - w/2} ${y} L ${peakX} ${peakY} L ${x + w/2} ${y}`)
+    .attr("d", `M ${x - w/2} ${y} Q ${x - w/4 + (rng()-0.5)*wobble} ${y - h*0.5} ${peakX} ${peakY}`)
     .attr("fill", "none")
     .attr("stroke", INK)
-    .attr("stroke-width", 1.0);
+    .attr("stroke-width", 0.9)
+    .attr("stroke-linecap", "round");
 
-  // Hatching lines on left (shadow) side — short parallel strokes
-  const hatchCount = 4 + Math.floor(rng() * 4);
-  for (let i = 1; i <= hatchCount; i++) {
-    const t = i / (hatchCount + 1);
-    // Point on left slope
-    const lx = x - w/2 + (peakX - (x - w/2)) * t;
-    const ly = y + (peakY - y) * t;
-    // Short horizontal-ish stroke going right
-    const hLen = w * 0.15 * (1 - t * 0.5);
+  // Right slope
+  g.append("path")
+    .attr("d", `M ${peakX} ${peakY} Q ${x + w/4 + (rng()-0.5)*wobble} ${y - h*0.5} ${x + w/2} ${y}`)
+    .attr("fill", "none")
+    .attr("stroke", INK)
+    .attr("stroke-width", 0.9)
+    .attr("stroke-linecap", "round");
+
+  // 2-3 very short texture dashes on the right side
+  const dashCount = 1 + Math.floor(rng() * 2);
+  for (let i = 0; i < dashCount; i++) {
+    const t = 0.3 + i * 0.2 + rng() * 0.1;
+    const dx = peakX + (x + w/2 - peakX) * t;
+    const dy = peakY + (y - peakY) * t;
+    const dashLen = w * 0.12;
     g.append("line")
-      .attr("x1", lx).attr("y1", ly)
-      .attr("x2", lx + hLen).attr("y2", ly + hLen * 0.3)
+      .attr("x1", dx).attr("y1", dy)
+      .attr("x2", dx + dashLen).attr("y2", dy)
       .attr("stroke", INK)
-      .attr("stroke-width", 0.6)
-      .attr("opacity", 0.8);
+      .attr("stroke-width", 0.5)
+      .attr("opacity", 0.5);
   }
 }
 
@@ -264,6 +289,60 @@ function drawRocks(g, x, y, size, rng) {
   }
 }
 
+function drawSpiderweb(g, x, y, size, rng) {
+  const numRadials = 3 + Math.floor(rng() * 2); // 3-4 radial lines
+  const len = 12 + rng() * 3; // 12-15px
+  const angles = [];
+  for (let i = 0; i < numRadials; i++) {
+    angles.push(rng() * Math.PI * 2);
+  }
+  angles.sort((a, b) => a - b);
+
+  // Draw radial lines
+  angles.forEach(a => {
+    g.append("line")
+      .attr("x1", x).attr("y1", y)
+      .attr("x2", x + Math.cos(a) * len).attr("y2", y + Math.sin(a) * len)
+      .attr("stroke", INK)
+      .attr("stroke-width", 0.4)
+      .attr("opacity", 0.5);
+  });
+
+  // Draw 2 concentric arc segments connecting radials
+  [0.4, 0.75].forEach(t => {
+    const r = len * t;
+    for (let i = 0; i < angles.length; i++) {
+      const a1 = angles[i];
+      const a2 = angles[(i + 1) % angles.length];
+      const x1 = x + Math.cos(a1) * r;
+      const y1 = y + Math.sin(a1) * r;
+      const x2 = x + Math.cos(a2) * r;
+      const y2 = y + Math.sin(a2) * r;
+      const midA = (a1 + a2) / 2 + (a2 < a1 ? Math.PI : 0);
+      const bulge = r * 0.15;
+      const cx = (x1 + x2) / 2 + Math.cos(midA) * bulge;
+      const cy = (y1 + y2) / 2 + Math.sin(midA) * bulge;
+      g.append("path")
+        .attr("d", `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.4)
+        .attr("opacity", 0.5);
+    }
+  });
+}
+
+function drawBird(g, x, y, size, rng) {
+  const w = 3 + rng() * 2; // half-wingspan 3-5px (total 6-10)
+  const h = 2 + rng() * 2; // height of the V curve
+  g.append("path")
+    .attr("d", `M ${x - w} ${y} Q ${x} ${y - h} ${x + w} ${y}`)
+    .attr("fill", "none")
+    .attr("stroke", INK)
+    .attr("stroke-width", 0.5)
+    .attr("opacity", 0.4);
+}
+
 // --- Terrain symbol placement ---
 function renderTerrainSymbols(container, nodes, links) {
   const terrainGroup = container.append("g").attr("class", "terrain");
@@ -317,6 +396,33 @@ function renderTerrainSymbols(container, nodes, links) {
         node.x + Math.cos(placeAngle) * (offset + 10) + Math.cos(placeAngle + Math.PI / 2) * 20,
         node.y + Math.sin(placeAngle) * (offset + 10) + Math.sin(placeAngle + Math.PI / 2) * 20,
         18, rng);
+      // Dense rock/pebble field on opposite side from mountains
+      const rockFieldAngle = placeAngle + Math.PI; // opposite side from peaks
+      const rockFieldCount = 25 + Math.floor(rng() * 16); // 25-40 rocks
+      const rockFieldRadius = offset * 1.5;
+      for (let i = 0; i < rockFieldCount; i++) {
+        // Spread across opposite side with some lateral scatter
+        const a = rockFieldAngle + (rng() - 0.5) * 2.0;
+        const r = 8 + rng() * rockFieldRadius;
+        const rx = node.x + Math.cos(a) * r;
+        const ry = node.y + Math.sin(a) * r;
+        // Varying sizes: mix of tiny pebbles and medium rocks
+        const circleR = 1.5 + rng() * 2.5; // 1.5 to 4px
+        const opacity = 0.4 + rng() * 0.2; // 0.4 to 0.6
+        terrainGroup.append("circle")
+          .attr("cx", rx).attr("cy", ry).attr("r", circleR)
+          .attr("fill", "none")
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.5)
+          .attr("opacity", opacity);
+      }
+      // Birds circling above the peaks
+      const mtnBirdCount = 2 + Math.floor(rng() * 2);
+      for (let i = 0; i < mtnBirdCount; i++) {
+        const bx = node.x + Math.cos(placeAngle) * (offset * 0.5) + (rng() - 0.5) * 50;
+        const by = node.y + Math.sin(placeAngle) * (offset * 0.3) - 20 - rng() * 20;
+        drawBird(terrainGroup, bx, by, 6, rng);
+      }
     } else if (node.terrain === "forest") {
       // Dense packed wall of round canopy circles — Mirkwood density, tightly overlapping
       const count = 20 + Math.floor(rng() * 12);
@@ -335,6 +441,20 @@ function renderTerrainSymbols(container, nodes, links) {
         const tx = node.x + Math.cos(a) * r;
         const ty = node.y + Math.sin(a) * r;
         drawTreeCanopy(terrainGroup, tx, ty, 10 + rng() * 5, rng);
+      }
+      // Spiderwebs scattered among the trees
+      const webCount = 1 + Math.floor(rng() * 2);
+      for (let i = 0; i < webCount; i++) {
+        const a = placeAngle + (rng() - 0.5) * 1.8;
+        const r = offset * (0.3 + rng() * 0.5);
+        drawSpiderweb(terrainGroup, node.x + Math.cos(a) * r, node.y + Math.sin(a) * r, 10, rng);
+      }
+      // Birds above the canopy
+      const forestBirdCount = 1 + Math.floor(rng() * 2);
+      for (let i = 0; i < forestBirdCount; i++) {
+        const bx = node.x + Math.cos(placeAngle) * (offset * 0.3) + (rng() - 0.5) * 40;
+        const by = node.y + Math.sin(placeAngle) * (offset * 0.3) - 20 - rng() * 20;
+        drawBird(terrainGroup, bx, by, 6, rng);
       }
     } else if (node.terrain === "swamp") {
       drawSwampReeds(terrainGroup,
@@ -444,35 +564,49 @@ function renderLinks(container, links) {
     const cx = (sx + tx) / 2 + nx * curvature;
     const cy = (sy + ty) / 2 + ny * curvature;
 
-    const isRiver = link.path_type === "river";
-    const strokeColor = isRiver ? BLUE : INK;
-
-    let pathD;
-    if (isRiver) {
-      // Wavy river path
-      const segments = 8;
-      let pts = [`M ${sx} ${sy}`];
-      for (let i = 1; i <= segments; i++) {
+    if (link.path_type === "river") {
+      // Double-line river channel (two parallel bank lines)
+      const segments = 20;
+      const spine = [];
+      for (let i = 0; i <= segments; i++) {
         const t = i / segments;
-        const tPrev = (i - 0.5) / segments;
-        const px = (1 - tPrev) * (1 - tPrev) * sx + 2 * (1 - tPrev) * tPrev * cx + tPrev * tPrev * tx;
-        const py = (1 - tPrev) * (1 - tPrev) * sy + 2 * (1 - tPrev) * tPrev * cy + tPrev * tPrev * ty;
-        const ex = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * cx + t * t * tx;
-        const ey = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * cy + t * t * ty;
-        const wave = (i % 2 === 0 ? 1 : -1) * 5;
-        const cpx = px + nx * wave;
-        const cpy = py + ny * wave;
-        pts.push(`Q ${cpx} ${cpy} ${ex} ${ey}`);
+        const bx = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * cx + t * t * tx;
+        const by = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * cy + t * t * ty;
+        const wave = Math.sin(t * Math.PI * 3) * 4;
+        spine.push({ x: bx + nx * wave, y: by + ny * wave });
       }
-      pathD = pts.join(" ");
-    } else {
-      pathD = `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`;
+
+      const bankWidth = 3.5;
+      function offsetBank(pts, sign) {
+        const result = [];
+        for (let i = 0; i < pts.length; i++) {
+          let lnx, lny;
+          if (i === 0) { lnx = pts[1].x - pts[0].x; lny = pts[1].y - pts[0].y; }
+          else if (i === pts.length - 1) { lnx = pts[i].x - pts[i-1].x; lny = pts[i].y - pts[i-1].y; }
+          else { lnx = pts[i+1].x - pts[i-1].x; lny = pts[i+1].y - pts[i-1].y; }
+          const ll = Math.sqrt(lnx * lnx + lny * lny) || 1;
+          result.push({ x: pts[i].x + sign * (-lny / ll) * bankWidth, y: pts[i].y + sign * (lnx / ll) * bankWidth });
+        }
+        return result;
+      }
+
+      const lineGen = d3.line().x(d => d.x).y(d => d.y).curve(d3.curveBasis);
+
+      linkGroup.append("path").attr("d", lineGen(offsetBank(spine, 1)))
+        .attr("fill", "none").attr("stroke", BLUE).attr("stroke-width", 1.2)
+        .attr("stroke-linecap", "round");
+      linkGroup.append("path").attr("d", lineGen(offsetBank(spine, -1)))
+        .attr("fill", "none").attr("stroke", BLUE).attr("stroke-width", 1.2)
+        .attr("stroke-linecap", "round");
+      return;
     }
+
+    const pathD = `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`;
 
     const path = linkGroup.append("path")
       .attr("d", pathD)
       .attr("fill", "none")
-      .attr("stroke", strokeColor)
+      .attr("stroke", INK)
       .attr("stroke-linecap", "round");
 
     switch (link.path_type) {
@@ -484,9 +618,6 @@ function renderLinks(container, links) {
         break;
       case "wilderness":
         path.attr("stroke-width", 0.8).attr("stroke-dasharray", "3 5");
-        break;
-      case "river":
-        path.attr("stroke-width", 2.0);
         break;
       default:
         path.attr("stroke-width", 1.2);
@@ -722,6 +853,56 @@ function renderCompass(container, x, y) {
     .attr("stroke", INK).attr("stroke-width", 0.6);
 }
 
+// --- Edge annotations ---
+function renderEdgeAnnotations(container, bounds, meta) {
+  const annotGroup = container.append("g").attr("class", "edge-annotations");
+  const font = "'Palatino Linotype', 'Book Antiqua', Palatino, serif";
+
+  // Left edge — "Western Lands" rotated vertically
+  const leftX = bounds.minX - 20;
+  const leftY = (bounds.minY + bounds.maxY) / 2;
+  annotGroup.append("text")
+    .attr("x", leftX)
+    .attr("y", leftY)
+    .attr("text-anchor", "middle")
+    .attr("font-family", font)
+    .attr("font-size", "10px")
+    .attr("font-style", "italic")
+    .attr("fill", INK_LIGHT)
+    .attr("opacity", 0.5)
+    .attr("transform", `rotate(-90, ${leftX}, ${leftY})`)
+    .text("Western Lands");
+
+  // Top edge — region name in loose arching style
+  const topX = (bounds.minX + bounds.maxX) / 2;
+  const topY = bounds.minY - 15;
+  const regionName = meta.region || meta.campaign || "";
+  annotGroup.append("text")
+    .attr("x", topX)
+    .attr("y", topY)
+    .attr("text-anchor", "middle")
+    .attr("font-family", font)
+    .attr("font-size", "14px")
+    .attr("fill", INK_LIGHT)
+    .attr("opacity", 0.5)
+    .attr("letter-spacing", "4px")
+    .text(regionName.toUpperCase());
+
+  // Bottom edge — "to the South..."
+  const botX = (bounds.minX + bounds.maxX) / 2;
+  const botY = bounds.maxY + 25;
+  annotGroup.append("text")
+    .attr("x", botX)
+    .attr("y", botY)
+    .attr("text-anchor", "middle")
+    .attr("font-family", font)
+    .attr("font-size", "9px")
+    .attr("font-style", "italic")
+    .attr("fill", INK_LIGHT)
+    .attr("opacity", 0.5)
+    .text("to the South\u2026");
+}
+
 // --- Detail panel ---
 let graphData = null;
 
@@ -760,7 +941,7 @@ async function initMap() {
   const response = await fetch(mapFile);
   graphData = await response.json();
 
-  const nodes = graphData.nodes.filter(n => n.visible !== false);
+  const nodes = graphData.nodes.filter(n => n.visible !== false && n.scale !== "local");
   const nodeIds = new Set(nodes.map(n => n.id));
   const links = graphData.links.filter(l => l.visible !== false && nodeIds.has(l.source) && nodeIds.has(l.target));
 
@@ -807,6 +988,7 @@ async function initMap() {
   renderDayLabels(g, links);
   renderCompass(g, bounds.maxX + 20, bounds.minY - 10);
   renderCartouche(g, bounds, graphData.meta);
+  renderEdgeAnnotations(g, bounds, graphData.meta);
 
   // Title bar
   document.getElementById("title-bar").textContent =
@@ -827,6 +1009,63 @@ function computeBounds(nodes) {
     minY: d3.min(nodes, d => d.y) - 50,
     maxY: d3.max(nodes, d => d.y) + 50,
   };
+}
+
+function exportSVG() {
+  const svgEl = document.getElementById("map");
+  const clone = svgEl.cloneNode(true);
+
+  // Compute bounds from content groups only (skip the oversized background rect)
+  const g = svgEl.querySelector("g");
+  const contentSelectors = [".links", ".terrain", ".nodes", ".labels", ".day-labels"];
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  contentSelectors.forEach(sel => {
+    const el = g.querySelector(sel);
+    if (!el) return;
+    const bb = el.getBBox();
+    minX = Math.min(minX, bb.x);
+    minY = Math.min(minY, bb.y);
+    maxX = Math.max(maxX, bb.x + bb.width);
+    maxY = Math.max(maxY, bb.y + bb.height);
+  });
+  const pad = 80;
+  const vbX = minX - pad, vbY = minY - pad;
+  const vbW = maxX - minX + pad * 2, vbH = maxY - minY + pad * 2;
+
+  clone.setAttribute("viewBox", `${vbX} ${vbY} ${vbW} ${vbH}`);
+  clone.setAttribute("width", vbW);
+  clone.setAttribute("height", vbH);
+  clone.querySelector("g").removeAttribute("transform");
+
+  // Resize the background rect to match the viewBox
+  const bgRect = clone.querySelector("g > rect");
+  if (bgRect) {
+    bgRect.setAttribute("x", vbX);
+    bgRect.setAttribute("y", vbY);
+    bgRect.setAttribute("width", vbW);
+    bgRect.setAttribute("height", vbH);
+  }
+
+  clone.querySelectorAll("text").forEach(t => {
+    if (!t.getAttribute("font-family")) {
+      t.setAttribute("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif");
+    }
+  });
+
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+
+  const data = new XMLSerializer().serializeToString(clone);
+  const blob = new Blob([data], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  const mapFile = new URLSearchParams(window.location.search).get("map") || "Basilisk";
+  a.download = mapFile.replace(/\.json$/, "") + ".svg";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 initMap();
