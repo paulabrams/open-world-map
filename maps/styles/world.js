@@ -6,7 +6,7 @@
 window.MapStyles = window.MapStyles || {};
 
 window.MapStyles.world = {
-  name: "World Atlas",
+  name: "Ambar",
 
   /* ── CSS custom-property values ─────────────────────────────── */
   css: {

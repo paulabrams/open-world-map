@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open World Map</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #f4e8d1;
+    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    color: #2a1f14;
+  }
+  header {
+    text-align: center;
+    padding: 40px 20px 20px;
+  }
+  header h1 {
+    font-size: 32px;
+    letter-spacing: 4px;
+    color: #8b2500;
+    margin-bottom: 8px;
+  }
+  header p {
+    font-size: 14px;
+    font-style: italic;
+    color: #5a4a3a;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  .campaigns {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 0 20px;
+  }
+  .campaigns h2 {
+    font-size: 20px;
+    color: #8b2500;
+    border-bottom: 1px solid #d4c4a0;
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+  }
+  .campaign-card {
+    background: #faf3e6;
+    border: 1px solid #d4c4a0;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .campaign-card h3 {
+    font-size: 18px;
+    color: #2a1f14;
+    margin-bottom: 4px;
+  }
+  .campaign-card .meta {
+    font-size: 12px;
+    font-style: italic;
+    color: #5a4a3a;
+    margin-bottom: 12px;
+  }
+  .campaign-card a {
+    color: #8b2500;
+    text-decoration: none;
+    font-size: 14px;
+  }
+  .campaign-card a:hover { text-decoration: underline; }
+
+  .styles {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 20px;
+  }
+  .styles h2 {
+    font-size: 20px;
+    color: #8b2500;
+    border-bottom: 1px solid #d4c4a0;
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+  }
+  .style-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .style-card {
+    background: #faf3e6;
+    border: 1px solid #d4c4a0;
+    overflow: hidden;
+  }
+  .style-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+    border-bottom: 1px solid #d4c4a0;
+  }
+  .style-card .info {
+    padding: 16px;
+  }
+  .style-card h3 {
+    font-size: 16px;
+    color: #2a1f14;
+    margin-bottom: 4px;
+  }
+  .style-card p {
+    font-size: 12px;
+    color: #5a4a3a;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+  .style-card .ref {
+    font-size: 11px;
+    font-style: italic;
+    color: #8b7b6b;
+  }
+  .style-card a {
+    color: #8b2500;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: bold;
+  }
+  .style-card a:hover { text-decoration: underline; }
+
+  footer {
+    text-align: center;
+    padding: 30px 20px;
+    font-size: 11px;
+    color: #8b7b6b;
+    font-style: italic;
+  }
+
+  @media (max-width: 640px) {
+    .style-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>OPEN WORLD MAP</h1>
+  <p>Point-crawl map system for tabletop RPG campaigns. Powered by a Supabase database of thoughts, an MCP server, and D3.js SVG rendering.</p>
+</header>
+
+<div class="campaigns">
+  <h2>Campaigns</h2>
+  <div class="campaign-card">
+    <h3>The Basilisk Campaign</h3>
+    <div class="meta">Blackwater Crossing region, Belerion, Dragon Isles &mdash; Year 412</div>
+    <a href="map.html?map=Basilisk&style=wilderland">View Map &rarr;</a>
+  </div>
+</div>
+
+<div class="styles">
+  <h2>Map Styles</h2>
+  <div class="style-grid">
+
+    <div class="style-card">
+      <img src="style-references/wilderland.jpg" alt="Wilderland reference">
+      <div class="info">
+        <h3>Wilderland</h3>
+        <p>Tolkien-inspired hand-drawn aesthetic with tree canopies, mountain peaks, blue rivers, and an ornate border. The default style.</p>
+        <div class="ref">Inspired by Tolkien's Wilderland map from The Hobbit</div>
+        <br>
+        <a href="map.html?map=Basilisk&style=wilderland">View in Wilderland style &rarr;</a>
+      </div>
+    </div>
+
+    <div class="style-card">
+      <img src="style-references/middle-earth.webp" alt="World Atlas reference">
+      <div class="info">
+        <h3>Ambar</h3>
+        <p>Dense engraving-style with forest hatching, ridge-line mountains, region labels, and a dark parchment background.</p>
+        <div class="ref">Inspired by Pauline Baynes' Map of Middle-earth</div>
+        <br>
+        <a href="map.html?map=Basilisk&style=world">View in Ambar style &rarr;</a>
+      </div>
+    </div>
+
+    <div class="style-card">
+      <img src="style-references/thrors-map.jpg" alt="Treasure Map reference">
+      <div class="info">
+        <h3>Moon Letters</h3>
+        <p>Sparse blue-ink sketch with red danger markers, runic border, handwritten annotations, and sea-creature decorations.</p>
+        <div class="ref">Inspired by Thror's Map from The Hobbit</div>
+        <br>
+        <a href="map.html?map=Basilisk&style=treasuremap">View in Moon Letters style &rarr;</a>
+      </div>
+    </div>
+
+    <div class="style-card">
+      <img src="Basilisk/Basilisk-hand-drawn-8.5inx11in.png" alt="Classic reference">
+      <div class="info">
+        <h3>Classic</h3>
+        <p>Clean base style with simple icons, suitable for overlaying square-inch or hex grids. The GM's working map.</p>
+        <div class="ref">Based on the hand-drawn campaign sketch</div>
+        <br>
+        <a href="map.html?map=Basilisk&style=classic&grid=square">View with grid &rarr;</a>
+        &nbsp;
+        <a href="map.html?map=Basilisk&style=classic&grid=hex">View with hex &rarr;</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  Open World Map &mdash; built with D3.js, Supabase, and the Open World MCP server
+</footer>
+
+</body>
+</html>

@@ -5,7 +5,7 @@
 window.MapStyles = window.MapStyles || {};
 
 window.MapStyles.treasuremap = {
-  name: "Treasure Map",
+  name: "Moon Letters",
 
   /* ── CSS custom-property values ─────────────────────────────── */
   css: {
