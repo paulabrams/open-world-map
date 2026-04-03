@@ -116,70 +116,64 @@ window.MapStyles.moonletters = {
     }
   },
 
+  drawHill(g, x, y, size, rng, colors) {
+    const { BLUE_INK } = colors;
+    const w = size * (1.0 + rng() * 0.5);
+    const h = size * (0.5 + rng() * 0.3);
+    g.append("path")
+      .attr("d", `M ${x - w/2} ${y} Q ${x - w/4} ${y - h} ${x} ${y - h} Q ${x + w/4} ${y - h} ${x + w/2} ${y}`)
+      .attr("fill", "none")
+      .attr("stroke", BLUE_INK)
+      .attr("stroke-width", 0.8)
+      .attr("opacity", 0.5);
+  },
+
+  drawFarm(g, x, y, size, rng, colors) {
+    const { BLUE_INK } = colors;
+    const bw = 3 + rng() * 2;
+    const bh = 2 + rng() * 1.5;
+    g.append("rect")
+      .attr("x", x - bw/2).attr("y", y - bh/2)
+      .attr("width", bw).attr("height", bh)
+      .attr("fill", "none")
+      .attr("stroke", BLUE_INK)
+      .attr("stroke-width", 0.5)
+      .attr("opacity", 0.4);
+    g.append("path")
+      .attr("d", `M ${x - bw/2 - 0.5} ${y - bh/2} L ${x} ${y - bh/2 - 2} L ${x + bw/2 + 0.5} ${y - bh/2}`)
+      .attr("fill", "none")
+      .attr("stroke", BLUE_INK)
+      .attr("stroke-width", 0.5)
+      .attr("opacity", 0.4);
+    const fieldDir = rng() > 0.5 ? 1 : -1;
+    for (let i = 0; i < 3; i++) {
+      const fx = x + fieldDir * (bw + 2 + i * 2);
+      g.append("line")
+        .attr("x1", fx).attr("y1", y - 2)
+        .attr("x2", fx).attr("y2", y + 2)
+        .attr("stroke", BLUE_INK)
+        .attr("stroke-width", 0.3)
+        .attr("opacity", 0.25);
+    }
+  },
+
   /* ────────────────────────────────────────────────────────────
      Render methods — ported from treasuremap.html
      ──────────────────────────────────────────────────────────── */
 
   renderTerrainSymbols(ctx) {
-    const { g, nodes, links, colors, mulberry32, seedFromString } = ctx;
+    const { g, colors } = ctx;
     const terrainGroup = g.append("g").attr("class", "terrain");
 
-    nodes.forEach(node => {
-      const rng = mulberry32(seedFromString(node.id));
-
-      const connected = links.filter(l =>
-        (l.source.id || l.source) === node.id || (l.target.id || l.target) === node.id
-      );
-      let avgAngle = -Math.PI / 2;
-      if (connected.length > 0) {
-        let sx = 0, sy = 0;
-        connected.forEach(l => {
-          const other = (l.source.id || l.source) === node.id ? l.target : l.source;
-          if (other.x !== undefined) {
-            sx += other.x - node.x;
-            sy += other.y - node.y;
-          }
-        });
-        avgAngle = Math.atan2(sy, sx);
-      }
-      const placeAngle = avgAngle + Math.PI;
-      const offset = 30;
-
-      if (node.terrain === "mountains") {
-        const count = 1 + Math.floor(rng() * 2);
-        for (let i = 0; i < count; i++) {
-          const spread = (i - (count - 1) / 2) * 14;
-          const mx = node.x + Math.cos(placeAngle) * offset + Math.cos(placeAngle + Math.PI / 2) * spread;
-          const my = node.y + Math.sin(placeAngle) * offset + Math.sin(placeAngle + Math.PI / 2) * spread;
-          this.drawMountainSketch(terrainGroup, mx, my, 10 + rng() * 4, rng, colors);
-        }
-      } else if (node.terrain === "forest") {
-        const count = 3 + Math.floor(rng() * 2);
-        for (let i = 0; i < count; i++) {
-          const a = placeAngle + (rng() - 0.5) * 1.0;
-          const r = offset * (0.6 + rng() * 0.5);
-          this.drawSparseTree(terrainGroup, node.x + Math.cos(a) * r, node.y + Math.sin(a) * r, 8 + rng() * 3, rng, colors);
-        }
-      } else if (node.terrain === "swamp") {
-        this.drawSwampMark(terrainGroup,
-          node.x + Math.cos(placeAngle) * offset,
-          node.y + Math.sin(placeAngle) * offset, 18, rng, colors);
-      } else if (node.terrain === "plains") {
-        this.drawDesolationDots(terrainGroup,
-          node.x + Math.cos(placeAngle) * offset,
-          node.y + Math.sin(placeAngle) * offset, 20, rng, colors);
-      }
-    });
-
-    // Draw terrain from hex_terrain data (independent of nodes)
+    // Draw terrain from hex_terrain data
     const style = this;
     MapCore.renderHexTerrain(ctx, {
       "forest": (tg, x, y, sz, rng) => style.drawSparseTree(tg, x, y, sz, rng, colors),
-      "forested-hills": (tg, x, y, sz, rng) => { style.drawSparseTree(tg, x, y, sz * 0.8, rng, colors); style.drawMountainSketch(tg, x + 8, y + 4, sz * 0.5, rng, colors); },
+      "forested-hills": (tg, x, y, sz, rng) => { style.drawHill(tg, x, y, sz, rng, colors); style.drawSparseTree(tg, x - 6, y - 4, sz * 0.8, rng, colors); },
       "mountains": (tg, x, y, sz, rng) => style.drawMountainSketch(tg, x, y, sz, rng, colors),
-      "hills": (tg, x, y, sz, rng) => style.drawMountainSketch(tg, x, y, sz * 0.6, rng, colors),
+      "hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, colors),
       "swamp": (tg, x, y, sz, rng) => style.drawSwampMark(tg, x, y, sz, rng, colors),
-      "farmland": (tg, x, y, sz, rng) => style.drawDesolationDots(tg, x, y, sz, rng, colors),
+      "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, colors),
       "plains": (tg, x, y, sz, rng) => style.drawDesolationDots(tg, x, y, sz, rng, colors),
     });
   },

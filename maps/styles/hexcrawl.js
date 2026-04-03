@@ -187,74 +187,20 @@ window.MapStyles.hexcrawl = {
 
   // --- Terrain symbol placement ---
   renderTerrainSymbols(ctx) {
-    const { g, nodes, links } = ctx;
+    const { g } = ctx;
     const { INK } = ctx.colors;
-    const mulberry32 = ctx.mulberry32;
-    const seedFromString = ctx.seedFromString;
 
     const terrainGroup = g.append("g").attr("class", "terrain");
 
-    nodes.forEach(node => {
-      const rng = mulberry32(seedFromString(node.id));
-
-      // Compute average angle to connected nodes to place symbols on opposite side
-      const connected = links.filter(l =>
-        (l.source.id || l.source) === node.id || (l.target.id || l.target) === node.id
-      );
-      let avgAngle = -Math.PI / 2; // default: place above
-      if (connected.length > 0) {
-        let sx = 0, sy = 0;
-        connected.forEach(l => {
-          const other = (l.source.id || l.source) === node.id ? l.target : l.source;
-          if (other.x !== undefined) {
-            sx += other.x - node.x;
-            sy += other.y - node.y;
-          }
-        });
-        avgAngle = Math.atan2(sy, sx);
-      }
-      // Place on opposite side
-      const placeAngle = avgAngle + Math.PI;
-      const offset = 35;
-
-      if (node.terrain === "mountains") {
-        const count = 2 + Math.floor(rng() * 2);
-        for (let i = 0; i < count; i++) {
-          const spread = (i - (count - 1) / 2) * 18;
-          const mx = node.x + Math.cos(placeAngle) * offset + Math.cos(placeAngle + Math.PI / 2) * spread;
-          const my = node.y + Math.sin(placeAngle) * offset + Math.sin(placeAngle + Math.PI / 2) * spread;
-          this.drawMountain(terrainGroup, mx, my, 12 + rng() * 6, rng, INK);
-        }
-      } else if (node.terrain === "forest") {
-        const count = 3 + Math.floor(rng() * 3);
-        for (let i = 0; i < count; i++) {
-          const a = placeAngle + (rng() - 0.5) * 1.2;
-          const r = offset * (0.7 + rng() * 0.6);
-          const tx = node.x + Math.cos(a) * r;
-          const ty = node.y + Math.sin(a) * r;
-          this.drawTree(terrainGroup, tx, ty, 8 + rng() * 4, rng, INK);
-        }
-      } else if (node.terrain === "swamp") {
-        this.drawSwampReeds(terrainGroup, node.x + Math.cos(placeAngle) * offset, node.y + Math.sin(placeAngle) * offset, 20, rng, INK);
-      } else if (node.terrain === "plains") {
-        const count = 2 + Math.floor(rng() * 2);
-        for (let i = 0; i < count; i++) {
-          const a = placeAngle + (rng() - 0.5) * 1.0;
-          const r = offset * (0.6 + rng() * 0.5);
-          this.drawGrassTuft(terrainGroup, node.x + Math.cos(a) * r, node.y + Math.sin(a) * r, 12, rng, INK);
-        }
-      }
-    });
-
-    // Draw terrain from hex_terrain data (independent of nodes)
+    // Draw terrain from hex_terrain data
     const style = this;
     MapCore.renderHexTerrain(ctx, {
       "forest": (tg, x, y, sz, rng) => style.drawTree(tg, x, y, sz, rng, INK),
-      "forested-hills": (tg, x, y, sz, rng) => { style.drawTree(tg, x, y, sz * 0.8, rng, INK); style.drawMountain(tg, x + 8, y + 4, sz * 0.5, rng, INK); },
+      "forested-hills": (tg, x, y, sz, rng) => { style.drawHill(tg, x, y, sz, rng, INK); style.drawTree(tg, x - 6, y - 4, sz * 0.8, rng, INK); },
       "mountains": (tg, x, y, sz, rng) => style.drawMountain(tg, x, y, sz, rng, INK),
-      "hills": (tg, x, y, sz, rng) => style.drawMountain(tg, x, y, sz * 0.6, rng, INK),
+      "hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK),
       "swamp": (tg, x, y, sz, rng) => style.drawSwampReeds(tg, x, y, sz, rng, INK),
-      "farmland": (tg, x, y, sz, rng) => style.drawGrassTuft(tg, x, y, sz, rng, INK),
+      "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK),
       "plains": (tg, x, y, sz, rng) => style.drawGrassTuft(tg, x, y, sz, rng, INK),
     });
   },
@@ -583,6 +529,45 @@ window.MapStyles.hexcrawl = {
         .attr("stroke", INK)
         .attr("stroke-width", 0.7)
         .attr("opacity", 0.4);
+    }
+  },
+
+  drawHill(g, x, y, size, rng, INK) {
+    const w = size * (1.0 + rng() * 0.5);
+    const h = size * (0.5 + rng() * 0.3);
+    g.append("path")
+      .attr("d", `M ${x - w/2} ${y} Q ${x - w/4} ${y - h} ${x} ${y - h} Q ${x + w/4} ${y - h} ${x + w/2} ${y}`)
+      .attr("fill", "none")
+      .attr("stroke", INK)
+      .attr("stroke-width", 0.8)
+      .attr("opacity", 0.5);
+  },
+
+  drawFarm(g, x, y, size, rng, INK) {
+    const bw = 3 + rng() * 2;
+    const bh = 2 + rng() * 1.5;
+    g.append("rect")
+      .attr("x", x - bw/2).attr("y", y - bh/2)
+      .attr("width", bw).attr("height", bh)
+      .attr("fill", "none")
+      .attr("stroke", INK)
+      .attr("stroke-width", 0.5)
+      .attr("opacity", 0.4);
+    g.append("path")
+      .attr("d", `M ${x - bw/2 - 0.5} ${y - bh/2} L ${x} ${y - bh/2 - 2} L ${x + bw/2 + 0.5} ${y - bh/2}`)
+      .attr("fill", "none")
+      .attr("stroke", INK)
+      .attr("stroke-width", 0.5)
+      .attr("opacity", 0.4);
+    const fieldDir = rng() > 0.5 ? 1 : -1;
+    for (let i = 0; i < 3; i++) {
+      const fx = x + fieldDir * (bw + 2 + i * 2);
+      g.append("line")
+        .attr("x1", fx).attr("y1", y - 2)
+        .attr("x2", fx).attr("y2", y + 2)
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.3)
+        .attr("opacity", 0.25);
     }
   },
 };

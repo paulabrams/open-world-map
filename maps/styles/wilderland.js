@@ -438,139 +438,60 @@ window.MapStyles.wilderland = {
         .attr("opacity", 0.4);
     }
 
-    // --- Terrain symbol placement ---
+    // --- Terrain drawing helpers for hills and farms ---
 
-    nodes.forEach(node => {
-      const rng = mulberry32(seedFromString(node.id));
+    function drawHill(tg, x, y, size, rng) {
+      // Rounded hill — soft dome shape, not pointy
+      const w = size * (1.0 + rng() * 0.5);
+      const h = size * (0.5 + rng() * 0.3);
+      tg.append("path")
+        .attr("d", `M ${x - w/2} ${y} Q ${x - w/4} ${y - h} ${x} ${y - h} Q ${x + w/4} ${y - h} ${x + w/2} ${y}`)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.8)
+        .attr("opacity", 0.5);
+    }
 
-      // Compute average angle to connected nodes to place symbols on opposite side
-      const connected = links.filter(l =>
-        (l.source.id || l.source) === node.id || (l.target.id || l.target) === node.id
-      );
-      let avgAngle = -Math.PI / 2;
-      if (connected.length > 0) {
-        let sx = 0, sy = 0;
-        connected.forEach(l => {
-          const other = (l.source.id || l.source) === node.id ? l.target : l.source;
-          if (other.x !== undefined) {
-            sx += other.x - node.x;
-            sy += other.y - node.y;
-          }
-        });
-        avgAngle = Math.atan2(sy, sx);
+    function drawFarm(tg, x, y, size, rng) {
+      // Small farmhouse (tiny rectangle with peaked roof)
+      const bw = 3 + rng() * 2;
+      const bh = 2 + rng() * 1.5;
+      tg.append("rect")
+        .attr("x", x - bw/2).attr("y", y - bh/2)
+        .attr("width", bw).attr("height", bh)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.5)
+        .attr("opacity", 0.4);
+      // Peaked roof
+      tg.append("path")
+        .attr("d", `M ${x - bw/2 - 0.5} ${y - bh/2} L ${x} ${y - bh/2 - 2} L ${x + bw/2 + 0.5} ${y - bh/2}`)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.5)
+        .attr("opacity", 0.4);
+      // Field lines next to the building
+      const fieldDir = rng() > 0.5 ? 1 : -1;
+      for (let i = 0; i < 3; i++) {
+        const fx = x + fieldDir * (bw + 2 + i * 2);
+        tg.append("line")
+          .attr("x1", fx).attr("y1", y - 2)
+          .attr("x2", fx).attr("y2", y + 2)
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.3)
+          .attr("opacity", 0.25);
       }
-      const placeAngle = avgAngle + Math.PI;
-      const offset = 35;
+    }
 
-      if (node.terrain === "mountains") {
-        // Front row of peaks
-        const count = 5 + Math.floor(rng() * 3);
-        for (let i = 0; i < count; i++) {
-          const spread = (i - (count - 1) / 2) * 14;
-          const mx = node.x + Math.cos(placeAngle) * offset + Math.cos(placeAngle + Math.PI / 2) * spread;
-          const my = node.y + Math.sin(placeAngle) * offset + Math.sin(placeAngle + Math.PI / 2) * spread;
-          drawMountain(terrainGroup, mx, my, 13 + rng() * 6, rng);
-        }
-        // Back row of peaks for depth
-        const backCount = 3 + Math.floor(rng() * 3);
-        const backOffset = offset + 18;
-        for (let i = 0; i < backCount; i++) {
-          const spread = (i - (backCount - 1) / 2) * 16;
-          const mx = node.x + Math.cos(placeAngle) * backOffset + Math.cos(placeAngle + Math.PI / 2) * spread;
-          const my = node.y + Math.sin(placeAngle) * backOffset + Math.sin(placeAngle + Math.PI / 2) * spread;
-          drawMountain(terrainGroup, mx, my, 11 + rng() * 5, rng);
-        }
-        // Add scattered rocks at mountain base — more pebbles, wider spread
-        drawRocks(terrainGroup,
-          node.x + Math.cos(placeAngle) * (offset + 28),
-          node.y + Math.sin(placeAngle) * (offset + 28),
-          25, rng);
-        drawRocks(terrainGroup,
-          node.x + Math.cos(placeAngle) * (offset + 10) + Math.cos(placeAngle + Math.PI / 2) * 20,
-          node.y + Math.sin(placeAngle) * (offset + 10) + Math.sin(placeAngle + Math.PI / 2) * 20,
-          18, rng);
-        // Dense rock/pebble field on opposite side from mountains
-        const rockFieldAngle = placeAngle + Math.PI; // opposite side from peaks
-        const rockFieldCount = 25 + Math.floor(rng() * 16); // 25-40 rocks
-        const rockFieldRadius = offset * 1.5;
-        for (let i = 0; i < rockFieldCount; i++) {
-          // Spread across opposite side with some lateral scatter
-          const a = rockFieldAngle + (rng() - 0.5) * 2.0;
-          const r = 8 + rng() * rockFieldRadius;
-          const rx = node.x + Math.cos(a) * r;
-          const ry = node.y + Math.sin(a) * r;
-          // Varying sizes: mix of tiny pebbles and medium rocks
-          const circleR = 1.5 + rng() * 2.5; // 1.5 to 4px
-          const opacity = 0.4 + rng() * 0.2; // 0.4 to 0.6
-          terrainGroup.append("circle")
-            .attr("cx", rx).attr("cy", ry).attr("r", circleR)
-            .attr("fill", "none")
-            .attr("stroke", INK)
-            .attr("stroke-width", 0.5)
-            .attr("opacity", opacity);
-        }
-        // Birds circling above the peaks
-        const mtnBirdCount = 2 + Math.floor(rng() * 2);
-        for (let i = 0; i < mtnBirdCount; i++) {
-          const bx = node.x + Math.cos(placeAngle) * (offset * 0.5) + (rng() - 0.5) * 50;
-          const by = node.y + Math.sin(placeAngle) * (offset * 0.3) - 20 - rng() * 20;
-          drawBird(terrainGroup, bx, by, 6, rng);
-        }
-      } else if (node.terrain === "forest") {
-        // Dense packed wall of round canopy circles — Mirkwood density, tightly overlapping
-        const count = 20 + Math.floor(rng() * 12);
-        for (let i = 0; i < count; i++) {
-          const a = placeAngle + (rng() - 0.5) * 2.2;
-          const r = offset * (0.15 + rng() * 0.5);
-          const tx = node.x + Math.cos(a) * r;
-          const ty = node.y + Math.sin(a) * r;
-          drawTreeCanopy(terrainGroup, tx, ty, 13 + rng() * 5, rng);
-        }
-        // Second cluster — deeper forest layer at larger radius
-        const count2 = 10 + Math.floor(rng() * 6);
-        for (let i = 0; i < count2; i++) {
-          const a = placeAngle + (rng() - 0.5) * 2.2;
-          const r = offset * (0.8 + rng() * 0.4);
-          const tx = node.x + Math.cos(a) * r;
-          const ty = node.y + Math.sin(a) * r;
-          drawTreeCanopy(terrainGroup, tx, ty, 13 + rng() * 5, rng);
-        }
-        // Spiderwebs scattered among the trees
-        const webCount = 1 + Math.floor(rng() * 2);
-        for (let i = 0; i < webCount; i++) {
-          const a = placeAngle + (rng() - 0.5) * 1.8;
-          const r = offset * (0.3 + rng() * 0.5);
-          drawSpiderweb(terrainGroup, node.x + Math.cos(a) * r, node.y + Math.sin(a) * r, 10, rng);
-        }
-        // Birds above the canopy
-        const forestBirdCount = 1 + Math.floor(rng() * 2);
-        for (let i = 0; i < forestBirdCount; i++) {
-          const bx = node.x + Math.cos(placeAngle) * (offset * 0.3) + (rng() - 0.5) * 40;
-          const by = node.y + Math.sin(placeAngle) * (offset * 0.3) - 20 - rng() * 20;
-          drawBird(terrainGroup, bx, by, 6, rng);
-        }
-      } else if (node.terrain === "swamp") {
-        drawSwampReeds(terrainGroup,
-          node.x + Math.cos(placeAngle) * offset,
-          node.y + Math.sin(placeAngle) * offset, 20, rng);
-      } else if (node.terrain === "plains") {
-        const count = 2 + Math.floor(rng() * 2);
-        for (let i = 0; i < count; i++) {
-          const a = placeAngle + (rng() - 0.5) * 1.0;
-          const r = offset * (0.6 + rng() * 0.5);
-          drawGrassTuft(terrainGroup, node.x + Math.cos(a) * r, node.y + Math.sin(a) * r, 14, rng);
-        }
-      }
-    });
+    // --- Draw terrain from hex_terrain data only (not from nodes) ---
 
-    // Draw terrain from hex_terrain data (independent of nodes)
     MapCore.renderHexTerrain(ctx, {
       "forest": drawTreeCanopy,
-      "forested-hills": (tg, x, y, sz, rng) => { drawTreeCanopy(tg, x, y, sz * 0.8, rng); drawMountain(tg, x + 8, y + 4, sz * 0.5, rng); },
+      "forested-hills": (tg, x, y, sz, rng) => { drawHill(tg, x, y - 2, sz, rng); drawTreeCanopy(tg, x - 4, y + 3, sz * 0.7, rng); drawTreeCanopy(tg, x + 5, y + 2, sz * 0.6, rng); },
       "mountains": drawMountain,
-      "hills": (tg, x, y, sz, rng) => drawMountain(tg, x, y, sz * 0.6, rng),
+      "hills": drawHill,
       "swamp": drawSwampReeds,
-      "farmland": drawGrassTuft,
+      "farmland": drawFarm,
       "plains": drawGrassTuft,
     });
   },

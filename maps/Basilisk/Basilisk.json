@@ -71,14 +71,14 @@
     },
     {
       "id": "abandoned-farmhouse",
-      "name": "The Abandoned Farmhouse",
+      "name": "The Cursed Farmhouse",
       "point_type": "ruin",
       "terrain": "plains",
       "visible": true,
-      "description": "A ruined farmstead along the Trade Road south of BC. Has a basement. There was a fire here.",
-      "x_hint": -0.75,
-      "y_hint": 0.43,
-      "hex": "0910"
+      "description": "A ruined farmstead along the Old Northern Trade Road, south of Blackwater Crossing. It has a basement. There was a fire here. Something cursed lingers.",
+      "x_hint": 0.0,
+      "y_hint": 0.87,
+      "hex": "1011"
     },
     {
       "id": "graveyard",
@@ -500,15 +500,6 @@
       "days": 1.0,
       "path_type": "road",
       "terrain_difficulty": "tough",
-      "visible": true
-    },
-    {
-      "source": "blackwater-crossing",
-      "target": "graveyard",
-      "name": "Trail to the Graveyard",
-      "days": 0.5,
-      "path_type": "trail",
-      "terrain_difficulty": "easy",
       "visible": true
     },
     {
