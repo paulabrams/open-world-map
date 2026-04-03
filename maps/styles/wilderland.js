@@ -40,6 +40,7 @@ window.MapStyles.wilderland = {
   render(ctx) {
     this.renderBackground(ctx);
     this.renderBorder(ctx);
+    MapCore.renderRiver(ctx, ctx.colors.BLUE, 4);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
     this.renderNodes(ctx);
@@ -560,6 +561,17 @@ window.MapStyles.wilderland = {
           drawGrassTuft(terrainGroup, node.x + Math.cos(a) * r, node.y + Math.sin(a) * r, 14, rng);
         }
       }
+    });
+
+    // Draw terrain from hex_terrain data (independent of nodes)
+    MapCore.renderHexTerrain(ctx, {
+      "forest": drawTreeCanopy,
+      "forested-hills": (tg, x, y, sz, rng) => { drawTreeCanopy(tg, x, y, sz * 0.8, rng); drawMountain(tg, x + 8, y + 4, sz * 0.5, rng); },
+      "mountains": drawMountain,
+      "hills": (tg, x, y, sz, rng) => drawMountain(tg, x, y, sz * 0.6, rng),
+      "swamp": drawSwampReeds,
+      "farmland": drawGrassTuft,
+      "plains": drawGrassTuft,
     });
   },
 

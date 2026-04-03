@@ -43,6 +43,7 @@ window.MapStyles.moonletters = {
   render(ctx) {
     this.renderBackground(ctx);
     this.renderRunicBorder(ctx);
+    MapCore.renderRiver(ctx, ctx.colors.BLUE_INK, 3);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
     this.renderNodes(ctx);
@@ -168,6 +169,18 @@ window.MapStyles.moonletters = {
           node.x + Math.cos(placeAngle) * offset,
           node.y + Math.sin(placeAngle) * offset, 20, rng, colors);
       }
+    });
+
+    // Draw terrain from hex_terrain data (independent of nodes)
+    const style = this;
+    MapCore.renderHexTerrain(ctx, {
+      "forest": (tg, x, y, sz, rng) => style.drawSparseTree(tg, x, y, sz, rng, colors),
+      "forested-hills": (tg, x, y, sz, rng) => { style.drawSparseTree(tg, x, y, sz * 0.8, rng, colors); style.drawMountainSketch(tg, x + 8, y + 4, sz * 0.5, rng, colors); },
+      "mountains": (tg, x, y, sz, rng) => style.drawMountainSketch(tg, x, y, sz, rng, colors),
+      "hills": (tg, x, y, sz, rng) => style.drawMountainSketch(tg, x, y, sz * 0.6, rng, colors),
+      "swamp": (tg, x, y, sz, rng) => style.drawSwampMark(tg, x, y, sz, rng, colors),
+      "farmland": (tg, x, y, sz, rng) => style.drawDesolationDots(tg, x, y, sz, rng, colors),
+      "plains": (tg, x, y, sz, rng) => style.drawDesolationDots(tg, x, y, sz, rng, colors),
     });
   },
 

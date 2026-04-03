@@ -11,7 +11,7 @@ const DAY_SCALE = 100;
 const FONT = "'Palatino Linotype', 'Book Antiqua', Palatino, serif";
 
 // --- Terrain types that are interior locations (not shown on overland map) ---
-const INTERIOR_TERRAINS = new Set(["town", "city", "village", "keep", "stronghold", "castle", "ruin-interior"]);
+const INTERIOR_TERRAINS = new Set(["town", "city", "village", "keep", "stronghold", "castle", "ruin-interior", "underground"]);
 
 function isOverlandNode(n) {
   if (n.visible === false) return false;
@@ -35,6 +35,145 @@ function seedFromString(s) {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
   return h;
+}
+
+// --- River rendering ---
+// Draws an organic, wiggly river line through a list of hex centers.
+// riverColor and riverWidth are style-dependent. Called from style render functions.
+function renderRiver(ctx, riverColor, riverWidth) {
+  const { g, riverPath, HINT_SCALE, WIDTH, HEIGHT } = ctx;
+  if (!riverPath || riverPath.length < 2) return;
+
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+
+  // Convert hex codes to pixel positions
+  const points = riverPath.map(h => {
+    const col = parseInt(h.substring(0, 2));
+    const row = parseInt(h.substring(2, 4));
+    const x = (col - bcCol) * colStep + WIDTH / 2;
+    const y = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
+    return [x, y];
+  });
+
+  const rng = mulberry32(seedFromString("blackwater-river"));
+  const riverGroup = g.append("g").attr("class", "river");
+
+  // Generate wiggly sub-points between each hex center
+  const wigglePoints = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const [x1, y1] = points[i];
+    const [x2, y2] = points[i + 1];
+    const dx = x2 - x1, dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const nx = -dy / len, ny = dx / len; // perpendicular normal
+
+    // Add the start point
+    wigglePoints.push([x1, y1]);
+
+    // Add 8-12 intermediate wiggle points per segment for real bends
+    const segs = 8 + Math.floor(rng() * 5);
+    let prevWiggle = 0;
+    for (let s = 1; s <= segs; s++) {
+      const t = s / (segs + 1);
+      const mx = x1 + dx * t;
+      const my = y1 + dy * t;
+      // Big meander bends — river wanders side to side
+      const meander = Math.sin(t * Math.PI * (2 + rng() * 3)) * len * 0.15;
+      // Plus random local wiggle
+      const localWiggle = (rng() - 0.5) * len * 0.08;
+      const wiggle = meander + localWiggle;
+      // Smooth transition from previous wiggle
+      const smoothWiggle = prevWiggle * 0.3 + wiggle * 0.7;
+      prevWiggle = smoothWiggle;
+      wigglePoints.push([mx + nx * smoothWiggle, my + ny * smoothWiggle]);
+    }
+  }
+  // Add final point
+  wigglePoints.push(points[points.length - 1]);
+
+  // Draw the main river as a variable-width path using overlapping strokes
+  const line = d3.line().curve(d3.curveBasis);
+
+  // Outer bank line (wider, lighter)
+  riverGroup.append("path")
+    .attr("d", line(wigglePoints))
+    .attr("fill", "none")
+    .attr("stroke", riverColor)
+    .attr("stroke-width", riverWidth * 1.8)
+    .attr("stroke-linecap", "round")
+    .attr("opacity", 0.15);
+
+  // Main river channel
+  riverGroup.append("path")
+    .attr("d", line(wigglePoints))
+    .attr("fill", "none")
+    .attr("stroke", riverColor)
+    .attr("stroke-width", riverWidth)
+    .attr("stroke-linecap", "round")
+    .attr("opacity", 0.6);
+
+  // Narrow center current (lighter highlight)
+  riverGroup.append("path")
+    .attr("d", line(wigglePoints))
+    .attr("fill", "none")
+    .attr("stroke", riverColor)
+    .attr("stroke-width", riverWidth * 0.3)
+    .attr("stroke-linecap", "round")
+    .attr("opacity", 0.25);
+
+  // Widenings and pools at random points along the river
+  for (let i = 3; i < wigglePoints.length - 3; i += 2 + Math.floor(rng() * 4)) {
+    const [px, py] = wigglePoints[i];
+    const poolSize = riverWidth * (1.0 + rng() * 2.0);
+    riverGroup.append("ellipse")
+      .attr("cx", px + (rng() - 0.5) * 4)
+      .attr("cy", py + (rng() - 0.5) * 4)
+      .attr("rx", poolSize)
+      .attr("ry", poolSize * (0.6 + rng() * 0.4))
+      .attr("fill", riverColor)
+      .attr("opacity", 0.15)
+      .attr("transform", `rotate(${rng() * 360}, ${px}, ${py})`);
+  }
+}
+
+// --- Hex terrain rendering ---
+// Draws terrain decorations at hex centers based on hex_terrain data.
+// terrainDrawers is an object mapping terrain type to a draw function: (g, x, y, size, rng) => void
+function renderHexTerrain(ctx, terrainDrawers) {
+  const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
+  if (!hexTerrain || Object.keys(hexTerrain).length === 0) return;
+
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+
+  const terrainGroup = g.append("g").attr("class", "terrain");
+
+  Object.entries(hexTerrain).forEach(([hex, terrain]) => {
+    const drawer = terrainDrawers[terrain];
+    if (!drawer) return;
+
+    const col = parseInt(hex.substring(0, 2));
+    const row = parseInt(hex.substring(2, 4));
+    const hx = (col - bcCol) * colStep + WIDTH / 2;
+    const hy = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
+
+    const rng = mulberry32(seedFromString(hex));
+
+    // Draw multiple decorations scattered around the hex center
+    const count = 3 + Math.floor(rng() * 3);
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2 + (rng() - 0.5) * 1.0;
+      const r = 10 + rng() * 25;
+      const dx = hx + Math.cos(angle) * r;
+      const dy = hy + Math.sin(angle) * r;
+      drawer(terrainGroup, dx, dy, 8 + rng() * 5, rng);
+    }
+  });
 }
 
 // --- Bounds ---
@@ -278,7 +417,7 @@ function exportSVG() {
 // Expose for global access
 Object.assign(MapCore, {
   HINT_SCALE, DAY_SCALE, FONT, INTERIOR_TERRAINS,
-  isOverlandNode, mulberry32, seedFromString, computeBounds,
+  isOverlandNode, renderRiver, renderHexTerrain, mulberry32, seedFromString, computeBounds,
   showDetail, closePanel,
   loadData, runSimulation, setupSVG, centerView,
   renderMap, applyTheme, exportSVG,

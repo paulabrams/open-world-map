@@ -60,7 +60,7 @@
       "id": "tunnels-beneath-blackwater",
       "name": "Tunnels Beneath Blackwater Crossing",
       "point_type": "dungeon",
-      "terrain": "town",
+      "terrain": "underground",
       "visible": true,
       "description": "Old tunnels under the city. Contains a vampire brothel. Connected to the mystery of the missing children and the fog.",
       "x_hint": 0.0,
@@ -103,17 +103,6 @@
       "hex": "1207"
     },
     {
-      "id": "old-forest",
-      "name": "Old Forest Edge",
-      "point_type": "waypoint",
-      "terrain": "forest",
-      "visible": true,
-      "description": "The point where the Old Northern Trade Road passes into the southern edge of the Old Forest, about 1 day (18 miles) north of Blackwater Crossing. Marks the transition from open farmland to dense ancient woodland.",
-      "x_hint": 0.75,
-      "y_hint": -3.03,
-      "hex": "1106"
-    },
-    {
       "id": "mud-wallow",
       "name": "The Mud Wallow",
       "point_type": "sanctuary",
@@ -139,7 +128,7 @@
       "id": "spider-cave",
       "name": "The Spider Cave",
       "point_type": "dungeon",
-      "terrain": "forest",
+      "terrain": "underground",
       "visible": true,
       "description": "Right behind Pjörk Choppe Hille (~1 hour scramble). Daemon spiders, tunnels to skeletal lord's throne room, Evil Chaos Shrine.",
       "x_hint": -0.75,
@@ -211,28 +200,6 @@
       "x_hint": -3.75,
       "y_hint": -4.76,
       "hex": "0504"
-    },
-    {
-      "id": "upper-blackwater",
-      "name": "Upper Blackwater",
-      "point_type": "waypoint",
-      "terrain": "forest",
-      "visible": true,
-      "description": "The Blackwater River enters the map from the northwest.",
-      "x_hint": -3.0,
-      "y_hint": -4.33,
-      "hex": "0605"
-    },
-    {
-      "id": "lower-blackwater",
-      "name": "Lower Blackwater",
-      "point_type": "waypoint",
-      "terrain": "plains",
-      "visible": true,
-      "description": "The Blackwater River continues SE past BC toward the Serpent's Teeth foothills.",
-      "x_hint": 4.5,
-      "y_hint": 2.6,
-      "hex": "1613"
     },
     {
       "id": "mistwood-glen",
@@ -347,33 +314,6 @@
   ],
   "links": [
     {
-      "source": "north-road",
-      "target": "old-forest",
-      "name": "Old Northern Trade Road",
-      "path_type": "road",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 1.0
-    },
-    {
-      "source": "old-forest",
-      "target": "graveyard",
-      "name": "Old Northern Trade Road",
-      "path_type": "road",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.33
-    },
-    {
-      "source": "graveyard",
-      "target": "blackwater-crossing",
-      "name": "Old Northern Trade Road",
-      "path_type": "road",
-      "terrain_difficulty": "easy",
-      "visible": true,
-      "days": 0.67
-    },
-    {
       "source": "blackwater-crossing",
       "target": "south-road-mountain-watch",
       "name": "Old Northern Trade Road",
@@ -399,57 +339,6 @@
       "terrain_difficulty": "perilous",
       "visible": true,
       "days": 1.0
-    },
-    {
-      "source": "the-swamp",
-      "target": "upper-blackwater",
-      "name": "Blackwater River",
-      "path_type": "river",
-      "terrain_difficulty": "tough",
-      "visible": true
-    },
-    {
-      "source": "upper-blackwater",
-      "target": "blackwater-crossing",
-      "name": "Blackwater River",
-      "path_type": "river",
-      "terrain_difficulty": "tough",
-      "visible": true
-    },
-    {
-      "source": "blackwater-crossing",
-      "target": "lower-blackwater",
-      "name": "Blackwater River",
-      "path_type": "river",
-      "terrain_difficulty": "easy",
-      "visible": true
-    },
-    {
-      "source": "old-forest",
-      "target": "thornespire-keep",
-      "name": "Road to Thornespire Keep",
-      "path_type": "road",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.5
-    },
-    {
-      "source": "thornespire-keep",
-      "target": "the-swamp",
-      "name": "Trail along the River",
-      "path_type": "trail",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 1.0
-    },
-    {
-      "source": "old-forest",
-      "target": "pjork-choppe-hille",
-      "name": "Forest Track to Pjörk Choppe Hille",
-      "path_type": "wilderness",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.5
     },
     {
       "source": "pjork-choppe-hille",
@@ -479,24 +368,6 @@
       "days": 0.5
     },
     {
-      "source": "old-forest",
-      "target": "kobold-crevasse",
-      "name": "Trail to the Kobold Crevasse",
-      "path_type": "wilderness",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.5
-    },
-    {
-      "source": "old-forest",
-      "target": "mud-wallow",
-      "name": "Trail to the Mud Wallow",
-      "path_type": "trail",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.25
-    },
-    {
       "source": "mud-wallow",
       "target": "crag-cairn",
       "name": "Forest Path to Crag Cairn",
@@ -522,15 +393,6 @@
       "terrain_difficulty": "tough",
       "visible": true,
       "days": 0.25
-    },
-    {
-      "source": "graveyard",
-      "target": "kalla-cave",
-      "name": "Trail to Kalla Cave",
-      "path_type": "trail",
-      "terrain_difficulty": "easy",
-      "visible": true,
-      "days": 0.5
     },
     {
       "source": "blackwater-crossing",
@@ -630,6 +492,69 @@
       "path_type": "wilderness",
       "terrain_difficulty": "tough",
       "visible": true
+    },
+    {
+      "source": "north-road",
+      "target": "blackwater-crossing",
+      "name": "Old Northern Trade Road",
+      "days": 1.0,
+      "path_type": "road",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "blackwater-crossing",
+      "target": "graveyard",
+      "name": "Trail to the Graveyard",
+      "days": 0.5,
+      "path_type": "trail",
+      "terrain_difficulty": "easy",
+      "visible": true
+    },
+    {
+      "source": "graveyard",
+      "target": "kalla-cave",
+      "name": "Trail to Kalla Cave",
+      "days": 0.5,
+      "path_type": "trail",
+      "terrain_difficulty": "easy",
+      "visible": true
+    },
+    {
+      "source": "north-road",
+      "target": "thornespire-keep",
+      "name": "Road to Thornespire Keep (via Fae Glade)",
+      "days": 0.5,
+      "path_type": "road",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "north-road",
+      "target": "pjork-choppe-hille",
+      "name": "Forest Track to Pjörk Choppe Hille",
+      "days": 0.5,
+      "path_type": "wilderness",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "north-road",
+      "target": "kobold-crevasse",
+      "name": "Trail to the Kobold Crevasse",
+      "days": 0.5,
+      "path_type": "wilderness",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "north-road",
+      "target": "mud-wallow",
+      "name": "Trail to the Mud Wallow",
+      "days": 0.25,
+      "path_type": "trail",
+      "terrain_difficulty": "tough",
+      "visible": true
     }
   ],
   "hex_terrain": {
@@ -651,7 +576,7 @@
     "1006": "forest",
     "1007": "forest",
     "1105": "forest",
-    "1106": "forest",
+    "1106": "graveyard",
     "1107": "forest",
     "1204": "forest",
     "1205": "forest",
@@ -708,6 +633,7 @@
     "0504": "swamp"
   },
   "river_path": [
+    "0503",
     "0605",
     "0706",
     "0808",

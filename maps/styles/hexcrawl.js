@@ -37,6 +37,7 @@ window.MapStyles.hexcrawl = {
   /* ── Master render (called by core) ─────────────────────────── */
   render(ctx) {
     this.renderBackground(ctx);
+    MapCore.renderRiver(ctx, ctx.colors.INK, 3);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
     this.renderNodes(ctx);
@@ -243,6 +244,18 @@ window.MapStyles.hexcrawl = {
           this.drawGrassTuft(terrainGroup, node.x + Math.cos(a) * r, node.y + Math.sin(a) * r, 12, rng, INK);
         }
       }
+    });
+
+    // Draw terrain from hex_terrain data (independent of nodes)
+    const style = this;
+    MapCore.renderHexTerrain(ctx, {
+      "forest": (tg, x, y, sz, rng) => style.drawTree(tg, x, y, sz, rng, INK),
+      "forested-hills": (tg, x, y, sz, rng) => { style.drawTree(tg, x, y, sz * 0.8, rng, INK); style.drawMountain(tg, x + 8, y + 4, sz * 0.5, rng, INK); },
+      "mountains": (tg, x, y, sz, rng) => style.drawMountain(tg, x, y, sz, rng, INK),
+      "hills": (tg, x, y, sz, rng) => style.drawMountain(tg, x, y, sz * 0.6, rng, INK),
+      "swamp": (tg, x, y, sz, rng) => style.drawSwampReeds(tg, x, y, sz, rng, INK),
+      "farmland": (tg, x, y, sz, rng) => style.drawGrassTuft(tg, x, y, sz, rng, INK),
+      "plains": (tg, x, y, sz, rng) => style.drawGrassTuft(tg, x, y, sz, rng, INK),
     });
   },
 
