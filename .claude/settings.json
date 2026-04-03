@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /Users/paul/git/open-world-map/maps/*.html)"
+    ]
+  }
+}

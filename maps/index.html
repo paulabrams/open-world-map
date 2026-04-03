@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open World Map</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg-color, #2a1f14);
+    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    overflow: hidden;
+  }
+  #map-container {
+    width: 100vw;
+    height: 100vh;
+    cursor: grab;
+  }
+  #map-container:active { cursor: grabbing; }
+
+  #detail-panel {
+    display: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 320px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    background: var(--panel-bg, #f4e8d1);
+    border: 2px solid var(--panel-border, #2a1f14);
+    padding: 20px;
+    font-size: 14px;
+    color: var(--panel-text, #2a1f14);
+    box-shadow: 4px 4px 12px rgba(0,0,0,0.3);
+  }
+  #detail-panel.open { display: block; }
+  #detail-panel h2 {
+    color: var(--panel-heading, #8b2500);
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+  #detail-panel .point-type {
+    font-style: italic;
+    color: var(--panel-type, #5a4a3a);
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  #detail-panel .description {
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  #detail-panel .connections {
+    border-top: 1px solid var(--panel-type, #5a4a3a);
+    padding-top: 10px;
+    font-size: 13px;
+  }
+  #detail-panel .connections h3 {
+    font-size: 14px;
+    color: var(--panel-heading, #8b2500);
+    margin-bottom: 6px;
+  }
+  #detail-panel .connections li {
+    margin-bottom: 4px;
+    list-style: none;
+  }
+  #detail-panel .close-btn {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--panel-type, #5a4a3a);
+    background: none;
+    border: none;
+    font-family: inherit;
+  }
+
+  #title-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    color: var(--title-color, #8b2500);
+    font-size: 11px;
+    font-style: italic;
+    opacity: 0.7;
+    pointer-events: none;
+  }
+
+  #export-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    background: var(--btn-bg, #f4e8d1);
+    border: 2px solid var(--btn-border, #2a1f14);
+    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    font-size: 13px;
+    color: var(--btn-text, #2a1f14);
+    cursor: pointer;
+    opacity: 0.8;
+  }
+  #export-btn:hover { opacity: 1; }
+
+  /* --- Controls panel --- */
+  #controls {
+    position: fixed;
+    bottom: 50px;
+    left: 20px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    z-index: 10;
+  }
+  #controls label {
+    font-size: 11px;
+    color: var(--title-color, #8b2500);
+    opacity: 0.8;
+  }
+  #controls select {
+    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    font-size: 11px;
+    padding: 3px 6px;
+    background: var(--btn-bg, #f4e8d1);
+    border: 1px solid var(--btn-border, #2a1f14);
+    color: var(--btn-text, #2a1f14);
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div id="map-container">
+  <svg id="map"></svg>
+</div>
+
+<div id="detail-panel">
+  <button class="close-btn" onclick="MapCore.closePanel()">&times;</button>
+  <h2 id="panel-name"></h2>
+  <div class="point-type" id="panel-type"></div>
+  <div class="description" id="panel-desc"></div>
+  <div class="connections" id="panel-connections"></div>
+</div>
+
+<div id="controls">
+  <label>Style
+    <select id="style-select">
+      <option value="classic">Classic</option>
+      <option value="wilderland" selected>Wilderland</option>
+      <option value="world">World Atlas</option>
+      <option value="treasuremap">Treasure Map</option>
+    </select>
+  </label>
+  <label>Grid
+    <select id="grid-select">
+      <option value="none" selected>None</option>
+      <option value="square">Square (1")</option>
+      <option value="hex">Hex</option>
+    </select>
+  </label>
+</div>
+
+<div id="title-bar"></div>
+<button id="export-btn" onclick="MapCore.exportSVG()">Save SVG</button>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="core.js"></script>
+<script src="styles/classic.js"></script>
+<script src="styles/wilderland.js"></script>
+<script src="styles/world.js"></script>
+<script src="styles/treasuremap.js"></script>
+<script src="grids/square.js"></script>
+<script src="grids/hex.js"></script>
+<script>
+(async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const campaign = params.get("map")?.replace(/\.json$/, "") || "Basilisk";
+  let style = params.get("style") || "wilderland";
+  let grid = params.get("grid") || "none";
+
+  // Set select values
+  document.getElementById("style-select").value = style;
+  document.getElementById("grid-select").value = grid;
+
+  // Load data
+  await MapCore.loadData(campaign);
+
+  // Initial render
+  MapCore.renderMap(style, grid);
+
+  // Style switcher
+  document.getElementById("style-select").addEventListener("change", (e) => {
+    style = e.target.value;
+    MapCore.renderMap(style, grid);
+    updateURL();
+  });
+
+  // Grid toggler
+  document.getElementById("grid-select").addEventListener("change", (e) => {
+    grid = e.target.value;
+    MapCore.renderMap(style, grid);
+    updateURL();
+  });
+
+  function updateURL() {
+    const url = new URL(window.location);
+    url.searchParams.set("map", campaign);
+    url.searchParams.set("style", style);
+    url.searchParams.set("grid", grid);
+    history.replaceState({}, "", url);
+  }
+})();
+</script>
+</body>
+</html>
