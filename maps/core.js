@@ -75,7 +75,7 @@ async function loadData(campaign) {
   const mapFile = campaign + "/" + campaign + ".json";
   const response = await fetch(mapFile);
   _rawData = await response.json();
-  graphData = _rawData;
+  graphData = JSON.parse(JSON.stringify(_rawData));
   return graphData;
 }
 

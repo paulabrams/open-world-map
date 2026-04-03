@@ -1,11 +1,11 @@
-// world.js — "World Atlas" map style for Open World Map viewer
-// Extracted from world.html. Dense, engraving-like aesthetic inspired
-// by Christopher Tolkien's published maps. All rendering is
-// self-contained; the host page supplies a render context (ctx).
+// thirdage.js — "Third Age" map style for Open World Map viewer
+// Dense, engraving-like aesthetic inspired by Pauline Baynes'
+// Map of Middle-earth. All rendering is self-contained;
+// the host page supplies a render context (ctx).
 
 window.MapStyles = window.MapStyles || {};
 
-window.MapStyles.world = {
+window.MapStyles.thirdage = {
   name: "Third Age",
 
   /* ── CSS custom-property values ─────────────────────────────── */

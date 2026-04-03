@@ -64,9 +64,9 @@ Use Playwright to open each style in the unified viewer (`map.html`), wait for t
 
 - `http://localhost:8787/map.html?map=$ARGUMENTS&style=classic&grid=square` → `maps/$ARGUMENTS/$ARGUMENTS-grid.svg`
 - `http://localhost:8787/map.html?map=$ARGUMENTS&style=classic&grid=hex` → `maps/$ARGUMENTS/$ARGUMENTS-hex.svg`
-- `http://localhost:8787/map.html?map=$ARGUMENTS&style=treasuremap&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-treasuremap.svg`
+- `http://localhost:8787/map.html?map=$ARGUMENTS&style=moonletters&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-moonletters.svg`
 - `http://localhost:8787/map.html?map=$ARGUMENTS&style=wilderland&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-wilderland.svg`
-- `http://localhost:8787/map.html?map=$ARGUMENTS&style=world&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-world.svg`
+- `http://localhost:8787/map.html?map=$ARGUMENTS&style=thirdage&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-thirdage.svg`
 
 **Step 7: Report.**
 
