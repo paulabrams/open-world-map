@@ -17,26 +17,26 @@ Current campaign: **The Basilisk Campaign** (Blackwater Crossing region, Belerio
 
 - `docs/Open-World-Map.md` — full spec
 - `docs/rebuild-map.md` — full rebuild prompt and schema reference
-- `maps/viewer.html` — map viewer (standalone, reads JSON via `?map=` param, renders SVG via D3.js)
-- `maps/Basilisk.json` — graph data (21 nodes, 22 links)
+- `maps/*.html` — map viewers (wilderland, world, treasuremap, original styles)
+- `maps/{campaign}/{campaign}.json` — graph data per campaign (e.g. `maps/Basilisk/Basilisk.json`)
+- `maps/{campaign}/{campaign}-{style}.svg` — exported SVGs per campaign
 
 ## View the Map
 
 ```sh
 cd maps && python3 -m http.server 8787
 ```
-Then open http://localhost:8787/viewer.html (defaults to Basilisk.json).
-Or specify a map: http://localhost:8787/viewer.html?map=Basilisk.json
+Then open http://localhost:8787/wilderland.html?map=Basilisk
 
 ## Rebuild the Map JSON
 
-Follow `docs/rebuild-map.md`. Short version:
+Use `/map Basilisk` or follow `docs/rebuild-map.md`. Short version:
 
 1. `list_thoughts` type "point" (limit 50) + type "path" (limit 50) + type "campaign"
 2. Also `search_thoughts` for any places that may be mis-typed (Old Forest is "observation", Serpent's Teeth is "path" — both should be "point")
 3. Parse each thought into the graph schema (see rebuild-map.md for field mappings)
 4. Read existing JSON and preserve `x_hint`/`y_hint` values
-5. Write updated JSON to `maps/{campaign-slug}.json`
+5. Write updated JSON to `maps/{campaign}/{campaign}.json`
 
 ## Correct Map Data
 

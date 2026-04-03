@@ -28,13 +28,13 @@ For each PATH thought, extract:
 - `visible`: true (default)
 
 **Step 3: Merge with existing layout.**
-If `maps/$ARGUMENTS.json` already exists, preserve `x_hint` and `y_hint` values for existing nodes (these are hand-tuned positions). New nodes get `x_hint: 0, y_hint: 0`.
+If `maps/$ARGUMENTS/$ARGUMENTS.json` already exists, preserve `x_hint` and `y_hint` values for existing nodes (these are hand-tuned positions). New nodes get `x_hint: 0, y_hint: 0`.
 
 **Step 4: Check for orphans.**
 Every node must be reachable via at least one link. Flag orphan nodes but still include them. Skip links that reference non-existent nodes.
 
 **Step 5: Write the JSON.**
-Write to `maps/$ARGUMENTS.json`:
+Create the campaign directory if it doesn't exist, then write to `maps/$ARGUMENTS/$ARGUMENTS.json`:
 
 ```json
 {
@@ -52,16 +52,16 @@ lsof -ti:8787 | xargs kill 2>/dev/null; cd maps && python3 -m http.server 8787 &
 ```
 
 **Step 7: Export SVGs.**
-Use Playwright to open each of the four map styles in a headless browser, wait for the map to render, then extract the SVG and save it to the `maps/$ARGUMENTS/` directory (create it if it doesn't exist). The filename should be `{campaign}-{style}.svg`.
+Use Playwright to open each of the four map styles in a headless browser, wait for the map to render, then extract the SVG and save it to the `maps/$ARGUMENTS/` directory. The filename should be `{campaign}-{style}.svg`.
 
 For each style, use the `exportSVG()` function built into the page — or extract the SVG element directly — and write the result to disk:
 
-- `http://localhost:8787/original.html?map=$ARGUMENTS.json` → `maps/$ARGUMENTS/$ARGUMENTS-original.svg`
-- `http://localhost:8787/treasuremap.html?map=$ARGUMENTS.json` → `maps/$ARGUMENTS/$ARGUMENTS-treasuremap.svg`
-- `http://localhost:8787/wilderland.html?map=$ARGUMENTS.json` → `maps/$ARGUMENTS/$ARGUMENTS-wilderland.svg`
-- `http://localhost:8787/world.html?map=$ARGUMENTS.json` → `maps/$ARGUMENTS/$ARGUMENTS-world.svg`
+- `http://localhost:8787/original.html?map=$ARGUMENTS` → `maps/$ARGUMENTS/$ARGUMENTS-original.svg`
+- `http://localhost:8787/treasuremap.html?map=$ARGUMENTS` → `maps/$ARGUMENTS/$ARGUMENTS-treasuremap.svg`
+- `http://localhost:8787/wilderland.html?map=$ARGUMENTS` → `maps/$ARGUMENTS/$ARGUMENTS-wilderland.svg`
+- `http://localhost:8787/world.html?map=$ARGUMENTS` → `maps/$ARGUMENTS/$ARGUMENTS-world.svg`
 
 **Step 8: Report.**
 Summarize: nodes added/removed/updated, links added/removed/updated, orphans flagged. List the exported SVG files. Then link the user to:
 
-http://localhost:8787/viewer.html?map=$ARGUMENTS.json
+http://localhost:8787/wilderland.html?map=$ARGUMENTS
