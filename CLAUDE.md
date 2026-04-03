@@ -17,7 +17,7 @@ Current campaign: **The Basilisk Campaign** (Blackwater Crossing region, Belerio
 
 - `docs/Open-World-Map.md` — full spec
 - `docs/rebuild-map.md` — full rebuild prompt and schema reference
-- `maps/index.html` — unified map viewer (single page, style/grid switcher)
+- `maps/map.html` — unified map viewer (single page, style/grid switcher)
 - `maps/core.js` — shared utilities, data loading, rendering orchestrator
 - `maps/styles/*.js` — style modules (classic, wilderland, world, treasuremap)
 - `maps/grids/*.js` — grid overlay modules (square, hex)
@@ -30,7 +30,7 @@ Current campaign: **The Basilisk Campaign** (Blackwater Crossing region, Belerio
 cd maps && python3 -m http.server 8787
 ```
 
-Then open http://localhost:8787/index.html?map=Basilisk
+Then open http://localhost:8787/map.html?map=Basilisk
 
 URL params: `?map=Basilisk&style=wilderland&grid=hex`
 Styles: classic, wilderland, world, treasuremap
