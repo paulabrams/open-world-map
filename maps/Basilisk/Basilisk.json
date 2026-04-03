@@ -15,7 +15,7 @@
       "description": "A walled frontier town in the Belerion region of the Dragon Isles, at the intersection of the Old Northern Trade Road (north-south) and the Blackwater River (northwest-southeast). Built on both river banks, connected by an old stone bridge. Surrounded by farmland. The starting point of the Basilisk Campaign. Notable locations: The Laughing Basilisk tavern, The Dragon's Breath Inn, The Sweaty Mermaid, The Twist, a temple, a market, a cursed well, and old tunnels beneath the streets.",
       "x_hint": 0,
       "y_hint": 0,
-      "hex": "10.10"
+      "hex": "1010"
     },
     {
       "id": "laughing-basilisk",
@@ -26,7 +26,7 @@
       "description": "A tavern inside Blackwater Crossing, near the north gate. It is the party's home base in the Basilisk Campaign.",
       "x_hint": 0.1,
       "y_hint": -0.1,
-      "hex": "10.10",
+      "hex": "1010",
       "scale": "local",
       "parent": "blackwater-crossing"
     },
@@ -39,7 +39,7 @@
       "description": "A tavern on the east (bad) side of the Blackwater River in Blackwater Crossing. Connected to the suspicious meat rumor. Below the building are stairs leading down to old tunnels beneath the city, including a vampire brothel.",
       "x_hint": -0.1,
       "y_hint": 0.1,
-      "hex": "10.10",
+      "hex": "1010",
       "scale": "local",
       "parent": "blackwater-crossing"
     },
@@ -52,7 +52,7 @@
       "description": "A maze of alleys near the Laughing Basilisk in Blackwater Crossing. Controlled by a local thieves guild known as a \"canting crew.\" A dangerous, labyrinthine district in the heart of town.",
       "x_hint": 0.05,
       "y_hint": -0.05,
-      "hex": "10.10",
+      "hex": "1010",
       "scale": "local",
       "parent": "blackwater-crossing"
     },
@@ -65,7 +65,7 @@
       "description": "Old tunnels under the city, accessed through stairs beneath a crumbling building near the Sweaty Mermaid. Contains a vampire brothel with multiple rooms, a receptionist with a giant red-eyed rat, and at least one vampire. Connected to the mystery of the missing children and the fog.",
       "x_hint": -0.05,
       "y_hint": 0.15,
-      "hex": "10.10",
+      "hex": "1010",
       "scale": "local",
       "parent": "blackwater-crossing"
     },
@@ -78,7 +78,7 @@
       "description": "Farms surround Blackwater Crossing in all directions. Most are concentrated along the Blackwater River, along the Old Northern Trade Road heading north, and along the Trade Road heading south. Farms are sparse in areas without a river or road.",
       "x_hint": -0.35,
       "y_hint": -1.67,
-      "hex": "10.08"
+      "hex": "1008"
     },
     {
       "id": "abandoned-farmhouse",
@@ -89,7 +89,7 @@
       "description": "A ruined farmstead along the Old Northern Trade Road, south of Blackwater Crossing. It has a basement. There was a fire here.",
       "x_hint": -0.8,
       "y_hint": 0.2,
-      "hex": "09.10"
+      "hex": "0910"
     },
     {
       "id": "graveyard",
@@ -100,7 +100,7 @@
       "description": "A Graveyard on the Old Northern Trade Road, about 2 hours south of the Old Forest edge. Serves as a landmark for navigation to the Kalla Cave.",
       "x_hint": 0.25,
       "y_hint": -2.08,
-      "hex": "10.08"
+      "hex": "1008"
     },
     {
       "id": "kalla-cave",
@@ -111,7 +111,7 @@
       "description": "Located 4 hours east of the Graveyard on the Old Northern Trade Road. Contains a large supply of kalla (food). Whip (PC) convinced the Mud Tooth Porcs to relocate here from the Mud Wallow hot spring.",
       "x_hint": 1.5,
       "y_hint": -2.1,
-      "hex": "12.08"
+      "hex": "1208"
     },
     {
       "id": "old-forest",
@@ -122,7 +122,7 @@
       "description": "A dense, ancient woodland north and northeast of Blackwater Crossing. The Old Northern Trade Road passes through it. Contains dire wolves, giant spiders, kobold hunters, porcs, shadow mastiffs, pine trolls, a vampire runestone, barrow wights, and corrupted groves. Also called the Old Wood.",
       "x_hint": 0.45,
       "y_hint": -2.88,
-      "hex": "11.06"
+      "hex": "1106"
     },
     {
       "id": "mud-wallow",
@@ -133,7 +133,7 @@
       "description": "A hot spring with sulfur-smelling water located west of the Old Northern Trade Road in the Old Forest, north of the Thornespire Keep turnoff. Therapeutic mud heals 1 Heart per hour of soaking. Former home territory of the Mud Tooth tribe of Porcs.",
       "x_hint": -0.5,
       "y_hint": -3.2,
-      "hex": "09.06"
+      "hex": "0906"
     },
     {
       "id": "pjork-choppe-hille",
@@ -144,7 +144,7 @@
       "description": "A porc settlement in the Old Forest, approximately 3/4 day north of Blackwater Crossing along the Old Northern Trade Road, then west off-road. Widest cart path from road: ~1 hour. The porcs here are organized and have been a recurring threat.",
       "x_hint": -2.25,
       "y_hint": -3.38,
-      "hex": "07.06"
+      "hex": "0706"
     },
     {
       "id": "spider-cave",
@@ -155,7 +155,7 @@
       "description": "Located right behind Pjörk Choppe Hille, about 1 hour of scrambling. Contains daemon spiders with writings on them, and tunnels below leading to a skeletal lord's throne room, Evil Chaos Shrine, store room, and torture chamber.",
       "x_hint": -2.45,
       "y_hint": -3.55,
-      "hex": "07.05"
+      "hex": "0705"
     },
     {
       "id": "crag-cairn",
@@ -166,7 +166,7 @@
       "description": "Located southeast of the Mud Wallow and 2 hours north of the Kobold Crevasse. Contains the Crag King — a barrow wight chieftain on a throne of bones with eight skeleton guards. The dead zone around the mound is growing. A Level 5 encounter.",
       "x_hint": 0.8,
       "y_hint": -3.6,
-      "hex": "11.05"
+      "hex": "1105"
     },
     {
       "id": "kobold-crevasse",
@@ -177,7 +177,7 @@
       "description": "East off the main road in the Old Forest. A deep crevasse with a path leading down to a kobold settlement. At the surface is a mystic ring of trees with thaumaturgical runes. Home to Yip-Snap and her clan.",
       "x_hint": 1.85,
       "y_hint": -4.08,
-      "hex": "12.05"
+      "hex": "1205"
     },
     {
       "id": "fae-glade",
@@ -188,7 +188,7 @@
       "description": "A section of old-growth forest between Pjörk Choppe Hille and Thornespire Keep. Contains very old trees with silver bark that appear to have faces. Significant time differential — minutes inside pass as hours outside. Also called \"The Garden.\"",
       "x_hint": -2.7,
       "y_hint": -4.0,
-      "hex": "06.05"
+      "hex": "0605"
     },
     {
       "id": "thornespire-keep",
@@ -199,7 +199,7 @@
       "description": "A stone fortress atop a tall hill in the Old Forest, commanding views of the river and surrounding woodland. Reached by traveling north on the Trade Road (~1 day to forest edge), then 4 hours west on a well-maintained road (~1.5 days total). Contains an Outer Bailey with Traveler's Inn, Main Gate, and Chapel of Muir. The Castellan governs from the Inner Bailey.",
       "x_hint": -3.15,
       "y_hint": -4.67,
-      "hex": "06.05"
+      "hex": "0605"
     },
     {
       "id": "ravens-perch",
@@ -210,7 +210,7 @@
       "description": "An abandoned watchtower in the Old Forest, accessed from the Old Northern Trade Road north of the Thornespire Keep turnoff. The party investigated the Castellan's missing scouts here and rescued three. The Castellan granted the party passes to the Inner Bailey.",
       "x_hint": -0.8,
       "y_hint": -4.5,
-      "hex": "09.04"
+      "hex": "0904"
     },
     {
       "id": "the-swamp",
@@ -221,7 +221,7 @@
       "description": "Located northwest of Thornespire Keep, upstream on the Blackwater River. Has lizardmen and a crazy old hermit who drinks ice wine. The region was once populated until flooded — good place for treasure.",
       "x_hint": -3.5,
       "y_hint": -3.5,
-      "hex": "05.05"
+      "hex": "0505"
     },
     {
       "id": "upper-blackwater",
@@ -232,7 +232,7 @@
       "description": "The Blackwater River enters the regional map from the northwest, flowing southeast toward Blackwater Crossing.",
       "x_hint": -2.55,
       "y_hint": -2.38,
-      "hex": "07.07"
+      "hex": "0707"
     },
     {
       "id": "lower-blackwater",
@@ -243,7 +243,7 @@
       "description": "The Blackwater River continues southeast past Blackwater Crossing, flowing through plains toward the Serpent's Teeth before bending east and exiting the region.",
       "x_hint": 2.05,
       "y_hint": 0.62,
-      "hex": "13.10"
+      "hex": "1310"
     },
     {
       "id": "mistwood-glen",
@@ -254,7 +254,7 @@
       "description": "A mystical sanctuary deep in the woods, about 2-3 days southwest of Blackwater Crossing. The Kalla'din is a pocket realm existing partially outside normal space and time. Home to the Thornbeard Circle (seven immortal Dwur Eldar), Snezynja (Aethiiri sorceress), and the Stone-Nose Clan (ancient forest trolls).",
       "x_hint": -2.05,
       "y_hint": 1.92,
-      "hex": "07.12"
+      "hex": "0712"
     },
     {
       "id": "south-road-mountain-watch",
@@ -265,7 +265,7 @@
       "description": "Brunhilde Ironfoot's Mountain Watch Camp & Inn on the south road in the Serpent's Teeth foothills. Waypoint and recruiting camp. Has a moat. Baron Thornwise claims jurisdiction.",
       "x_hint": -0.45,
       "y_hint": 1.92,
-      "hex": "09.12"
+      "hex": "0912"
     },
     {
       "id": "serpents-pass",
@@ -276,7 +276,7 @@
       "description": "The mountain pass where the Old Northern Trade Road passes through the Serpent's Teeth Crags. About 2 days south of Blackwater Crossing.",
       "x_hint": -0.35,
       "y_hint": 2.5,
-      "hex": "10.13"
+      "hex": "1013"
     },
     {
       "id": "serpents-teeth-crags",
@@ -287,7 +287,7 @@
       "description": "A massive jagged mountain range south and southeast of Blackwater Crossing. Spans a week of travel in both directions. Contains gargoyles, a brigands' camp, an obsidian quarry, and the Vault of First Light.",
       "x_hint": 1.75,
       "y_hint": 2.32,
-      "hex": "12.13"
+      "hex": "1213"
     },
     {
       "id": "bandit-camp",
@@ -298,7 +298,7 @@
       "description": "Hangman Hill, directly north of the Tower of the Stargazer (~1 hour walk), just inside the Old Forest edge. 120 people: 48 bandits, 72 slaves. Key NPCs: Krin \"The Cunning\", Rath \"Iron-Will\", Corth \"Whip-Crack\". Obsidian quarry with a hollow spire. Destroyed by lightning from the Tower.",
       "x_hint": -1.55,
       "y_hint": 2.7,
-      "hex": "08.13"
+      "hex": "0813"
     },
     {
       "id": "tower-of-stargazer",
@@ -309,7 +309,7 @@
       "description": "Home of Sir Uravulon Calcidius, an evil wizard. Located ~2 days south on the Trade Road, then half a day west, in the foothills north of the Serpent's Teeth. 80-foot stone tower, globe-shaped top, surrounded by steel spikes and constant lightning. Calcidius was trapped in a salt circle ~59 years ago.",
       "x_hint": -1.55,
       "y_hint": 2.93,
-      "hex": "08.13"
+      "hex": "0813"
     },
     {
       "id": "vault-of-first-light",
@@ -320,7 +320,7 @@
       "description": "An ancient dwarven dungeon in the Serpent's Teeth. 2 days south on the Trade Road, then 1 day overland into a pass between crags. The party returned with a magical candle that speaks in ancient tongues. Contains traps, the Fallen (undead dwur), and cosmic forces.",
       "x_hint": 0.35,
       "y_hint": 4.12,
-      "hex": "10.15"
+      "hex": "1015"
     },
     {
       "id": "north-road",
@@ -331,7 +331,7 @@
       "description": "The Old Northern Trade Road continues north through the Old Forest beyond explored territory.",
       "x_hint": -0.25,
       "y_hint": -4.67,
-      "hex": "10.05"
+      "hex": "1005"
     },
     {
       "id": "south-pass",
@@ -342,7 +342,7 @@
       "description": "The Old Northern Trade Road emerges from the Serpent's Teeth mountain pass and continues south to lands beyond.",
       "x_hint": -0.25,
       "y_hint": 4.93,
-      "hex": "10.16"
+      "hex": "1016"
     }
   ],
   "links": [
