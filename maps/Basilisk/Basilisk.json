@@ -396,15 +396,6 @@
     },
     {
       "source": "blackwater-crossing",
-      "target": "abandoned-farmhouse",
-      "name": "Path to the Farmhouse",
-      "path_type": "trail",
-      "terrain_difficulty": "easy",
-      "visible": true,
-      "days": 0.1
-    },
-    {
-      "source": "blackwater-crossing",
       "target": "mistwood-glen",
       "name": "Trail to Mistwood Glen (via 1012)",
       "path_type": "trail",

@@ -1,5 +1,4 @@
 graph TD
-    %% Shapes: (()) heart, [] fortress/settlement, {{}} dungeon/lair, >] sanctuary, ([]) waypoint, [//] tower/ruin
 
     blackwater_crossing(("Blackwater Crossing\n1010"))
     abandoned_farmhouse[/"The Cursed Farmhouse\n1011"\]
@@ -24,7 +23,6 @@ graph TD
     northern_warding_stone>"Northern Warding Stone\n0906"]
     southern_warding_stone>"Southern Warding Stone\n0707"]
 
-    %% Links: === road, --- trail, -.- wilderness
     blackwater_crossing ===|"Old Northern Trade Road, 1.5d"| south_road_mountain_watch
     south_road_mountain_watch ===|"Old Northern Trade Road, 0.5d"| serpents_pass
     serpents_pass ===|"Old Northern Trade Road, 1.0d"| south_pass
@@ -33,7 +31,6 @@ graph TD
     mud_wallow -.-|"Forest Path to Crag Cairn, 0.25d"| crag_cairn
     crag_cairn -.-|"Path to the Kobold Crevasse, 0.17d"| kobold_crevasse
     north_road ---|"Forest Trail to Raven's Perch, 0.25d"| ravens_perch
-    blackwater_crossing ---|"Path to the Farmhouse, 0.1d"| abandoned_farmhouse
     blackwater_crossing ---|"Trail to Mistwood Glen (via 1012), 2.5d"| mistwood_glen
     serpents_pass -.-|"Path to the Vault, 1.0d"| vault_of_first_light
     serpents_pass -.-|"Foothills Trail West, 0.5d"| tower_of_stargazer
