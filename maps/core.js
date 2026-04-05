@@ -178,11 +178,58 @@ function renderHexTerrain(ctx, terrainDrawers) {
 
 // --- Bounds ---
 function computeBounds(nodes) {
+  const WIDTH = window.innerWidth;
+  const HEIGHT = window.innerHeight;
+
+  // Start with node positions
+  let minX = d3.min(nodes, d => d.x);
+  let maxX = d3.max(nodes, d => d.x);
+  let minY = d3.min(nodes, d => d.y);
+  let maxY = d3.max(nodes, d => d.y);
+
+  // Expand to include hex terrain positions
+  if (graphData && graphData.hex_terrain) {
+    const bcCol = 10, bcRow = 10;
+    const size = HINT_SCALE / 2;
+    const colStep = size * 2 * 0.75;
+    const rowStep = size * Math.sqrt(3);
+
+    Object.keys(graphData.hex_terrain).forEach(hex => {
+      const col = parseInt(hex.substring(0, 2));
+      const row = parseInt(hex.substring(2, 4));
+      const hx = (col - bcCol) * colStep + WIDTH / 2;
+      const hy = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
+      minX = Math.min(minX, hx);
+      maxX = Math.max(maxX, hx);
+      minY = Math.min(minY, hy);
+      maxY = Math.max(maxY, hy);
+    });
+  }
+
+  // Expand to include river path positions
+  if (graphData && graphData.river_path) {
+    const bcCol = 10, bcRow = 10;
+    const size = HINT_SCALE / 2;
+    const colStep = size * 2 * 0.75;
+    const rowStep = size * Math.sqrt(3);
+
+    graphData.river_path.forEach(hex => {
+      const col = parseInt(hex.substring(0, 2));
+      const row = parseInt(hex.substring(2, 4));
+      const hx = (col - bcCol) * colStep + WIDTH / 2;
+      const hy = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
+      minX = Math.min(minX, hx);
+      maxX = Math.max(maxX, hx);
+      minY = Math.min(minY, hy);
+      maxY = Math.max(maxY, hy);
+    });
+  }
+
   return {
-    minX: d3.min(nodes, d => d.x) - 50,
-    maxX: d3.max(nodes, d => d.x) + 50,
-    minY: d3.min(nodes, d => d.y) - 50,
-    maxY: d3.max(nodes, d => d.y) + 50,
+    minX: minX - 50,
+    maxX: maxX + 50,
+    minY: minY - 50,
+    maxY: maxY + 50,
   };
 }
 
