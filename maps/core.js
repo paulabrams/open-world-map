@@ -236,13 +236,21 @@ function renderRoad(ctx, roadColor, roadWidth) {
   const roadGroup = g.append("g").attr("class", "road");
   const line = d3.line().curve(d3.curveBasis);
 
-  // Normalize to list of lists
-  const paths = Array.isArray(roadPath[0]) ? roadPath : [roadPath];
+  // Normalize entries: accept array (legacy), or {hexes, label?, days?}
+  const paths = roadPath.map(entry => {
+    if (Array.isArray(entry)) return { hexes: entry };
+    if (entry && entry.hexes) return entry;
+    return { hexes: roadPath };
+  });
+  // Handle legacy single flat array
+  const isFlatLegacy = typeof roadPath[0] === "string";
+  const normalized = isFlatLegacy ? [{ hexes: roadPath }] : paths;
 
-  paths.forEach((path, pathIdx) => {
-    if (!path || path.length < 2) return;
+  normalized.forEach((pathObj, pathIdx) => {
+    const hexes = pathObj.hexes;
+    if (!hexes || hexes.length < 2) return;
 
-    const points = path.map(h => {
+    const points = hexes.map(h => {
       const col = parseInt(h.substring(0, 2));
       const row = parseInt(h.substring(2, 4));
       const x = (col - bcCol) * colStep + WIDTH / 2;
@@ -280,6 +288,30 @@ function renderRoad(ctx, roadColor, roadWidth) {
       .attr("stroke-width", roadWidth)
       .attr("stroke-linecap", "round")
       .attr("opacity", 0.8);
+
+    if (pathObj.label) {
+      const midIdx = Math.floor(points.length / 2);
+      const [pA, pB] = points.length % 2 === 0
+        ? [points[midIdx - 1], points[midIdx]]
+        : [points[midIdx], points[midIdx]];
+      const mx = (pA[0] + pB[0]) / 2;
+      const my = (pA[1] + pB[1]) / 2;
+      const dx = pB[0] - pA[0], dy = pB[1] - pA[1];
+      const segLen = Math.sqrt(dx * dx + dy * dy) || 1;
+      const offX = -dy / segLen * 12;
+      const offY = dx / segLen * 12;
+      roadGroup.append("text")
+        .attr("x", mx + offX)
+        .attr("y", my + offY)
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "middle")
+        .attr("font-family", FONT)
+        .attr("font-size", "11px")
+        .attr("font-style", "italic")
+        .attr("fill", roadColor)
+        .attr("opacity", 0.85)
+        .text(pathObj.label);
+    }
   });
 }
 
@@ -461,8 +493,15 @@ function computeBounds(nodes) {
     const colStep = size * 2 * 0.75;
     const rowStep = size * Math.sqrt(3);
 
-    // road_path may be a single array or array of arrays
-    const roadPaths = Array.isArray(graphData.road_path[0]) ? graphData.road_path : [graphData.road_path];
+    // road_path entries can be arrays, objects {hexes}, or a single flat array
+    let roadPaths;
+    if (typeof graphData.road_path[0] === "string") {
+      roadPaths = [graphData.road_path];
+    } else {
+      roadPaths = graphData.road_path.map(entry =>
+        Array.isArray(entry) ? entry : (entry && entry.hexes) || []
+      );
+    }
     roadPaths.forEach(path => {
       path.forEach(hex => {
         const col = parseInt(hex.substring(0, 2));

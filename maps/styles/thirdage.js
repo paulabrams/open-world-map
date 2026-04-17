@@ -795,14 +795,37 @@ window.MapStyles.thirdage = {
   },
 
   drawHill(g, x, y, size, rng, INK) {
-    const w = size * (1.0 + rng() * 0.5);
-    const h = size * (0.5 + rng() * 0.3);
-    g.append("path")
-      .attr("d", `M ${x - w/2} ${y} Q ${x - w/4} ${y - h} ${x} ${y - h} Q ${x + w/4} ${y - h} ${x + w/2} ${y}`)
-      .attr("fill", "none")
-      .attr("stroke", INK)
-      .attr("stroke-width", 0.8)
-      .attr("opacity", 0.5);
+    // Cluster of 2-3 humps with engraving-style cross-hatch shading
+    const count = 2 + Math.floor(rng() * 2);
+    const spacing = size * 0.55;
+    const humps = [];
+    for (let i = 0; i < count; i++) {
+      humps.push({
+        cx: x + (i - (count - 1) / 2) * spacing + (rng() - 0.5) * size * 0.15,
+        w: size * (0.85 + rng() * 0.4),
+        h: size * (0.4 + rng() * 0.3),
+      });
+    }
+    humps.sort((a, b) => b.h - a.h);
+    humps.forEach(({ cx, w, h }) => {
+      const peakOff = (rng() - 0.5) * w * 0.15;
+      g.append("path")
+        .attr("d", `M ${cx - w/2} ${y} Q ${cx - w/4 + peakOff} ${y - h} ${cx + peakOff} ${y - h} Q ${cx + w/4 + peakOff} ${y - h} ${cx + w/2} ${y}`)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.9)
+        .attr("opacity", 0.65);
+      // Engraving hatch on right side: 2-3 short parallel lines
+      const hatchCount = 2 + Math.floor(rng() * 2);
+      for (let i = 0; i < hatchCount; i++) {
+        const t = 0.3 + i * 0.22;
+        const hx = cx + peakOff + w * 0.1 + i * w * 0.05;
+        g.append("line")
+          .attr("x1", hx).attr("y1", y - h * (0.65 - t * 0.3))
+          .attr("x2", hx + w * 0.06).attr("y2", y - h * 0.05)
+          .attr("stroke", INK).attr("stroke-width", 0.45).attr("opacity", 0.5);
+      }
+    });
   },
 
   drawFarm(g, x, y, size, rng, INK) {

@@ -267,14 +267,27 @@ window.MapStyles.moonletters = {
 
   drawHill(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
-    const w = size * (1.0 + rng() * 0.5);
-    const h = size * (0.5 + rng() * 0.3);
-    g.append("path")
-      .attr("d", `M ${x - w/2} ${y} Q ${x - w/4} ${y - h} ${x} ${y - h} Q ${x + w/4} ${y - h} ${x + w/2} ${y}`)
-      .attr("fill", "none")
-      .attr("stroke", BLUE_INK)
-      .attr("stroke-width", 0.8)
-      .attr("opacity", 0.5);
+    // Gentle cluster of 2-3 faint hillocks
+    const count = 2 + Math.floor(rng() * 2);
+    const spacing = size * 0.5;
+    const humps = [];
+    for (let i = 0; i < count; i++) {
+      humps.push({
+        cx: x + (i - (count - 1) / 2) * spacing + (rng() - 0.5) * size * 0.15,
+        w: size * (0.85 + rng() * 0.4),
+        h: size * (0.38 + rng() * 0.25),
+      });
+    }
+    humps.sort((a, b) => b.h - a.h);
+    humps.forEach(({ cx, w, h }) => {
+      const peakOff = (rng() - 0.5) * w * 0.12;
+      g.append("path")
+        .attr("d", `M ${cx - w/2} ${y} Q ${cx - w/4 + peakOff} ${y - h} ${cx + peakOff} ${y - h} Q ${cx + w/4 + peakOff} ${y - h} ${cx + w/2} ${y}`)
+        .attr("fill", "none")
+        .attr("stroke", BLUE_INK)
+        .attr("stroke-width", 0.7)
+        .attr("opacity", 0.5);
+    });
   },
 
   drawFarm(g, x, y, size, rng, colors) {
