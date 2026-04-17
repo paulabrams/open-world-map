@@ -38,6 +38,7 @@ window.MapStyles.hexcrawl = {
   render(ctx) {
     this.renderBackground(ctx);
     MapCore.renderRiver(ctx, ctx.colors.INK, 3);
+    MapCore.renderRoad(ctx, ctx.colors.INK, 2);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
     this.renderNodes(ctx);
@@ -202,6 +203,9 @@ window.MapStyles.hexcrawl = {
       "swamp": (tg, x, y, sz, rng) => style.drawSwampReeds(tg, x, y, sz, rng, INK),
       "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK),
       "plains": (tg, x, y, sz, rng) => style.drawGrassTuft(tg, x, y, sz, rng, INK),
+    });
+    MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
+      color: INK, strokeWidth: 1.0, opacity: 0.55, wobble: 2.0, className: "forest-edges",
     });
   },
 
@@ -438,51 +442,81 @@ window.MapStyles.hexcrawl = {
      ──────────────────────────────────────────────────────────── */
 
   drawMountain(g, x, y, size, rng, INK) {
-    const w = size * (0.8 + rng() * 0.4);
-    const h = size * (1.2 + rng() * 0.6);
-    const skew = (rng() - 0.5) * w * 0.15;
-
-    // Shadow side (left) - filled
-    g.append("path")
-      .attr("d", `M ${x - w/2} ${y} L ${x + skew} ${y - h} L ${x} ${y} Z`)
-      .attr("fill", INK)
-      .attr("stroke", "none");
-
-    // Light side (right) - outline only
-    g.append("path")
-      .attr("d", `M ${x} ${y} L ${x + skew} ${y - h} L ${x + w/2} ${y}`)
-      .attr("fill", "none")
-      .attr("stroke", INK)
-      .attr("stroke-width", 1.2);
+    const peakCount = 2 + Math.floor(rng() * 2);
+    const baseSpacing = size * 0.55;
+    const peaks = [];
+    for (let i = 0; i < peakCount; i++) {
+      const offsetX = (i - (peakCount - 1) / 2) * baseSpacing + (rng() - 0.5) * size * 0.15;
+      const hMul = 0.85 + rng() * 0.55;
+      peaks.push({ cx: x + offsetX, h: size * (1.0 + rng() * 0.4) * hMul });
+    }
+    // Render back-to-front so front peaks overlap back ones
+    peaks.sort((a, b) => b.h - a.h);
+    peaks.forEach(p => {
+      const w = size * (0.7 + rng() * 0.25);
+      const skew = (rng() - 0.5) * w * 0.12;
+      const px = p.cx + skew;
+      const py = y - p.h;
+      // Shadow side (left) - filled
+      g.append("path")
+        .attr("d", `M ${p.cx - w/2} ${y} L ${px} ${py} L ${p.cx} ${y} Z`)
+        .attr("fill", INK)
+        .attr("stroke", "none");
+      // Light side (right) - outline
+      g.append("path")
+        .attr("d", `M ${p.cx} ${y} L ${px} ${py} L ${p.cx + w/2} ${y}`)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 1.2)
+        .attr("stroke-linejoin", "round");
+      // Subtle ridge tick on the light side
+      const midX = (px + p.cx + w/2) / 2;
+      const midY = (py + y) / 2;
+      g.append("line")
+        .attr("x1", midX).attr("y1", midY)
+        .attr("x2", midX + w * 0.08).attr("y2", midY + w * 0.05)
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.5)
+        .attr("opacity", 0.55);
+    });
   },
 
   drawTree(g, x, y, size, rng, INK) {
-    // Egg-shaped tree: ellipse with elongated top
-    const rx = size * (0.35 + rng() * 0.15);
-    const ry = size * (0.5 + rng() * 0.2);
-    const points = [];
-    for (let a = 0; a < Math.PI * 2; a += 0.2) {
-      let r_x = rx;
-      let r_y = ry;
-      // Elongate the top (negative y in SVG)
-      if (Math.sin(a) < 0) {
-        r_y *= 1.3;
-      }
-      points.push([x + Math.cos(a) * r_x, y + Math.sin(a) * r_y]);
+    // Cluster of 3-5 overlapping egg-shaped canopies, sorted back-to-front
+    const count = 3 + Math.floor(rng() * 3);
+    const trees = [];
+    for (let i = 0; i < count; i++) {
+      trees.push({
+        tx: x + (rng() - 0.5) * size * 1.6,
+        ty: y + (rng() - 0.5) * size * 0.9,
+        sz: size * (0.55 + rng() * 0.45),
+      });
     }
+    trees.sort((a, b) => a.ty - b.ty);
     const line = d3.line().curve(d3.curveBasisClosed);
-    g.append("path")
-      .attr("d", line(points))
-      .attr("fill", INK)
-      .attr("stroke", "none")
-      .attr("opacity", 0.8);
-
-    // Small trunk line
-    g.append("line")
-      .attr("x1", x).attr("y1", y + ry * 0.6)
-      .attr("x2", x).attr("y2", y + ry * 0.6 + size * 0.3)
-      .attr("stroke", INK)
-      .attr("stroke-width", 0.8);
+    trees.forEach(t => {
+      const rx = t.sz * (0.35 + rng() * 0.15);
+      const ry = t.sz * (0.5 + rng() * 0.2);
+      const points = [];
+      for (let a = 0; a < Math.PI * 2; a += 0.2) {
+        const r_x = rx;
+        let r_y = ry;
+        if (Math.sin(a) < 0) r_y *= 1.3;
+        const wobble = 1 + (rng() - 0.5) * 0.15;
+        points.push([t.tx + Math.cos(a) * r_x * wobble, t.ty + Math.sin(a) * r_y * wobble]);
+      }
+      g.append("path")
+        .attr("d", line(points))
+        .attr("fill", INK)
+        .attr("stroke", "none")
+        .attr("opacity", 0.82);
+      g.append("line")
+        .attr("x1", t.tx).attr("y1", t.ty + ry * 0.6)
+        .attr("x2", t.tx).attr("y2", t.ty + ry * 0.6 + t.sz * 0.3)
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.7)
+        .attr("opacity", 0.85);
+    });
   },
 
   drawSwampReeds(g, x, y, size, rng, INK) {

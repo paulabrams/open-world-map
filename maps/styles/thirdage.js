@@ -42,6 +42,7 @@ window.MapStyles.thirdage = {
   render(ctx) {
     this.renderBackground(ctx);
     MapCore.renderRiver(ctx, ctx.colors.INK, 3);
+    MapCore.renderRoad(ctx, ctx.colors.INK, 2);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
     this.renderNodes(ctx);
@@ -204,6 +205,9 @@ window.MapStyles.thirdage = {
       "swamp": (tg, x, y, sz, rng) => style.drawSwampLines(tg, x, y, sz, rng, INK),
       "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK),
       "plains": (tg, x, y, sz, rng) => style.drawGrassStipple(tg, x, y, sz, rng, INK),
+    });
+    MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
+      color: INK, strokeWidth: 1.1, opacity: 0.6, wobble: 2.0, className: "forest-edges",
     });
   },
 
@@ -651,47 +655,60 @@ window.MapStyles.thirdage = {
      INK is passed explicitly so they stay pure functions.
      ──────────────────────────────────────────────────────────── */
 
-  // Dense engraving-style mountain with shadow side, ridge lines, and scree
+  // Dense engraving-style mountain range: 2-4 overlapping sharp peaks
   drawMountainRange(g, x, y, size, rng, INK) {
-    const w = size * (0.8 + rng() * 0.4);
-    const h = size * (1.3 + rng() * 0.5);
-    const skew = (rng() - 0.5) * w * 0.1;
-    const peakX = x + skew;
-    const peakY = y - h;
-
-    // Solid shadow side (left half)
-    g.append("path")
-      .attr("d", `M ${x - w/2} ${y} L ${peakX} ${peakY} L ${x} ${y} Z`)
-      .attr("fill", INK)
-      .attr("stroke", "none");
-
-    // Light side outline (right half)
-    g.append("path")
-      .attr("d", `M ${x} ${y} L ${peakX} ${peakY} L ${x + w/2} ${y}`)
-      .attr("fill", "none")
-      .attr("stroke", INK)
-      .attr("stroke-width", 1.0);
-
-    // Ridge detail lines on light side
-    const ridgeCount = 2 + Math.floor(rng() * 2);
-    for (let i = 1; i <= ridgeCount; i++) {
-      const t = i / (ridgeCount + 1);
-      const rx = peakX + (x + w/2 - peakX) * t;
-      const ry = peakY + (y - peakY) * t;
-      const lineLen = w * 0.12 * t;
-      g.append("line")
-        .attr("x1", rx - lineLen * 0.5).attr("y1", ry)
-        .attr("x2", rx + lineLen * 0.5).attr("y2", ry + lineLen * 0.4)
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.5)
-        .attr("opacity", 0.6);
+    const peakCount = 2 + Math.floor(rng() * 3);
+    const spacing = size * 0.5;
+    const peaks = [];
+    for (let i = 0; i < peakCount; i++) {
+      const offsetX = (i - (peakCount - 1) / 2) * spacing + (rng() - 0.5) * size * 0.12;
+      const hMul = 0.8 + rng() * 0.55;
+      peaks.push({ cx: x + offsetX, h: size * (1.3 + rng() * 0.4) * hMul });
     }
+    peaks.sort((a, b) => b.h - a.h);
 
-    // Scree dots at base
+    peaks.forEach(p => {
+      const w = size * (0.62 + rng() * 0.25);
+      const skew = (rng() - 0.5) * w * 0.08;
+      const peakX = p.cx + skew;
+      const peakY = y - p.h;
+
+      // Solid shadow side (left half)
+      g.append("path")
+        .attr("d", `M ${p.cx - w/2} ${y} L ${peakX} ${peakY} L ${p.cx} ${y} Z`)
+        .attr("fill", INK)
+        .attr("stroke", "none");
+
+      // Light side outline (right half)
+      g.append("path")
+        .attr("d", `M ${p.cx} ${y} L ${peakX} ${peakY} L ${p.cx + w/2} ${y}`)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 1.0)
+        .attr("stroke-linejoin", "round");
+
+      // Ridge detail lines on light side
+      const ridgeCount = 2 + Math.floor(rng() * 2);
+      for (let i = 1; i <= ridgeCount; i++) {
+        const t = i / (ridgeCount + 1);
+        const rx = peakX + (p.cx + w/2 - peakX) * t;
+        const ry = peakY + (y - peakY) * t;
+        const lineLen = w * 0.12 * t;
+        g.append("line")
+          .attr("x1", rx - lineLen * 0.5).attr("y1", ry)
+          .attr("x2", rx + lineLen * 0.5).attr("y2", ry + lineLen * 0.4)
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.5)
+          .attr("opacity", 0.6);
+      }
+    });
+
+    // Scree dots along the whole range base
+    const rangeW = (peakCount) * spacing;
     const dotCount = 5 + Math.floor(rng() * 5);
     for (let i = 0; i < dotCount; i++) {
       g.append("circle")
-        .attr("cx", x + (rng() - 0.5) * w * 1.0)
+        .attr("cx", x + (rng() - 0.5) * rangeW)
         .attr("cy", y + 1 + rng() * 4)
         .attr("r", 0.5 + rng() * 0.6)
         .attr("fill", INK)
@@ -699,36 +716,36 @@ window.MapStyles.thirdage = {
     }
   },
 
-  // Dense hatched ellipse canopy
+  // Cluster of small triangular fir trees — matches Middle Earth tree-chain style
   drawForestHatch(g, x, y, size, rng, INK) {
-    const rx = size * (0.35 + rng() * 0.15);
-    const ry = size * (0.45 + rng() * 0.15);
-
-    // Hatching lines within canopy — dense
-    const hatchCount = 7 + Math.floor(rng() * 3);
-    for (let i = 0; i < hatchCount; i++) {
-      const t = (i + 0.5) / hatchCount;
-      const ly = y - ry + t * ry * 2;
-      const dyNorm = (ly - y) / ry;
-      const hWidth = rx * Math.sqrt(Math.max(0, 1 - dyNorm * dyNorm));
-      if (hWidth > 0.5) {
-        g.append("line")
-          .attr("x1", x - hWidth).attr("y1", ly)
-          .attr("x2", x + hWidth).attr("y2", ly)
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.5)
-          .attr("opacity", 0.9);
-      }
+    const count = 4 + Math.floor(rng() * 3);
+    const spread = size * 0.7;
+    const trees = [];
+    for (let i = 0; i < count; i++) {
+      trees.push({
+        tx: x + (rng() - 0.5) * spread * 1.4,
+        ty: y + (rng() - 0.5) * spread * 0.6,
+        th: size * (0.55 + rng() * 0.3),
+      });
     }
-
-    // Outline
-    g.append("ellipse")
-      .attr("cx", x).attr("cy", y)
-      .attr("rx", rx).attr("ry", ry)
-      .attr("fill", "none")
-      .attr("stroke", INK)
-      .attr("stroke-width", 0.8)
-      .attr("opacity", 0.8);
+    // Back-to-front so nearer trees overlap further ones
+    trees.sort((a, b) => a.ty - b.ty);
+    trees.forEach(t => {
+      const tw = t.th * 0.55;
+      // Solid triangle (fill)
+      g.append("path")
+        .attr("d", `M ${t.tx - tw/2} ${t.ty + t.th*0.15} L ${t.tx} ${t.ty - t.th*0.5} L ${t.tx + tw/2} ${t.ty + t.th*0.15} Z`)
+        .attr("fill", INK)
+        .attr("stroke", "none")
+        .attr("opacity", 0.85);
+      // Tiny trunk
+      g.append("line")
+        .attr("x1", t.tx).attr("y1", t.ty + t.th * 0.15)
+        .attr("x2", t.tx).attr("y2", t.ty + t.th * 0.35)
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.6)
+        .attr("opacity", 0.8);
+    });
   },
 
   // Wavy water lines with reed stalks

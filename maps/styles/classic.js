@@ -39,6 +39,7 @@ window.MapStyles.classic = {
   render(ctx) {
     this.renderBackground(ctx);
     MapCore.renderRiver(ctx, ctx.colors.INK, 3);
+    MapCore.renderRoad(ctx, ctx.colors.INK, 2);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
     this.renderNodes(ctx);

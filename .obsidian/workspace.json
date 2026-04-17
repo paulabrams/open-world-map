@@ -11,14 +11,12 @@
             "id": "f3c517b6a0980f08",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "image",
               "state": {
-                "file": "CLAUDE.md",
-                "mode": "source",
-                "source": false
+                "file": "maps/Basilisk/Basilisk-treasuremap.svg"
               },
-              "icon": "lucide-file",
-              "title": "CLAUDE"
+              "icon": "lucide-image",
+              "title": "Basilisk-treasuremap"
             }
           }
         ]
@@ -183,6 +181,11 @@
       "bases:Create new base": false
     }
   },
-  "active": "e7192d85b362263e",
-  "lastOpenFiles": []
+  "active": "f3c517b6a0980f08",
+  "lastOpenFiles": [
+    "maps/Basilisk/Basilisk-moonletters.svg",
+    "maps/Basilisk/Basilisk-hex.svg",
+    "maps/Basilisk/Basilisk-grid.svg",
+    "CLAUDE.md"
+  ]
 }

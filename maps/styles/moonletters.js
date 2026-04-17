@@ -44,6 +44,7 @@ window.MapStyles.moonletters = {
     this.renderBackground(ctx);
     this.renderRunicBorder(ctx);
     MapCore.renderRiver(ctx, ctx.colors.BLUE_INK, 3);
+    MapCore.renderRoad(ctx, ctx.colors.BLUE_INK, 2);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
     this.renderNodes(ctx);
@@ -62,29 +63,177 @@ window.MapStyles.moonletters = {
      ──────────────────────────────────────────────────────────── */
 
   drawMountainSketch(g, x, y, size, rng, colors) {
+    const variant = Math.floor(rng() * 5);
+    if (variant === 0) {
+      this.drawPeakTwin(g, x, y, size, rng, colors);
+    } else if (variant === 1) {
+      this.drawPeakStubby(g, x, y, size, rng, colors);
+    } else if (variant === 2) {
+      this.drawPeakSingle(g, x - size * 0.7, y, size * 0.85, rng, colors);
+      this.drawPeakSingle(g, x + size * 0.6, y + 1, size * 1.0, rng, colors);
+    } else {
+      this.drawPeakSingle(g, x, y, size, rng, colors);
+    }
+  },
+
+  drawPeakSingle(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
-    const w = size * (0.7 + rng() * 0.3);
-    const h = size * (1.0 + rng() * 0.4);
-    const skew = (rng() - 0.5) * w * 0.1;
+    const w = size * (1.1 + rng() * 0.3);
+    const h = size * (1.45 + rng() * 0.4);
+    const peakShift = (rng() - 0.5) * w * 0.22;
+    const px = x + peakShift;
+    const py = y - h;
+    const bl = x - w / 2;
+    const br = x + w / 2;
+    const lcx = (bl + px) / 2 - rng() * 0.8;
+    const lcy = (y + py) / 2 + (rng() - 0.3) * 1.2;
+    const rcx = (br + px) / 2 + rng() * 0.8;
+    const rcy = (y + py) / 2 + (rng() - 0.3) * 1.2;
 
     g.append("path")
-      .attr("d", `M ${x - w/2} ${y} L ${x + skew} ${y - h} L ${x + w/2} ${y}`)
+      .attr("d", `M ${bl} ${y} Q ${lcx} ${lcy} ${px} ${py} Q ${rcx} ${rcy} ${br} ${y}`)
       .attr("fill", "none")
       .attr("stroke", BLUE_INK)
-      .attr("stroke-width", 0.8)
-      .attr("opacity", 0.7);
+      .attr("stroke-width", 1.0)
+      .attr("stroke-linecap", "round")
+      .attr("stroke-linejoin", "round")
+      .attr("opacity", 0.85);
+
+    this.drawPeakShading(g, px, py, br, y, rng, colors, 3 + Math.floor(rng() * 2));
+  },
+
+  drawPeakTwin(g, x, y, size, rng, colors) {
+    const { BLUE_INK } = colors;
+    const w = size * (1.9 + rng() * 0.4);
+    const h1 = size * (1.35 + rng() * 0.35);
+    const h2 = size * (0.95 + rng() * 0.3);
+    const leftTaller = rng() > 0.5;
+    const hL = leftTaller ? h1 : h2;
+    const hR = leftTaller ? h2 : h1;
+    const px1 = x - w * 0.24;
+    const py1 = y - hL;
+    const px2 = x + w * 0.24;
+    const py2 = y - hR;
+    const valleyX = (px1 + px2) / 2 + (rng() - 0.5) * 1.5;
+    const valleyY = y - Math.min(hL, hR) * (0.32 + rng() * 0.15);
+    const bl = x - w / 2;
+    const br = x + w / 2;
+
+    g.append("path")
+      .attr("d", `M ${bl} ${y} Q ${(bl + px1) / 2} ${(y + py1) / 2 + 0.5} ${px1} ${py1} L ${valleyX} ${valleyY} L ${px2} ${py2} Q ${(br + px2) / 2} ${(y + py2) / 2 + 0.5} ${br} ${y}`)
+      .attr("fill", "none")
+      .attr("stroke", BLUE_INK)
+      .attr("stroke-width", 1.0)
+      .attr("stroke-linecap", "round")
+      .attr("stroke-linejoin", "round")
+      .attr("opacity", 0.85);
+
+    this.drawPeakShading(g, px1, py1, valleyX, y, rng, colors, 2);
+    this.drawPeakShading(g, px2, py2, br, y, rng, colors, 2 + Math.floor(rng() * 2));
+  },
+
+  drawPeakStubby(g, x, y, size, rng, colors) {
+    const { BLUE_INK } = colors;
+    const w = size * (1.5 + rng() * 0.3);
+    const h = size * (0.9 + rng() * 0.25);
+    const peakShift = (rng() - 0.5) * w * 0.15;
+    const px = x + peakShift;
+    const py = y - h;
+    const bl = x - w / 2;
+    const br = x + w / 2;
+
+    g.append("path")
+      .attr("d", `M ${bl} ${y} Q ${(bl + px) / 2 - 1} ${(y + py) / 2 + 1} ${px} ${py} Q ${(br + px) / 2 + 1} ${(y + py) / 2 + 1} ${br} ${y}`)
+      .attr("fill", "none")
+      .attr("stroke", BLUE_INK)
+      .attr("stroke-width", 1.0)
+      .attr("stroke-linecap", "round")
+      .attr("stroke-linejoin", "round")
+      .attr("opacity", 0.85);
+
+    this.drawPeakShading(g, px, py, br, y, rng, colors, 3 + Math.floor(rng() * 2));
+  },
+
+  drawPeakShading(g, px, py, baseEndX, baseY, rng, colors, nHatch) {
+    const { BLUE_INK } = colors;
+    for (let i = 0; i < nHatch; i++) {
+      const t = 0.22 + (i / Math.max(1, nHatch - 1)) * 0.6 + (rng() - 0.5) * 0.05;
+      const startX = px + (baseEndX - px) * t;
+      const startY = py + (baseY - py) * t;
+      const endOffset = (baseEndX - px) * 0.08;
+      const endX = startX - endOffset + (rng() - 0.5) * 0.8;
+      const endY = baseY - rng() * 1.0;
+      g.append("line")
+        .attr("x1", startX).attr("y1", startY)
+        .attr("x2", endX).attr("y2", endY)
+        .attr("stroke", BLUE_INK)
+        .attr("stroke-width", 0.5)
+        .attr("opacity", 0.55);
+    }
   },
 
   drawSparseTree(g, x, y, size, rng, colors) {
+    // Cluster of 2-4 small tree glyphs — mixes Y-shape and fir shape for variety
+    const count = 2 + Math.floor(rng() * 3);
+    const trees = [];
+    for (let i = 0; i < count; i++) {
+      trees.push({
+        tx: x + (rng() - 0.5) * size * 1.3,
+        ty: y + (rng() - 0.5) * size * 0.8,
+        sz: size * (0.5 + rng() * 0.4),
+        style: rng() > 0.4 ? "y" : "fir",
+      });
+    }
+    trees.sort((a, b) => a.ty - b.ty);
+    trees.forEach(t => {
+      if (t.style === "y") this.drawTreeGlyphY(g, t.tx, t.ty, t.sz, rng, colors);
+      else this.drawTreeGlyphFir(g, t.tx, t.ty, t.sz, rng, colors);
+    });
+  },
+
+  drawTreeGlyphY(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
-    const r = size * (0.2 + rng() * 0.15);
-    g.append("circle")
-      .attr("cx", x).attr("cy", y)
-      .attr("r", r)
-      .attr("fill", "none")
-      .attr("stroke", BLUE_INK)
-      .attr("stroke-width", 0.6)
-      .attr("opacity", 0.5);
+    const h = size * (0.9 + rng() * 0.25);
+    const w = h * (0.5 + rng() * 0.2);
+    const lean = (rng() - 0.5) * w * 0.15;
+    g.append("line")
+      .attr("x1", x).attr("y1", y + h * 0.35)
+      .attr("x2", x + lean).attr("y2", y - h * 0.5)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.7)
+      .attr("stroke-linecap", "round").attr("opacity", 0.78);
+    g.append("line")
+      .attr("x1", x - w * 0.05).attr("y1", y - h * 0.05)
+      .attr("x2", x - w * 0.5).attr("y2", y - h * 0.4)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.6)
+      .attr("stroke-linecap", "round").attr("opacity", 0.72);
+    g.append("line")
+      .attr("x1", x + w * 0.05).attr("y1", y - h * 0.05)
+      .attr("x2", x + w * 0.5 + lean).attr("y2", y - h * 0.35)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.6)
+      .attr("stroke-linecap", "round").attr("opacity", 0.72);
+  },
+
+  drawTreeGlyphFir(g, x, y, size, rng, colors) {
+    const { BLUE_INK } = colors;
+    const h = size * (1.0 + rng() * 0.3);
+    const w = size * (0.5 + rng() * 0.2);
+    // Trunk
+    g.append("line")
+      .attr("x1", x).attr("y1", y + h * 0.3)
+      .attr("x2", x).attr("y2", y + h * 0.5)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.6).attr("opacity", 0.75);
+    // Two or three downward V-tiers suggesting fir fronds
+    const tiers = 2 + Math.floor(rng() * 2);
+    for (let i = 0; i < tiers; i++) {
+      const t = i / tiers;
+      const tierY = y - h * 0.55 + t * h * 0.75;
+      const tierW = w * (0.4 + t * 0.6);
+      g.append("path")
+        .attr("d", `M ${x - tierW / 2} ${tierY + 2} L ${x} ${tierY - 3} L ${x + tierW / 2} ${tierY + 2}`)
+        .attr("fill", "none")
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.6)
+        .attr("stroke-linejoin", "round").attr("opacity", 0.75);
+    }
   },
 
   drawSwampMark(g, x, y, size, rng, colors) {
@@ -175,6 +324,9 @@ window.MapStyles.moonletters = {
       "swamp": (tg, x, y, sz, rng) => style.drawSwampMark(tg, x, y, sz, rng, colors),
       "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, colors),
       "plains": (tg, x, y, sz, rng) => style.drawDesolationDots(tg, x, y, sz, rng, colors),
+    });
+    MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
+      color: colors.BLUE_FAINT, strokeWidth: 0.7, opacity: 0.5, wobble: 2.5, className: "forest-edges",
     });
   },
 
@@ -447,7 +599,7 @@ window.MapStyles.moonletters = {
 
   renderRunicBorder(ctx) {
     const { g, bounds, colors, mulberry32 } = ctx;
-    const { BLUE_INK, BLUE_LIGHT } = colors;
+    const { BLUE_INK, BLUE_LIGHT, RED_INK } = colors;
     const pad = 50;
     const x = bounds.minX - pad;
     const y = bounds.minY - pad;
@@ -481,79 +633,68 @@ window.MapStyles.moonletters = {
         .attr("stroke", BLUE_INK).attr("stroke-width", 1.0);
     });
 
-    // Runic decoration along left side
-    const runeY = y + 30;
-    const runeH = h - 60;
-    const runeXL = x - 15;
-    const runeXR = x + w + 15;
+    // Small red runic block, upper-left (outside border) — echoes Thror's Map
+    this.drawRuneBlock(g, {
+      x: x - 62, y: y + 18,
+      cols: 4, rows: 5,
+      cellW: 12, cellH: 18,
+      color: RED_INK, seed: 42, strokeWidth: 0.9, opacity: 0.75,
+    }, mulberry32);
 
-    const self = this;
-    function drawRuneColumn(runeX, seed) {
-      const r = mulberry32(seed);
-      for (let i = 0; i < 23; i++) {
-        const ry = runeY + (i / 23) * runeH;
-        const rw = 10 + r() * 14;
-        const rh = 16 + r() * 6;
-        g.append("line")
-          .attr("x1", runeX).attr("y1", ry)
-          .attr("x2", runeX).attr("y2", ry + rh)
-          .attr("stroke", BLUE_INK).attr("stroke-width", 1.5).attr("opacity", 0.8);
-        if (r() > 0.25) {
-          const cy = ry + rh * (0.3 + r() * 0.4);
-          g.append("line")
-            .attr("x1", runeX - rw * 0.6).attr("y1", cy)
-            .attr("x2", runeX + rw * 0.6).attr("y2", cy - 5)
-            .attr("stroke", BLUE_INK).attr("stroke-width", 1.2).attr("opacity", 0.8);
-        }
-        if (r() > 0.4) {
-          g.append("line")
-            .attr("x1", runeX).attr("y1", ry)
-            .attr("x2", runeX + rw * 0.5).attr("y2", ry + rh * 0.5)
-            .attr("stroke", BLUE_INK).attr("stroke-width", 1.2).attr("opacity", 0.8);
-        }
-        if (r() > 0.6) {
-          g.append("line")
-            .attr("x1", runeX - rw * 0.3).attr("y1", ry + rh)
-            .attr("x2", runeX + rw * 0.4).attr("y2", ry + rh * 0.6)
-            .attr("stroke", BLUE_INK).attr("stroke-width", 1.1).attr("opacity", 0.8);
-        }
+    // Larger blue runic block, right-middle (outside border)
+    this.drawRuneBlock(g, {
+      x: x + w + 18, y: y + h * 0.32,
+      cols: 5, rows: 6,
+      cellW: 14, cellH: 20,
+      color: BLUE_INK, seed: 271, strokeWidth: 1.1, opacity: 0.8,
+    }, mulberry32);
+  },
+
+  drawRuneBlock(g, opts, mulberry32) {
+    const { x, y, cols, rows, cellW, cellH, color, seed, strokeWidth, opacity } = opts;
+    const r = mulberry32(seed);
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const cx = x + col * cellW + cellW / 2;
+        const cy = y + row * cellH;
+        this.drawRuneGlyph(g, cx, cy, cellW, cellH, r, color, strokeWidth, opacity);
       }
     }
+  },
 
-    drawRuneColumn(runeXL, 42);
-    drawRuneColumn(runeXL - 20, 99);
-    drawRuneColumn(runeXR, 137);
-
-    // Runes along the bottom
-    function drawRuneRow(runeYPos, seed) {
-      const r = mulberry32(seed);
-      const runeW = w - 60;
-      const startX = x + 30;
-      for (let i = 0; i < 14; i++) {
-        const rx = startX + (i / 14) * runeW;
-        const rw = 10 + r() * 14;
-        const rh = 16 + r() * 6;
-        g.append("line")
-          .attr("x1", rx).attr("y1", runeYPos)
-          .attr("x2", rx).attr("y2", runeYPos + rh)
-          .attr("stroke", BLUE_INK).attr("stroke-width", 1.5).attr("opacity", 0.8);
-        if (r() > 0.3) {
-          const cy = runeYPos + rh * (0.3 + r() * 0.4);
-          g.append("line")
-            .attr("x1", rx - rw * 0.5).attr("y1", cy)
-            .attr("x2", rx + rw * 0.5).attr("y2", cy - 4)
-            .attr("stroke", BLUE_INK).attr("stroke-width", 1.2).attr("opacity", 0.8);
-        }
-        if (r() > 0.5) {
-          g.append("line")
-            .attr("x1", rx).attr("y1", runeYPos)
-            .attr("x2", rx + rw * 0.4).attr("y2", runeYPos + rh * 0.5)
-            .attr("stroke", BLUE_INK).attr("stroke-width", 1.1).attr("opacity", 0.8);
-        }
-      }
+  drawRuneGlyph(g, cx, cy, w, h, rand, color, strokeWidth, opacity) {
+    const glyphH = h * 0.78;
+    // Main vertical stave
+    g.append("line")
+      .attr("x1", cx).attr("y1", cy)
+      .attr("x2", cx).attr("y2", cy + glyphH)
+      .attr("stroke", color).attr("stroke-width", strokeWidth).attr("opacity", opacity);
+    // Upper diagonal (common)
+    if (rand() > 0.15) {
+      const ty = cy + glyphH * (0.1 + rand() * 0.25);
+      const dir = rand() > 0.5 ? 1 : -1;
+      g.append("line")
+        .attr("x1", cx).attr("y1", ty)
+        .attr("x2", cx + w * 0.35 * dir).attr("y2", ty - glyphH * 0.1)
+        .attr("stroke", color).attr("stroke-width", strokeWidth * 0.9).attr("opacity", opacity);
     }
-
-    drawRuneRow(y + h + 8, 271);
+    // Crossbar or X (fairly common)
+    if (rand() > 0.35) {
+      const ty = cy + glyphH * (0.35 + rand() * 0.2);
+      g.append("line")
+        .attr("x1", cx - w * 0.35).attr("y1", ty + 1)
+        .attr("x2", cx + w * 0.35).attr("y2", ty - 1)
+        .attr("stroke", color).attr("stroke-width", strokeWidth * 0.85).attr("opacity", opacity);
+    }
+    // Lower diagonal (less common)
+    if (rand() > 0.55) {
+      const ty = cy + glyphH * (0.55 + rand() * 0.2);
+      const dir = rand() > 0.5 ? 1 : -1;
+      g.append("line")
+        .attr("x1", cx).attr("y1", ty)
+        .attr("x2", cx + w * 0.3 * dir).attr("y2", ty + glyphH * 0.15)
+        .attr("stroke", color).attr("stroke-width", strokeWidth * 0.85).attr("opacity", opacity);
+    }
   },
 
   renderScaleBar(ctx) {
@@ -872,35 +1013,79 @@ window.MapStyles.moonletters = {
   },
 
   renderCompass(ctx) {
-    const { g, bounds, colors, FONT } = ctx;
-    const { BLUE_INK } = colors;
-    const x = bounds.maxX + 15;
-    const y = bounds.minY - 15;
+    const { g, bounds, colors } = ctx;
+    const { BLUE_INK, RED_INK } = colors;
+    const size = 22;
+    const x = bounds.maxX + size + 16;
+    const y = bounds.minY - size - 6;
 
     const cg = g.append("g")
-      .attr("transform", `translate(${x}, ${y})`)
-      .attr("opacity", 0.5);
+      .attr("transform", `translate(${x}, ${y})`);
 
-    const size = 15;
+    // Outer circle
+    cg.append("circle")
+      .attr("cx", 0).attr("cy", 0).attr("r", size)
+      .attr("fill", "none")
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.9).attr("opacity", 0.8);
 
-    cg.append("line").attr("x1", 0).attr("y1", -size).attr("x2", 0).attr("y2", size)
-      .attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
-    cg.append("line").attr("x1", -size * 0.6).attr("y1", 0).attr("x2", size * 0.6).attr("y2", 0)
-      .attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+    // Inner ring
+    cg.append("circle")
+      .attr("cx", 0).attr("cy", 0).attr("r", size * 0.35)
+      .attr("fill", "none")
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.7).attr("opacity", 0.75);
 
-    // North arrowhead
-    cg.append("path")
-      .attr("d", `M 0 ${-size} L 2.5 ${-size + 5} L -2.5 ${-size + 5} Z`)
-      .attr("fill", BLUE_INK);
+    // Center dot
+    cg.append("circle")
+      .attr("cx", 0).attr("cy", 0).attr("r", 1.5)
+      .attr("fill", BLUE_INK).attr("opacity", 0.8);
 
-    // N
-    cg.append("text")
-      .attr("x", 0).attr("y", -size - 4)
-      .attr("text-anchor", "middle")
-      .attr("font-family", "'Palatino Linotype', serif")
-      .attr("font-size", "9px")
-      .attr("font-style", "italic")
-      .attr("fill", BLUE_INK)
-      .text("N");
+    // Four cardinal rays with filled half-diamond pointers (N/E/S/W)
+    const rays = [
+      { dx: 0, dy: -1, label: "N", lx: 0, ly: -size - 5, tAnchor: "middle" },
+      { dx: 1, dy: 0, label: "E", lx: size + 5, ly: 3, tAnchor: "start" },
+      { dx: 0, dy: 1, label: "S", lx: 0, ly: size + 10, tAnchor: "middle" },
+      { dx: -1, dy: 0, label: "W", lx: -size - 5, ly: 3, tAnchor: "end" },
+    ];
+
+    rays.forEach(({ dx, dy, label, lx, ly, tAnchor }) => {
+      const tipX = dx * size;
+      const tipY = dy * size;
+      const baseX = dx * size * 0.35;
+      const baseY = dy * size * 0.35;
+      // Perpendicular for diamond width
+      const px = -dy * size * 0.1;
+      const py = dx * size * 0.1;
+      // Filled half of the pointer (solid fill like Thror's)
+      cg.append("path")
+        .attr("d", `M ${baseX} ${baseY} L ${tipX} ${tipY} L ${(baseX + tipX) / 2 + px} ${(baseY + tipY) / 2 + py} Z`)
+        .attr("fill", BLUE_INK).attr("opacity", 0.85);
+      // Outline of the other half
+      cg.append("path")
+        .attr("d", `M ${baseX} ${baseY} L ${tipX} ${tipY} L ${(baseX + tipX) / 2 - px} ${(baseY + tipY) / 2 - py} Z`)
+        .attr("fill", "none")
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.7).attr("opacity", 0.8);
+      // Red label
+      cg.append("text")
+        .attr("x", lx).attr("y", ly)
+        .attr("text-anchor", tAnchor)
+        .attr("font-family", "'Palatino Linotype', serif")
+        .attr("font-size", "11px")
+        .attr("font-style", "italic")
+        .attr("fill", RED_INK).attr("opacity", 0.9)
+        .text(label);
+    });
+
+    // Minor tick marks on outer circle between cardinals
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI / 4) + Math.PI / 8;
+      const x1 = Math.cos(a) * size;
+      const y1 = Math.sin(a) * size;
+      const x2 = Math.cos(a) * (size - 3);
+      const y2 = Math.sin(a) * (size - 3);
+      cg.append("line")
+        .attr("x1", x1).attr("y1", y1)
+        .attr("x2", x2).attr("y2", y2)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.5).attr("opacity", 0.65);
+    }
   },
 };

@@ -109,9 +109,9 @@
       "terrain": "forest",
       "visible": true,
       "description": "Hot spring west of the Trade Road in the Old Forest. Therapeutic mud heals 1 Heart/hour. Former Mud Tooth Porc territory.",
-      "x_hint": -0.75,
-      "y_hint": -3.03,
-      "hex": "0906"
+      "x_hint": -1.5,
+      "y_hint": -6.06,
+      "hex": "0803"
     },
     {
       "id": "pjork-choppe-hille",
@@ -143,8 +143,8 @@
       "visible": true,
       "description": "SE of Mud Wallow, 2 hours north of Kobold Crevasse. Crag King (barrow wight) on bone throne with 8 skeleton guards. Level 5 encounter.",
       "x_hint": 0.0,
-      "y_hint": -4.33,
-      "hex": "1005"
+      "y_hint": -5.2,
+      "hex": "1004"
     },
     {
       "id": "kobold-crevasse",
@@ -164,9 +164,9 @@
       "terrain": "forest",
       "visible": true,
       "description": "Old-growth forest between Pjörk Choppe Hille and Thornespire Keep. Silver-bark trees with faces. Time differential: minutes inside = hours outside. Also called \"The Garden.\"",
-      "x_hint": -1.5,
-      "y_hint": -4.33,
-      "hex": "0805"
+      "x_hint": -2.25,
+      "y_hint": -6.5,
+      "hex": "0702"
     },
     {
       "id": "thornespire-keep",
@@ -176,8 +176,8 @@
       "visible": true,
       "description": "Stone fortress on a hilltop in the Old Forest. ~1.5 days from BC (1 day north to forest, 4 hours west). Outer Bailey, Traveler's Inn, Chapel of Muir. The Castellan governs from the Inner Bailey.",
       "x_hint": -2.25,
-      "y_hint": -3.9,
-      "hex": "0705"
+      "y_hint": -4.76,
+      "hex": "0704"
     },
     {
       "id": "ravens-perch",
@@ -186,9 +186,9 @@
       "terrain": "forest",
       "visible": true,
       "description": "Abandoned watchtower in the Old Forest, accessed from the Trade Road north of the Thornespire Keep turnoff. Party rescued the Castellan's missing scouts here.",
-      "x_hint": -0.75,
-      "y_hint": -4.76,
-      "hex": "0904"
+      "x_hint": -1.5,
+      "y_hint": -6.93,
+      "hex": "0802"
     },
     {
       "id": "the-swamp",
@@ -273,10 +273,10 @@
       "point_type": "waypoint",
       "terrain": "forest",
       "visible": true,
-      "description": "The Trade Road continues north through the Old Forest beyond explored territory.",
-      "x_hint": 0.0,
-      "y_hint": -4.33,
-      "hex": "1005"
+      "description": "The Old Northern Trade Road exits the known map to the north through hex 1000. The road continues through 1004, 1003, 1002, 1001, 1000 and beyond into unexplored territory.",
+      "x_hint": -1.5,
+      "y_hint": -8.66,
+      "hex": "0800"
     },
     {
       "id": "south-pass",
@@ -310,36 +310,20 @@
       "x_hint": -2.25,
       "y_hint": -2.17,
       "hex": "0707"
+    },
+    {
+      "id": "basilisk-spiderwood",
+      "name": "The Basilisk Spiderwood",
+      "point_type": "lair",
+      "terrain": "forest",
+      "visible": true,
+      "description": "A deep wood in the Old Forest, home to the basilisk (the campaign's namesake creature) and overlapping with giant spider nests. The Mud Tooth Porcs call the basilisk's clearing 'the quiet ground'. Petrified stone figures have been found in the spider webs — the basilisk was there before the spiders.",
+      "x_hint": -0.75,
+      "y_hint": -5.63,
+      "hex": "0903"
     }
   ],
   "links": [
-    {
-      "source": "blackwater-crossing",
-      "target": "south-road-mountain-watch",
-      "name": "Old Northern Trade Road",
-      "path_type": "road",
-      "terrain_difficulty": "easy",
-      "visible": true,
-      "days": 1.5
-    },
-    {
-      "source": "south-road-mountain-watch",
-      "target": "serpents-pass",
-      "name": "Old Northern Trade Road",
-      "path_type": "road",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.5
-    },
-    {
-      "source": "serpents-pass",
-      "target": "south-pass",
-      "name": "Old Northern Trade Road",
-      "path_type": "road",
-      "terrain_difficulty": "perilous",
-      "visible": true,
-      "days": 1.0
-    },
     {
       "source": "pjork-choppe-hille",
       "target": "spider-cave",
@@ -348,61 +332,6 @@
       "terrain_difficulty": "tough",
       "visible": true,
       "days": 0.1
-    },
-    {
-      "source": "pjork-choppe-hille",
-      "target": "fae-glade",
-      "name": "Path Through the Wood",
-      "path_type": "wilderness",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.5
-    },
-    {
-      "source": "fae-glade",
-      "target": "thornespire-keep",
-      "name": "Forest Path to Thornespire",
-      "path_type": "wilderness",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.5
-    },
-    {
-      "source": "mud-wallow",
-      "target": "crag-cairn",
-      "name": "Forest Path to Crag Cairn",
-      "path_type": "wilderness",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.25
-    },
-    {
-      "source": "crag-cairn",
-      "target": "kobold-crevasse",
-      "name": "Path to the Kobold Crevasse",
-      "path_type": "wilderness",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.17
-    },
-    {
-      "source": "north-road",
-      "target": "ravens-perch",
-      "name": "Forest Trail to Raven's Perch",
-      "path_type": "trail",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.25
-    },
-    {
-      "source": "blackwater-crossing",
-      "target": "mistwood-glen",
-      "name": "Trail to Mistwood Glen (via 1012)",
-      "path_type": "trail",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 2.5,
-      "description": "Trail from BC southwest through hex 1012 to Mistwood Glen in 0912."
     },
     {
       "source": "serpents-pass",
@@ -468,28 +397,10 @@
       "days": 0
     },
     {
-      "source": "mud-wallow",
-      "target": "northern-warding-stone",
-      "name": "Path to the Warding Stone",
-      "days": 0.1,
-      "path_type": "trail",
-      "terrain_difficulty": "tough",
-      "visible": true
-    },
-    {
       "source": "southern-warding-stone",
       "target": "northern-warding-stone",
       "name": "Vampire Ward Line",
       "path_type": "wilderness",
-      "terrain_difficulty": "tough",
-      "visible": true
-    },
-    {
-      "source": "north-road",
-      "target": "blackwater-crossing",
-      "name": "Old Northern Trade Road",
-      "days": 1.0,
-      "path_type": "road",
       "terrain_difficulty": "tough",
       "visible": true
     },
@@ -500,42 +411,6 @@
       "days": 0.5,
       "path_type": "trail",
       "terrain_difficulty": "easy",
-      "visible": true
-    },
-    {
-      "source": "north-road",
-      "target": "thornespire-keep",
-      "name": "Road to Thornespire Keep (via Fae Glade)",
-      "days": 0.5,
-      "path_type": "road",
-      "terrain_difficulty": "tough",
-      "visible": true
-    },
-    {
-      "source": "north-road",
-      "target": "pjork-choppe-hille",
-      "name": "Forest Track to Pjörk Choppe Hille",
-      "days": 0.5,
-      "path_type": "wilderness",
-      "terrain_difficulty": "tough",
-      "visible": true
-    },
-    {
-      "source": "north-road",
-      "target": "kobold-crevasse",
-      "name": "Trail to the Kobold Crevasse",
-      "days": 0.5,
-      "path_type": "wilderness",
-      "terrain_difficulty": "tough",
-      "visible": true
-    },
-    {
-      "source": "north-road",
-      "target": "mud-wallow",
-      "name": "Trail to the Mud Wallow",
-      "days": 0.25,
-      "path_type": "trail",
-      "terrain_difficulty": "tough",
       "visible": true
     }
   ],
@@ -550,7 +425,7 @@
     "0805": "forested-hills",
     "0806": "forested-hills",
     "0807": "forest",
-    "0904": "forested-hills",
+    "0904": "forest",
     "0905": "forested-hills",
     "0906": "forest",
     "1004": "forest",
@@ -612,7 +487,14 @@
     "1311": "plains",
     "1412": "plains",
     "1613": "plains",
-    "0504": "swamp"
+    "0504": "swamp",
+    "0903": "forest",
+    "1000": "forest",
+    "1001": "forest",
+    "1002": "forest",
+    "1003": "forest",
+    "0900": "forest",
+    "0901": "forest"
   },
   "river_path": [
     "0503",
@@ -625,5 +507,25 @@
     "1311",
     "1412",
     "1613"
+  ],
+  "road_path": [
+    [
+      "0800",
+      "0904",
+      "1007",
+      "1008",
+      "1009",
+      "1010",
+      "1011",
+      "1112",
+      "1113",
+      "1114",
+      "1215",
+      "1216"
+    ],
+    [
+      "0704",
+      "0904"
+    ]
   ]
 }

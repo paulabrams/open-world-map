@@ -41,6 +41,7 @@ window.MapStyles.wilderland = {
     this.renderBackground(ctx);
     this.renderBorder(ctx);
     MapCore.renderRiver(ctx, ctx.colors.BLUE, 4);
+    MapCore.renderRoad(ctx, ctx.colors.INK, 2);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
     this.renderNodes(ctx);
@@ -246,75 +247,96 @@ window.MapStyles.wilderland = {
     // --- Local terrain symbol helper functions ---
 
     function drawMountain(tg, x, y, size, rng) {
-      const w = size * (0.5 + rng() * 0.3);  // Narrower than before
-      const h = size * (1.8 + rng() * 0.8);  // Taller, more peaked
-      const skew = (rng() - 0.5) * w * 0.08;
-
-      // Slight wobble on the peak
-      const peakX = x + skew;
-      const peakY = y - h;
-      const wobble = w * 0.03;
-
-      // Left slope — slight curve for hand-drawn feel
-      tg.append("path")
-        .attr("d", `M ${x - w/2} ${y} Q ${x - w/4 + (rng()-0.5)*wobble} ${y - h*0.5} ${peakX} ${peakY}`)
-        .attr("fill", "none")
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.9)
-        .attr("stroke-linecap", "round");
-
-      // Right slope
-      tg.append("path")
-        .attr("d", `M ${peakX} ${peakY} Q ${x + w/4 + (rng()-0.5)*wobble} ${y - h*0.5} ${x + w/2} ${y}`)
-        .attr("fill", "none")
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.9)
-        .attr("stroke-linecap", "round");
-
-      // 2-3 very short texture dashes on the right side
-      const dashCount = 1 + Math.floor(rng() * 2);
-      for (let i = 0; i < dashCount; i++) {
-        const t = 0.3 + i * 0.2 + rng() * 0.1;
-        const dx = peakX + (x + w/2 - peakX) * t;
-        const dy = peakY + (y - peakY) * t;
-        const dashLen = w * 0.12;
-        tg.append("line")
-          .attr("x1", dx).attr("y1", dy)
-          .attr("x2", dx + dashLen).attr("y2", dy)
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.5)
-          .attr("opacity", 0.5);
+      // Draw a tight ridge of 2-4 narrow peaks, sorted tallest-back to shortest-front
+      const peakCount = 2 + Math.floor(rng() * 3);
+      const spacing = size * 0.35;
+      const peaks = [];
+      for (let i = 0; i < peakCount; i++) {
+        const offsetX = (i - (peakCount - 1) / 2) * spacing + (rng() - 0.5) * size * 0.12;
+        const hMul = 0.75 + rng() * 0.55;
+        peaks.push({ cx: x + offsetX, h: size * (1.7 + rng() * 0.6) * hMul });
       }
+      peaks.sort((a, b) => b.h - a.h);
+      peaks.forEach(p => {
+        const w = size * (0.42 + rng() * 0.2);
+        const skew = (rng() - 0.5) * w * 0.08;
+        const peakX = p.cx + skew;
+        const peakY = y - p.h;
+        const wobble = w * 0.03;
+        // Left slope
+        tg.append("path")
+          .attr("d", `M ${p.cx - w/2} ${y} Q ${p.cx - w/4 + (rng()-0.5)*wobble} ${y - p.h*0.5} ${peakX} ${peakY}`)
+          .attr("fill", "none")
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.9)
+          .attr("stroke-linecap", "round");
+        // Right slope
+        tg.append("path")
+          .attr("d", `M ${peakX} ${peakY} Q ${p.cx + w/4 + (rng()-0.5)*wobble} ${y - p.h*0.5} ${p.cx + w/2} ${y}`)
+          .attr("fill", "none")
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.9)
+          .attr("stroke-linecap", "round");
+        // 1-2 short texture dashes on right side
+        const dashCount = 1 + Math.floor(rng() * 2);
+        for (let i = 0; i < dashCount; i++) {
+          const t = 0.3 + i * 0.2 + rng() * 0.1;
+          const dx = peakX + (p.cx + w/2 - peakX) * t;
+          const dy = peakY + (y - peakY) * t;
+          const dashLen = w * 0.12;
+          tg.append("line")
+            .attr("x1", dx).attr("y1", dy)
+            .attr("x2", dx + dashLen).attr("y2", dy)
+            .attr("stroke", INK)
+            .attr("stroke-width", 0.5)
+            .attr("opacity", 0.5);
+        }
+      });
     }
 
     function drawTreeCanopy(tg, x, y, size, rng) {
-      // Round canopy blob — top-down view, like in the Wilderland map
-      const r = size * (0.45 + rng() * 0.25);
-      // Slightly irregular circle using a few control points
-      const wobble = r * 0.15;
-      const points = [];
-      const steps = 8;
-      for (let i = 0; i < steps; i++) {
-        const a = (i / steps) * Math.PI * 2;
-        const wr = r + (rng() - 0.5) * wobble * 2;
-        points.push([x + Math.cos(a) * wr, y + Math.sin(a) * wr]);
+      // Cluster of 4-7 overlapping round canopy blobs — matches Wilderland reference
+      const count = 4 + Math.floor(rng() * 4);
+      const spread = size * 1.1;
+      const canopies = [];
+      for (let i = 0; i < count; i++) {
+        canopies.push({
+          cx: x + (rng() - 0.5) * spread,
+          cy: y + (rng() - 0.5) * spread * 0.7,
+          cr: size * (0.3 + rng() * 0.22),
+        });
       }
-      const line = d3.line().curve(d3.curveBasisClosed);
-
-      // Outlined canopy circle — distinct open circles like the Wilderland reference
-      tg.append("path")
-        .attr("d", line(points))
-        .attr("fill", "none")
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.8)
-        .attr("opacity", 0.8);
-
-      // Tiny center dot for texture
-      tg.append("circle")
-        .attr("cx", x).attr("cy", y)
-        .attr("r", 1)
-        .attr("fill", INK)
-        .attr("opacity", 0.6);
+      canopies.sort((a, b) => a.cy - b.cy);
+      const lineGen = d3.line().curve(d3.curveBasisClosed);
+      canopies.forEach(c => {
+        const wobble = c.cr * 0.18;
+        const steps = 8;
+        const points = [];
+        for (let i = 0; i < steps; i++) {
+          const a = (i / steps) * Math.PI * 2;
+          const wr = c.cr + (rng() - 0.5) * wobble * 2;
+          points.push([c.cx + Math.cos(a) * wr, c.cy + Math.sin(a) * wr]);
+        }
+        // Parchment fill to mask overlapping blobs, then ink outline
+        tg.append("path")
+          .attr("d", lineGen(points))
+          .attr("fill", "#f4e8d1")
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.8)
+          .attr("opacity", 0.95);
+        // Tiny interior mark — crow's-foot / tuft
+        if (rng() > 0.4) {
+          const markLen = c.cr * 0.25;
+          tg.append("line")
+            .attr("x1", c.cx - markLen).attr("y1", c.cy)
+            .attr("x2", c.cx + markLen).attr("y2", c.cy)
+            .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.55);
+          tg.append("line")
+            .attr("x1", c.cx).attr("y1", c.cy - markLen * 0.6)
+            .attr("x2", c.cx).attr("y2", c.cy + markLen * 0.6)
+            .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.55);
+        }
+      });
     }
 
     function drawSwampReeds(tg, x, y, size, rng) {
@@ -493,6 +515,9 @@ window.MapStyles.wilderland = {
       "swamp": drawSwampReeds,
       "farmland": drawFarm,
       "plains": drawGrassTuft,
+    });
+    MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
+      color: INK, strokeWidth: 1.0, opacity: 0.5, wobble: 2.2, className: "forest-edges",
     });
   },
 
