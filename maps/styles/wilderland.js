@@ -41,6 +41,7 @@ window.MapStyles.wilderland = {
     this.renderBackground(ctx);
     this.renderBorder(ctx);
     MapCore.renderRiver(ctx, ctx.colors.BLUE, 4);
+    MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.0, bridgeLen: 14 });
     MapCore.renderRoad(ctx, ctx.colors.INK, 2);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
@@ -253,12 +254,12 @@ window.MapStyles.wilderland = {
       const peaks = [];
       for (let i = 0; i < peakCount; i++) {
         const offsetX = (i - (peakCount - 1) / 2) * spacing + (rng() - 0.5) * size * 0.12;
-        const hMul = 0.75 + rng() * 0.55;
-        peaks.push({ cx: x + offsetX, h: size * (1.7 + rng() * 0.6) * hMul });
+        const hMul = 0.75 + rng() * 0.45;
+        peaks.push({ cx: x + offsetX, h: size * (0.9 + rng() * 0.25) * hMul });
       }
       peaks.sort((a, b) => b.h - a.h);
       peaks.forEach(p => {
-        const w = size * (0.42 + rng() * 0.2);
+        const w = size * (0.6 + rng() * 0.25);
         const skew = (rng() - 0.5) * w * 0.08;
         const peakX = p.cx + skew;
         const peakY = y - p.h;
@@ -340,52 +341,67 @@ window.MapStyles.wilderland = {
     }
 
     function drawSwampReeds(tg, x, y, size, rng) {
-      // Wavy blue water lines
-      for (let i = 0; i < 3; i++) {
-        const ly = y + i * size * 0.3;
-        const lx = x - size * 0.5;
-        const d = `M ${lx} ${ly} Q ${lx + size * 0.25} ${ly - size * 0.12} ${lx + size * 0.5} ${ly} Q ${lx + size * 0.75} ${ly + size * 0.12} ${lx + size} ${ly}`;
+      // Layered wavy blue water lines
+      const ripples = 4 + Math.floor(rng() * 2);
+      for (let i = 0; i < ripples; i++) {
+        const ly = y - size * 0.3 + i * size * 0.22 + (rng() - 0.5) * 1.5;
+        const w = size * (0.75 + rng() * 0.4);
+        const lx = x - w / 2 + (rng() - 0.5) * 2;
+        const amp = size * (0.08 + rng() * 0.05);
+        const d = `M ${lx} ${ly} Q ${lx + w * 0.25} ${ly - amp} ${lx + w * 0.5} ${ly} Q ${lx + w * 0.75} ${ly + amp} ${lx + w} ${ly}`;
         tg.append("path")
           .attr("d", d)
           .attr("fill", "none")
           .attr("stroke", BLUE)
-          .attr("stroke-width", 0.8)
+          .attr("stroke-width", 0.7)
           .attr("opacity", 0.6);
       }
-      // Reed stalks in ink
-      for (let i = 0; i < 3; i++) {
-        const rx = x - size * 0.3 + rng() * size * 0.6;
-        const ry = y - size * 0.2;
-        tg.append("line")
-          .attr("x1", rx).attr("y1", ry)
-          .attr("x2", rx + (rng() - 0.5) * 2).attr("y2", ry - size * 0.6)
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.7);
-        // Small oval bulrush top
-        tg.append("ellipse")
-          .attr("cx", rx + (rng() - 0.5) * 1).attr("cy", ry - size * 0.6 - 2)
-          .attr("rx", 1.2).attr("ry", 2)
-          .attr("fill", INK)
-          .attr("opacity", 0.8);
+      // Reed tufts with cattails
+      const tufts = 2 + Math.floor(rng() * 2);
+      for (let t = 0; t < tufts; t++) {
+        const cx = x + (rng() - 0.5) * size * 0.9;
+        const baseY = y - size * 0.1;
+        const stalks = 2 + Math.floor(rng() * 3);
+        for (let i = 0; i < stalks; i++) {
+          const rx = cx + (i - (stalks - 1) / 2) * 1.4 + (rng() - 0.5) * 0.6;
+          const topLean = (rng() - 0.5) * 1.5;
+          const topY = baseY - size * (0.4 + rng() * 0.2);
+          tg.append("line")
+            .attr("x1", rx).attr("y1", baseY)
+            .attr("x2", rx + topLean).attr("y2", topY)
+            .attr("stroke", INK).attr("stroke-width", 0.6).attr("opacity", 0.75);
+          if (rng() > 0.4) {
+            tg.append("ellipse")
+              .attr("cx", rx + topLean).attr("cy", topY - 1.5)
+              .attr("rx", 0.8).attr("ry", 1.6)
+              .attr("fill", INK).attr("opacity", 0.75);
+          }
+        }
       }
     }
 
     function drawGrassTuft(tg, x, y, size, rng) {
-      // Looser, more organic grass strokes
-      const blades = 4 + Math.floor(rng() * 2);
-      for (let i = 0; i < blades; i++) {
-        const angle = -Math.PI / 2 + (i - blades/2) * 0.35 + (rng() - 0.5) * 0.3;
-        const len = size * (0.3 + rng() * 0.35);
-        const tx = x + Math.cos(angle) * len;
-        const ty = y + Math.sin(angle) * len;
-        const cx = x + Math.cos(angle) * len * 0.5 + (rng() - 0.5) * 4;
-        const cy = y + Math.sin(angle) * len * 0.5;
-        tg.append("path")
-          .attr("d", `M ${x} ${y} Q ${cx} ${cy} ${tx} ${ty}`)
-          .attr("fill", "none")
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.6)
-          .attr("opacity", 0.35);
+      // Multiple scattered tufts — mimics Tolkien's sparse field-and-moor pattern
+      const tufts = 3 + Math.floor(rng() * 3);
+      for (let t = 0; t < tufts; t++) {
+        const tx0 = x + (rng() - 0.5) * size * 1.3;
+        const ty0 = y + (rng() - 0.5) * size * 0.75;
+        const blades = 3 + Math.floor(rng() * 3);
+        const lean = (rng() - 0.5) * 0.4;
+        for (let i = 0; i < blades; i++) {
+          const angle = -Math.PI / 2 + lean + (i - blades / 2) * 0.3 + (rng() - 0.5) * 0.2;
+          const len = size * (0.2 + rng() * 0.2);
+          const txe = tx0 + Math.cos(angle) * len;
+          const tye = ty0 + Math.sin(angle) * len;
+          const cxe = tx0 + Math.cos(angle) * len * 0.5 + (rng() - 0.5) * 2;
+          const cye = ty0 + Math.sin(angle) * len * 0.5;
+          tg.append("path")
+            .attr("d", `M ${tx0} ${ty0} Q ${cxe} ${cye} ${txe} ${tye}`)
+            .attr("fill", "none")
+            .attr("stroke", INK)
+            .attr("stroke-width", 0.55)
+            .attr("opacity", 0.4);
+        }
       }
     }
 
@@ -487,37 +503,61 @@ window.MapStyles.wilderland = {
     }
 
     function drawFarm(tg, x, y, size, rng) {
-      // Small farmhouse (tiny rectangle with peaked roof)
-      const bw = 3 + rng() * 2;
-      const bh = 2 + rng() * 1.5;
-      tg.append("rect")
-        .attr("x", x - bw/2).attr("y", y - bh/2)
-        .attr("width", bw).attr("height", bh)
-        .attr("fill", "none")
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.5)
-        .attr("opacity", 0.4);
-      // Peaked roof
-      tg.append("path")
-        .attr("d", `M ${x - bw/2 - 0.5} ${y - bh/2} L ${x} ${y - bh/2 - 2} L ${x + bw/2 + 0.5} ${y - bh/2}`)
-        .attr("fill", "none")
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.5)
-        .attr("opacity", 0.4);
-      // Field lines next to the building
-      const fieldDir = rng() > 0.5 ? 1 : -1;
-      for (let i = 0; i < 3; i++) {
-        const fx = x + fieldDir * (bw + 2 + i * 2);
-        tg.append("line")
-          .attr("x1", fx).attr("y1", y - 2)
-          .attr("x2", fx).attr("y2", y + 2)
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.3)
-          .attr("opacity", 0.25);
+      // Small farmhouse compound: 2-3 buildings with peaked roofs, furrows on both sides
+      const buildings = 2 + Math.floor(rng() * 2);
+      const spacing = size * 0.45;
+      for (let b = 0; b < buildings; b++) {
+        const bx = x + (b - (buildings - 1) / 2) * spacing + (rng() - 0.5) * 1;
+        const by = y + (rng() - 0.5) * size * 0.2;
+        const bw = size * (0.22 + rng() * 0.15);
+        const bh = size * (0.16 + rng() * 0.12);
+        tg.append("rect")
+          .attr("x", bx - bw / 2).attr("y", by - bh / 2)
+          .attr("width", bw).attr("height", bh)
+          .attr("fill", "none").attr("stroke", INK)
+          .attr("stroke-width", 0.5).attr("opacity", 0.6);
+        tg.append("path")
+          .attr("d", `M ${bx - bw / 2 - 0.3} ${by - bh / 2} L ${bx} ${by - bh / 2 - bh * 0.75} L ${bx + bw / 2 + 0.3} ${by - bh / 2}`)
+          .attr("fill", "none").attr("stroke", INK)
+          .attr("stroke-width", 0.5).attr("opacity", 0.6);
+      }
+      const perSide = 3 + Math.floor(rng() * 2);
+      for (let side = -1; side <= 1; side += 2) {
+        for (let i = 0; i < perSide; i++) {
+          const fx = x + side * size * (0.55 + i * 0.17);
+          tg.append("line")
+            .attr("x1", fx).attr("y1", y - size * 0.28)
+            .attr("x2", fx).attr("y2", y + size * 0.28)
+            .attr("stroke", INK).attr("stroke-width", 0.3).attr("opacity", 0.3);
+        }
       }
     }
 
     // --- Draw terrain from hex_terrain data only (not from nodes) ---
+
+    function drawGraveyard(tg, x, y, size, rng) {
+      const count = 3 + Math.floor(rng() * 3);
+      for (let i = 0; i < count; i++) {
+        const gx = x + (rng() - 0.5) * size * 1.1;
+        const gy = y + (rng() - 0.5) * size * 0.6;
+        const gh = size * (0.3 + rng() * 0.15);
+        const gw = gh * 0.55;
+        if (rng() > 0.5) {
+          tg.append("line")
+            .attr("x1", gx).attr("y1", gy - gh * 0.45)
+            .attr("x2", gx).attr("y2", gy + gh * 0.45)
+            .attr("stroke", INK).attr("stroke-width", 0.7).attr("opacity", 0.7);
+          tg.append("line")
+            .attr("x1", gx - gw * 0.5).attr("y1", gy - gh * 0.2)
+            .attr("x2", gx + gw * 0.5).attr("y2", gy - gh * 0.2)
+            .attr("stroke", INK).attr("stroke-width", 0.7).attr("opacity", 0.7);
+        } else {
+          tg.append("path")
+            .attr("d", `M ${gx - gw / 2} ${gy + gh * 0.45} L ${gx - gw / 2} ${gy - gh * 0.15} Q ${gx} ${gy - gh * 0.5} ${gx + gw / 2} ${gy - gh * 0.15} L ${gx + gw / 2} ${gy + gh * 0.45} Z`)
+            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.6).attr("opacity", 0.7);
+        }
+      }
+    }
 
     MapCore.renderHexTerrain(ctx, {
       "forest": drawTreeCanopy,
@@ -527,6 +567,7 @@ window.MapStyles.wilderland = {
       "swamp": drawSwampReeds,
       "farmland": drawFarm,
       "plains": drawGrassTuft,
+      "graveyard": drawGraveyard,
     });
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
       color: INK, strokeWidth: 1.0, opacity: 0.5, wobble: 2.2, className: "forest-edges",
@@ -724,72 +765,87 @@ window.MapStyles.wilderland = {
 
   // --- Day labels on paths ---
   renderDayLabels(ctx) {
-    const { g, links, FONT } = ctx;
     const { INK_LIGHT, PARCHMENT } = ctx.colors;
-
-    const labelGroup = g.append("g").attr("class", "day-labels");
-
-    links.forEach(link => {
-      if (!link.days || link.days < 0.25 || link.path_type === "river") return;
-
-      const sx = link.source.x, sy = link.source.y;
-      const tx = link.target.x, ty = link.target.y;
-      const mx = (sx + tx) / 2, my = (sy + ty) / 2;
-
-      const text = link.days === 1 ? "1 day" : link.days + " days";
-
-      labelGroup.append("text")
-        .attr("x", mx)
-        .attr("y", my + 3)
-        .attr("text-anchor", "middle")
-        .attr("font-family", FONT)
-        .attr("font-size", "9px")
-        .attr("font-style", "italic")
-        .attr("fill", INK_LIGHT)
-        .attr("stroke", PARCHMENT)
-        .attr("stroke-width", 2.5)
-        .attr("paint-order", "stroke")
-        .text(text);
+    MapCore.renderDayLabelsAlongLinks(ctx, {
+      color: INK_LIGHT, strokeColor: PARCHMENT, fontSize: 9, offset: 8,
     });
   },
 
-  // --- Compass (simpler, Wilderland style — just an arrow and N) ---
+  // --- Compass rose (Wilderland style — subtle decorative arrow in a circle) ---
   renderCompass(ctx) {
     const { g, bounds } = ctx;
     const { INK } = ctx.colors;
 
-    const x = bounds.maxX + 20;
-    const y = bounds.minY - 10;
+    const x = bounds.maxX + 30;
+    const y = bounds.minY - 20;
+    const size = 22;
 
-    const cg = g.append("g")
-      .attr("transform", `translate(${x}, ${y})`)
-      .attr("opacity", 0.6);
+    const cg = g.append("g").attr("transform", `translate(${x}, ${y})`);
 
-    const size = 20;
-    // Simple north arrow
-    cg.append("line")
-      .attr("x1", 0).attr("y1", size * 0.5)
-      .attr("x2", 0).attr("y2", -size)
-      .attr("stroke", INK)
-      .attr("stroke-width", 1.0);
+    // Outer circle
+    cg.append("circle")
+      .attr("cx", 0).attr("cy", 0).attr("r", size)
+      .attr("fill", "none").attr("stroke", INK)
+      .attr("stroke-width", 0.9).attr("opacity", 0.7);
+    // Inner circle
+    cg.append("circle")
+      .attr("cx", 0).attr("cy", 0).attr("r", size * 0.3)
+      .attr("fill", "none").attr("stroke", INK)
+      .attr("stroke-width", 0.7).attr("opacity", 0.6);
 
-    // Arrowhead
-    cg.append("path")
-      .attr("d", `M 0 ${-size} L ${size * 0.2} ${-size * 0.6} L ${-size * 0.2} ${-size * 0.6} Z`)
-      .attr("fill", INK);
+    // Four cardinal pointers: half-filled diamond for each
+    const cardinals = [
+      { dx: 0, dy: -1, label: "N" },
+      { dx: 1, dy: 0, label: "E" },
+      { dx: 0, dy: 1, label: "S" },
+      { dx: -1, dy: 0, label: "W" },
+    ];
+    cardinals.forEach(({ dx, dy, label }) => {
+      const tipX = dx * size;
+      const tipY = dy * size;
+      const baseX = dx * size * 0.3;
+      const baseY = dy * size * 0.3;
+      const perpX = -dy * size * 0.12;
+      const perpY = dx * size * 0.12;
+      // Filled half of the pointer
+      cg.append("path")
+        .attr("d", `M ${baseX} ${baseY} L ${tipX} ${tipY} L ${(baseX + tipX) / 2 + perpX} ${(baseY + tipY) / 2 + perpY} Z`)
+        .attr("fill", INK).attr("opacity", 0.8);
+      // Outline of the other half
+      cg.append("path")
+        .attr("d", `M ${baseX} ${baseY} L ${tipX} ${tipY} L ${(baseX + tipX) / 2 - perpX} ${(baseY + tipY) / 2 - perpY} Z`)
+        .attr("fill", "none")
+        .attr("stroke", INK).attr("stroke-width", 0.7).attr("opacity", 0.75);
+      // Label just outside the circle
+      const labelDist = size + 6;
+      cg.append("text")
+        .attr("x", dx * labelDist).attr("y", dy * labelDist + (dy === 0 ? 3 : 0))
+        .attr("text-anchor", dx === 0 ? "middle" : dx > 0 ? "start" : "end")
+        .attr("dominant-baseline", dy === 0 ? "middle" : dy > 0 ? "hanging" : "baseline")
+        .attr("font-family", "'Palatino Linotype', serif")
+        .attr("font-size", "11px")
+        .attr("font-weight", "bold")
+        .attr("fill", INK).attr("opacity", 0.85)
+        .text(label);
+    });
 
-    // N label
-    cg.append("text")
-      .attr("x", 0).attr("y", -size - 6)
-      .attr("text-anchor", "middle")
-      .attr("font-family", "'Palatino Linotype', serif")
-      .attr("font-size", "11px")
-      .attr("fill", INK)
-      .text("N");
+    // Minor tick marks between cardinals
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI / 4) + Math.PI / 8;
+      const x1 = Math.cos(a) * size;
+      const y1 = Math.sin(a) * size;
+      const x2 = Math.cos(a) * (size - 3);
+      const y2 = Math.sin(a) * (size - 3);
+      cg.append("line")
+        .attr("x1", x1).attr("y1", y1)
+        .attr("x2", x2).attr("y2", y2)
+        .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.6);
+    }
 
-    // Small tick marks for E, W, S
-    cg.append("line").attr("x1", -size * 0.3).attr("y1", 0).attr("x2", size * 0.3).attr("y2", 0)
-      .attr("stroke", INK).attr("stroke-width", 0.6);
+    // Center dot
+    cg.append("circle")
+      .attr("cx", 0).attr("cy", 0).attr("r", 1.5)
+      .attr("fill", INK).attr("opacity", 0.8);
   },
 
   // --- Scale bar ---

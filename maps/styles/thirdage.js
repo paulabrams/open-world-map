@@ -42,6 +42,7 @@ window.MapStyles.thirdage = {
   render(ctx) {
     this.renderBackground(ctx);
     MapCore.renderRiver(ctx, ctx.colors.INK, 3);
+    MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.1, bridgeLen: 14 });
     MapCore.renderRoad(ctx, ctx.colors.INK, 2);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
@@ -205,10 +206,36 @@ window.MapStyles.thirdage = {
       "swamp": (tg, x, y, sz, rng) => style.drawSwampLines(tg, x, y, sz, rng, INK),
       "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK),
       "plains": (tg, x, y, sz, rng) => style.drawGrassStipple(tg, x, y, sz, rng, INK),
+      "graveyard": (tg, x, y, sz, rng) => style.drawGraveyard(tg, x, y, sz, rng, INK),
     });
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
       color: INK, strokeWidth: 1.1, opacity: 0.6, wobble: 2.0, className: "forest-edges",
     });
+  },
+
+  drawGraveyard(g, x, y, size, rng, INK) {
+    const count = 3 + Math.floor(rng() * 3);
+    for (let i = 0; i < count; i++) {
+      const gx = x + (rng() - 0.5) * size * 1.1;
+      const gy = y + (rng() - 0.5) * size * 0.6;
+      const gh = size * (0.3 + rng() * 0.15);
+      const gw = gh * 0.55;
+      if (rng() > 0.55) {
+        g.append("line")
+          .attr("x1", gx).attr("y1", gy - gh * 0.45)
+          .attr("x2", gx).attr("y2", gy + gh * 0.45)
+          .attr("stroke", INK).attr("stroke-width", 0.8).attr("opacity", 0.8);
+        g.append("line")
+          .attr("x1", gx - gw * 0.5).attr("y1", gy - gh * 0.2)
+          .attr("x2", gx + gw * 0.5).attr("y2", gy - gh * 0.2)
+          .attr("stroke", INK).attr("stroke-width", 0.8).attr("opacity", 0.8);
+      } else {
+        // Solid filled tombstone (engraving style)
+        g.append("path")
+          .attr("d", `M ${gx - gw / 2} ${gy + gh * 0.45} L ${gx - gw / 2} ${gy - gh * 0.15} Q ${gx} ${gy - gh * 0.55} ${gx + gw / 2} ${gy - gh * 0.15} L ${gx + gw / 2} ${gy + gh * 0.45} Z`)
+          .attr("fill", INK).attr("opacity", 0.75);
+      }
+    }
   },
 
   // --- Node icons ---
@@ -452,31 +479,9 @@ window.MapStyles.thirdage = {
 
   // --- Day labels on paths ---
   renderDayLabels(ctx) {
-    const { g, links, FONT } = ctx;
     const { INK_LIGHT, PARCHMENT } = ctx.colors;
-
-    const labelGroup = g.append("g").attr("class", "day-labels");
-
-    links.forEach(link => {
-      if (!link.days || link.days < 0.25 || link.path_type === "river") return;
-
-      const sx = link.source.x, sy = link.source.y;
-      const tx = link.target.x, ty = link.target.y;
-      const mx = (sx + tx) / 2, my = (sy + ty) / 2;
-
-      const text = link.days === 1 ? "1 day" : link.days + " days";
-
-      labelGroup.append("text")
-        .attr("x", mx)
-        .attr("y", my + 3)
-        .attr("text-anchor", "middle")
-        .attr("font-family", FONT)
-        .attr("font-size", "9px")
-        .attr("fill", INK_LIGHT)
-        .attr("stroke", PARCHMENT)
-        .attr("stroke-width", 2.5)
-        .attr("paint-order", "stroke")
-        .text(text);
+    MapCore.renderDayLabelsAlongLinks(ctx, {
+      color: INK_LIGHT, strokeColor: PARCHMENT, fontSize: 9, fontStyle: "normal", offset: 8,
     });
   },
 
@@ -662,13 +667,13 @@ window.MapStyles.thirdage = {
     const peaks = [];
     for (let i = 0; i < peakCount; i++) {
       const offsetX = (i - (peakCount - 1) / 2) * spacing + (rng() - 0.5) * size * 0.12;
-      const hMul = 0.8 + rng() * 0.55;
-      peaks.push({ cx: x + offsetX, h: size * (1.3 + rng() * 0.4) * hMul });
+      const hMul = 0.75 + rng() * 0.4;
+      peaks.push({ cx: x + offsetX, h: size * (0.85 + rng() * 0.25) * hMul });
     }
     peaks.sort((a, b) => b.h - a.h);
 
     peaks.forEach(p => {
-      const w = size * (0.62 + rng() * 0.25);
+      const w = size * (0.85 + rng() * 0.25);
       const skew = (rng() - 0.5) * w * 0.08;
       const peakX = p.cx + skew;
       const peakY = y - p.h;
@@ -748,36 +753,51 @@ window.MapStyles.thirdage = {
     });
   },
 
-  // Wavy water lines with reed stalks
+  // Engraving-style swamp: dense horizontal ripples with reed tufts
   drawSwampLines(g, x, y, size, rng, INK) {
-    for (let i = 0; i < 5; i++) {
-      const ly = y + (i - 2) * size * 0.2;
-      const lx = x - size * 0.5;
+    // Dense ripple lines with varying widths
+    const rippleCount = 5 + Math.floor(rng() * 2);
+    for (let i = 0; i < rippleCount; i++) {
+      const ly = y + (i - rippleCount / 2) * size * 0.18 + (rng() - 0.5) * 1;
+      const w = size * (0.7 + rng() * 0.5);
+      const lx = x - w / 2 + (rng() - 0.5) * 2;
       const segments = 4;
       let d = `M ${lx} ${ly}`;
       for (let j = 1; j <= segments; j++) {
-        const sx = lx + (j / segments) * size;
+        const sx = lx + (j / segments) * w;
         const dir = j % 2 === 0 ? -1 : 1;
-        const cpx = lx + ((j - 0.5) / segments) * size;
-        const cpy = ly + dir * size * 0.06;
+        const cpx = lx + ((j - 0.5) / segments) * w;
+        const cpy = ly + dir * size * (0.05 + rng() * 0.03);
         d += ` Q ${cpx} ${cpy} ${sx} ${ly}`;
       }
       g.append("path")
         .attr("d", d)
         .attr("fill", "none")
         .attr("stroke", INK)
-        .attr("stroke-width", 0.5)
-        .attr("opacity", 0.4);
+        .attr("stroke-width", 0.55)
+        .attr("opacity", 0.55);
     }
-    for (let i = 0; i < 4; i++) {
-      const rx = x - size * 0.3 + rng() * size * 0.6;
-      const ry = y - size * 0.1;
-      g.append("line")
-        .attr("x1", rx).attr("y1", ry)
-        .attr("x2", rx + (rng() - 0.5) * 2).attr("y2", ry - size * 0.35)
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.5)
-        .attr("opacity", 0.5);
+    // Reed tufts with cattails (engraving solid heads)
+    const tufts = 2 + Math.floor(rng() * 2);
+    for (let t = 0; t < tufts; t++) {
+      const cx = x + (rng() - 0.5) * size * 0.9;
+      const baseY = y - size * 0.05;
+      const stalks = 2 + Math.floor(rng() * 3);
+      for (let i = 0; i < stalks; i++) {
+        const rx = cx + (i - (stalks - 1) / 2) * 1.4 + (rng() - 0.5) * 0.6;
+        const topLean = (rng() - 0.5) * 1.4;
+        const topY = baseY - size * (0.35 + rng() * 0.2);
+        g.append("line")
+          .attr("x1", rx).attr("y1", baseY)
+          .attr("x2", rx + topLean).attr("y2", topY)
+          .attr("stroke", INK).attr("stroke-width", 0.55).attr("opacity", 0.8);
+        if (rng() > 0.4) {
+          g.append("ellipse")
+            .attr("cx", rx + topLean).attr("cy", topY - 1.5)
+            .attr("rx", 0.9).attr("ry", 1.8)
+            .attr("fill", INK).attr("opacity", 0.8);
+        }
+      }
     }
   },
 
@@ -829,30 +849,34 @@ window.MapStyles.thirdage = {
   },
 
   drawFarm(g, x, y, size, rng, INK) {
-    const bw = 3 + rng() * 2;
-    const bh = 2 + rng() * 1.5;
-    g.append("rect")
-      .attr("x", x - bw/2).attr("y", y - bh/2)
-      .attr("width", bw).attr("height", bh)
-      .attr("fill", "none")
-      .attr("stroke", INK)
-      .attr("stroke-width", 0.5)
-      .attr("opacity", 0.4);
-    g.append("path")
-      .attr("d", `M ${x - bw/2 - 0.5} ${y - bh/2} L ${x} ${y - bh/2 - 2} L ${x + bw/2 + 0.5} ${y - bh/2}`)
-      .attr("fill", "none")
-      .attr("stroke", INK)
-      .attr("stroke-width", 0.5)
-      .attr("opacity", 0.4);
-    const fieldDir = rng() > 0.5 ? 1 : -1;
-    for (let i = 0; i < 3; i++) {
-      const fx = x + fieldDir * (bw + 2 + i * 2);
-      g.append("line")
-        .attr("x1", fx).attr("y1", y - 2)
-        .attr("x2", fx).attr("y2", y + 2)
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.3)
-        .attr("opacity", 0.25);
+    // Engraving-style farm compound: 2-3 buildings with solid dark roofs
+    const buildings = 2 + Math.floor(rng() * 2);
+    const spacing = size * 0.45;
+    for (let b = 0; b < buildings; b++) {
+      const bx = x + (b - (buildings - 1) / 2) * spacing + (rng() - 0.5) * 1;
+      const by = y + (rng() - 0.5) * size * 0.2;
+      const bw = size * (0.24 + rng() * 0.15);
+      const bh = size * (0.17 + rng() * 0.12);
+      g.append("rect")
+        .attr("x", bx - bw / 2).attr("y", by - bh / 2)
+        .attr("width", bw).attr("height", bh)
+        .attr("fill", "none").attr("stroke", INK)
+        .attr("stroke-width", 0.6).attr("opacity", 0.75);
+      // Solid dark roof triangle (engraving style)
+      g.append("path")
+        .attr("d", `M ${bx - bw / 2 - 0.3} ${by - bh / 2} L ${bx} ${by - bh / 2 - bh * 0.8} L ${bx + bw / 2 + 0.3} ${by - bh / 2} Z`)
+        .attr("fill", INK).attr("opacity", 0.7);
+    }
+    // Dense furrows fanning out on both sides
+    const perSide = 4 + Math.floor(rng() * 2);
+    for (let side = -1; side <= 1; side += 2) {
+      for (let i = 0; i < perSide; i++) {
+        const fx = x + side * size * (0.55 + i * 0.15);
+        g.append("line")
+          .attr("x1", fx).attr("y1", y - size * 0.3)
+          .attr("x2", fx).attr("y2", y + size * 0.3)
+          .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.45);
+      }
     }
   },
 };

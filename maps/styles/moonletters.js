@@ -44,6 +44,7 @@ window.MapStyles.moonletters = {
     this.renderBackground(ctx);
     this.renderRunicBorder(ctx);
     MapCore.renderRiver(ctx, ctx.colors.BLUE_INK, 3);
+    MapCore.renderBridges(ctx, { color: ctx.colors.BLUE_INK, strokeWidth: 1.0, bridgeLen: 14 });
     MapCore.renderRoad(ctx, ctx.colors.BLUE_INK, 2);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
@@ -56,6 +57,8 @@ window.MapStyles.moonletters = {
     this.renderCompass(ctx);
     this.renderScaleBar(ctx);
     this.renderCartouche(ctx);
+    this.renderCobweb(ctx);
+    this.renderOffMapArrows(ctx);
   },
 
   /* ────────────────────────────────────────────────────────────
@@ -79,7 +82,7 @@ window.MapStyles.moonletters = {
   drawPeakSingle(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
     const w = size * (1.1 + rng() * 0.3);
-    const h = size * (1.45 + rng() * 0.4);
+    const h = size * (0.9 + rng() * 0.25);
     const peakShift = (rng() - 0.5) * w * 0.22;
     const px = x + peakShift;
     const py = y - h;
@@ -105,8 +108,8 @@ window.MapStyles.moonletters = {
   drawPeakTwin(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
     const w = size * (1.9 + rng() * 0.4);
-    const h1 = size * (1.35 + rng() * 0.35);
-    const h2 = size * (0.95 + rng() * 0.3);
+    const h1 = size * (0.9 + rng() * 0.25);
+    const h2 = size * (0.65 + rng() * 0.2);
     const leftTaller = rng() > 0.5;
     const hL = leftTaller ? h1 : h2;
     const hR = leftTaller ? h2 : h1;
@@ -135,7 +138,7 @@ window.MapStyles.moonletters = {
   drawPeakStubby(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
     const w = size * (1.5 + rng() * 0.3);
-    const h = size * (0.9 + rng() * 0.25);
+    const h = size * (0.7 + rng() * 0.2);
     const peakShift = (rng() - 0.5) * w * 0.15;
     const px = x + peakShift;
     const py = y - h;
@@ -238,30 +241,60 @@ window.MapStyles.moonletters = {
 
   drawSwampMark(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
-    for (let i = 0; i < 2; i++) {
-      const ly = y + i * size * 0.35;
-      const lx = x - size * 0.3;
-      const d = `M ${lx} ${ly} Q ${lx + size * 0.15} ${ly - size * 0.08} ${lx + size * 0.3} ${ly} Q ${lx + size * 0.45} ${ly + size * 0.08} ${lx + size * 0.6} ${ly}`;
+    // Wavy water ripple lines
+    const rippleCount = 3 + Math.floor(rng() * 2);
+    for (let i = 0; i < rippleCount; i++) {
+      const ly = y - size * 0.2 + i * size * 0.28 + (rng() - 0.5) * 2;
+      const lx = x - size * 0.45;
+      const w = size * (0.9 + rng() * 0.3);
+      const amp = size * (0.08 + rng() * 0.04);
+      const d = `M ${lx} ${ly} Q ${lx + w * 0.25} ${ly - amp} ${lx + w * 0.5} ${ly} Q ${lx + w * 0.75} ${ly + amp} ${lx + w} ${ly}`;
       g.append("path")
         .attr("d", d)
         .attr("fill", "none")
         .attr("stroke", BLUE_INK)
-        .attr("stroke-width", 0.6)
+        .attr("stroke-width", 0.55)
         .attr("opacity", 0.5);
+    }
+    // Small reed tufts scattered above
+    const tufts = 2 + Math.floor(rng() * 2);
+    for (let i = 0; i < tufts; i++) {
+      const rx = x + (rng() - 0.5) * size * 0.8;
+      const ry = y - size * 0.15;
+      for (let b = 0; b < 3; b++) {
+        const bx = rx + (b - 1) * 1.2;
+        g.append("line")
+          .attr("x1", bx).attr("y1", ry)
+          .attr("x2", bx + (rng() - 0.5) * 1.0).attr("y2", ry - size * (0.2 + rng() * 0.1))
+          .attr("stroke", BLUE_INK).attr("stroke-width", 0.5).attr("opacity", 0.55);
+      }
     }
   },
 
   drawDesolationDots(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
-    const count = 4 + Math.floor(rng() * 3);
-    for (let i = 0; i < count; i++) {
-      const dx = (rng() - 0.5) * size * 1.2;
-      const dy = (rng() - 0.5) * size * 0.8;
+    // Sparse dots (desolation) mixed with occasional tiny tick marks
+    const dotCount = 7 + Math.floor(rng() * 5);
+    for (let i = 0; i < dotCount; i++) {
+      const dx = (rng() - 0.5) * size * 1.5;
+      const dy = (rng() - 0.5) * size * 0.9;
       g.append("circle")
         .attr("cx", x + dx).attr("cy", y + dy)
-        .attr("r", 0.8 + rng() * 0.5)
+        .attr("r", 0.7 + rng() * 0.5)
         .attr("fill", BLUE_INK)
-        .attr("opacity", 0.4);
+        .attr("opacity", 0.45);
+    }
+    // A few tiny tick marks — Thror's subtle ground-detail touch
+    const tickCount = 1 + Math.floor(rng() * 3);
+    for (let i = 0; i < tickCount; i++) {
+      const tx = x + (rng() - 0.5) * size * 1.3;
+      const ty = y + (rng() - 0.5) * size * 0.8;
+      const len = 1.5 + rng() * 1.0;
+      g.append("line")
+        .attr("x1", tx).attr("y1", ty)
+        .attr("x2", tx + (rng() - 0.5) * 0.8).attr("y2", ty - len)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.45)
+        .attr("stroke-linecap", "round").attr("opacity", 0.5);
     }
   },
 
@@ -292,30 +325,34 @@ window.MapStyles.moonletters = {
 
   drawFarm(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
-    const bw = 3 + rng() * 2;
-    const bh = 2 + rng() * 1.5;
-    g.append("rect")
-      .attr("x", x - bw/2).attr("y", y - bh/2)
-      .attr("width", bw).attr("height", bh)
-      .attr("fill", "none")
-      .attr("stroke", BLUE_INK)
-      .attr("stroke-width", 0.5)
-      .attr("opacity", 0.4);
-    g.append("path")
-      .attr("d", `M ${x - bw/2 - 0.5} ${y - bh/2} L ${x} ${y - bh/2 - 2} L ${x + bw/2 + 0.5} ${y - bh/2}`)
-      .attr("fill", "none")
-      .attr("stroke", BLUE_INK)
-      .attr("stroke-width", 0.5)
-      .attr("opacity", 0.4);
-    const fieldDir = rng() > 0.5 ? 1 : -1;
-    for (let i = 0; i < 3; i++) {
-      const fx = x + fieldDir * (bw + 2 + i * 2);
+    // 2-3 small farm buildings clustered, with furrows fanning out
+    const buildings = 2 + Math.floor(rng() * 2);
+    const spacing = size * 0.45;
+    for (let b = 0; b < buildings; b++) {
+      const bx = x + (b - (buildings - 1) / 2) * spacing + (rng() - 0.5) * 1;
+      const by = y + (rng() - 0.5) * size * 0.2;
+      const bw = size * (0.22 + rng() * 0.15);
+      const bh = size * (0.16 + rng() * 0.12);
+      g.append("rect")
+        .attr("x", bx - bw / 2).attr("y", by - bh / 2)
+        .attr("width", bw).attr("height", bh)
+        .attr("fill", "none").attr("stroke", BLUE_INK)
+        .attr("stroke-width", 0.55).attr("opacity", 0.7);
+      g.append("path")
+        .attr("d", `M ${bx - bw / 2 - 0.3} ${by - bh / 2} L ${bx} ${by - bh / 2 - bh * 0.7} L ${bx + bw / 2 + 0.3} ${by - bh / 2}`)
+        .attr("fill", "none").attr("stroke", BLUE_INK)
+        .attr("stroke-width", 0.55).attr("opacity", 0.7);
+    }
+    // Furrows on both sides
+    const furrowCount = 4 + Math.floor(rng() * 3);
+    for (let i = 0; i < furrowCount; i++) {
+      const side = i < furrowCount / 2 ? -1 : 1;
+      const dist = size * (0.55 + (i % Math.ceil(furrowCount / 2)) * 0.18);
+      const fx = x + side * dist;
       g.append("line")
-        .attr("x1", fx).attr("y1", y - 2)
-        .attr("x2", fx).attr("y2", y + 2)
-        .attr("stroke", BLUE_INK)
-        .attr("stroke-width", 0.3)
-        .attr("opacity", 0.25);
+        .attr("x1", fx).attr("y1", y - size * 0.25)
+        .attr("x2", fx).attr("y2", y + size * 0.25)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.35).attr("opacity", 0.35);
     }
   },
 
@@ -337,10 +374,31 @@ window.MapStyles.moonletters = {
       "swamp": (tg, x, y, sz, rng) => style.drawSwampMark(tg, x, y, sz, rng, colors),
       "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, colors),
       "plains": (tg, x, y, sz, rng) => style.drawDesolationDots(tg, x, y, sz, rng, colors),
+      "graveyard": (tg, x, y, sz, rng) => style.drawGraveyard(tg, x, y, sz, rng, colors),
     });
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
       color: colors.BLUE_FAINT, strokeWidth: 0.7, opacity: 0.5, wobble: 2.5, className: "forest-edges",
     });
+  },
+
+  drawGraveyard(g, x, y, size, rng, colors) {
+    const { BLUE_INK } = colors;
+    const count = 3 + Math.floor(rng() * 3);
+    for (let i = 0; i < count; i++) {
+      const gx = x + (rng() - 0.5) * size * 1.1;
+      const gy = y + (rng() - 0.5) * size * 0.6;
+      const gh = size * (0.3 + rng() * 0.15);
+      const gw = gh * 0.55;
+      // All crosses in Thror's sparse ink style
+      g.append("line")
+        .attr("x1", gx).attr("y1", gy - gh * 0.45)
+        .attr("x2", gx).attr("y2", gy + gh * 0.45)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.6).attr("opacity", 0.7);
+      g.append("line")
+        .attr("x1", gx - gw * 0.5).attr("y1", gy - gh * 0.2)
+        .attr("x2", gx + gw * 0.5).attr("y2", gy - gh * 0.2)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.6).attr("opacity", 0.7);
+    }
   },
 
   renderNodes(ctx) {
@@ -550,31 +608,9 @@ window.MapStyles.moonletters = {
   },
 
   renderDayLabels(ctx) {
-    const { g, links, colors, FONT } = ctx;
-    const { BLUE_LIGHT, PARCHMENT } = colors;
-    const labelGroup = g.append("g").attr("class", "day-labels");
-
-    links.forEach(link => {
-      if (!link.days || link.days < 0.25 || link.path_type === "river") return;
-
-      const sx = link.source.x, sy = link.source.y;
-      const tx = link.target.x, ty = link.target.y;
-      const mx = (sx + tx) / 2, my = (sy + ty) / 2;
-
-      const text = link.days === 1 ? "1 day" : link.days + " days";
-
-      labelGroup.append("text")
-        .attr("x", mx)
-        .attr("y", my + 3)
-        .attr("text-anchor", "middle")
-        .attr("font-family", FONT)
-        .attr("font-size", "8px")
-        .attr("font-style", "italic")
-        .attr("fill", BLUE_LIGHT)
-        .attr("stroke", PARCHMENT)
-        .attr("stroke-width", 2)
-        .attr("paint-order", "stroke")
-        .text(text);
+    const { BLUE_LIGHT, PARCHMENT } = ctx.colors;
+    MapCore.renderDayLabelsAlongLinks(ctx, {
+      color: BLUE_LIGHT, strokeColor: PARCHMENT, fontSize: 9, offset: 8,
     });
   },
 
@@ -606,6 +642,13 @@ window.MapStyles.moonletters = {
 
       if (isImportant) {
         text.attr("letter-spacing", "2.5px");
+        // Thin decorative underline beneath the name, Thror's-style
+        const approxWidth = (node.name || "").length * fontSize * 0.5;
+        const ulY = node.y + yOffset + fontSize * 0.35;
+        labelGroup.append("line")
+          .attr("x1", node.x - approxWidth / 2).attr("y1", ulY)
+          .attr("x2", node.x + approxWidth / 2).attr("y2", ulY)
+          .attr("stroke", color).attr("stroke-width", 0.6).attr("opacity", 0.65);
       }
     });
   },
@@ -801,6 +844,59 @@ window.MapStyles.moonletters = {
       .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.5);
   },
 
+  // Cobweb tucked into the bottom-left inside corner of the border,
+  // echoing Thror's Map's distinctive Thror's-Map-cartouche decoration.
+  renderCobweb(ctx) {
+    const { g, bounds, colors } = ctx;
+    const { BLUE_INK } = colors;
+    const pad = 50;
+    const cornerX = bounds.minX - pad;
+    const cornerY = bounds.maxY + pad;
+    // Web anchors at the corner and sweeps outward / upward
+    const radii = [18, 30, 42, 54];
+    const angles = [-10, -25, -45, -65, -80]; // degrees, measuring up-right from the corner
+    const toRad = d => (d * Math.PI) / 180;
+
+    const cg = g.append("g").attr("class", "cobweb").attr("opacity", 0.75);
+
+    // Radial spokes (from corner outward)
+    angles.forEach(deg => {
+      const rad = toRad(deg);
+      const maxR = radii[radii.length - 1] + 2;
+      const ex = cornerX + Math.cos(rad) * maxR;
+      const ey = cornerY + Math.sin(rad) * maxR;
+      cg.append("line")
+        .attr("x1", cornerX).attr("y1", cornerY)
+        .attr("x2", ex).attr("y2", ey)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.5).attr("opacity", 0.8);
+    });
+
+    // Concentric sagging curves connecting adjacent spokes
+    for (let ri = 0; ri < radii.length; ri++) {
+      const r = radii[ri];
+      for (let ai = 0; ai < angles.length - 1; ai++) {
+        const a1 = toRad(angles[ai]);
+        const a2 = toRad(angles[ai + 1]);
+        const x1 = cornerX + Math.cos(a1) * r;
+        const y1 = cornerY + Math.sin(a1) * r;
+        const x2 = cornerX + Math.cos(a2) * r;
+        const y2 = cornerY + Math.sin(a2) * r;
+        // Sag slightly toward the corner (gravity-style curve)
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2;
+        const cornerDir = [(cornerX - mx), (cornerY - my)];
+        const cornerLen = Math.sqrt(cornerDir[0] ** 2 + cornerDir[1] ** 2) || 1;
+        const sag = 2 + ri * 0.8;
+        const cpx = mx + (cornerDir[0] / cornerLen) * sag;
+        const cpy = my + (cornerDir[1] / cornerLen) * sag;
+        cg.append("path")
+          .attr("d", `M ${x1} ${y1} Q ${cpx} ${cpy} ${x2} ${y2}`)
+          .attr("fill", "none")
+          .attr("stroke", BLUE_INK).attr("stroke-width", 0.45).attr("opacity", 0.7);
+      }
+    }
+  },
+
   renderAnnotations(ctx) {
     const { g, nodes, colors, mulberry32, seedFromString, FONT } = ctx;
     const { BLUE_INK, RED_INK, PARCHMENT } = colors;
@@ -818,6 +914,29 @@ window.MapStyles.moonletters = {
 
       const ax = node.x + Math.cos(angle) * dist;
       const ay = node.y + Math.sin(angle) * dist;
+
+      // Connector squiggle from annotation toward the node — Thror's-style pointer.
+      // Use a gentle curve with small ticks so it reads as hand-drawn.
+      const connectorColor = isDanger ? RED_INK : BLUE_INK;
+      const nearAnnotX = node.x + Math.cos(angle) * (dist - 18);
+      const nearAnnotY = node.y + Math.sin(angle) * (dist - 18);
+      const nearNodeX = node.x + Math.cos(angle) * 14;
+      const nearNodeY = node.y + Math.sin(angle) * 14;
+      // Midpoint offset for a subtle S-curve
+      const midX = (nearAnnotX + nearNodeX) / 2 + Math.cos(angle + Math.PI / 2) * 3;
+      const midY = (nearAnnotY + nearNodeY) / 2 + Math.sin(angle + Math.PI / 2) * 3;
+      annotGroup.append("path")
+        .attr("d", `M ${nearAnnotX} ${nearAnnotY} Q ${midX} ${midY} ${nearNodeX} ${nearNodeY}`)
+        .attr("fill", "none")
+        .attr("stroke", connectorColor)
+        .attr("stroke-width", 0.55)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-dasharray", "2 2.5")
+        .attr("opacity", 0.55);
+      // Small dot at the node end of the connector
+      annotGroup.append("circle")
+        .attr("cx", nearNodeX).attr("cy", nearNodeY).attr("r", 0.9)
+        .attr("fill", connectorColor).attr("opacity", 0.7);
 
       let phrase;
       if (node.description) {
@@ -892,46 +1011,59 @@ window.MapStyles.moonletters = {
     const by = beast.y + Math.sin(angle) * dist;
 
     const bg = g.append("g")
-      .attr("transform", `translate(${bx}, ${by}) scale(1.35)`)
-      .attr("opacity", 0.7);
+      .attr("transform", `translate(${bx}, ${by}) scale(1.4)`)
+      .attr("opacity", 0.75);
 
-    // Body
+    // Serpentine body (spine)
     bg.append("path")
-      .attr("d", "M 0 0 C 6 -8, 14 -4, 18 -10 C 22 -16, 28 -12, 32 -8 C 36 -4, 30 2, 24 0")
+      .attr("d", "M -8 2 C -2 -3, 6 -4, 14 -10 C 22 -16, 30 -12, 36 -7 C 42 -2, 46 4, 52 6")
       .attr("fill", "none")
       .attr("stroke", RED_INK)
-      .attr("stroke-width", 2.0)
+      .attr("stroke-width", 1.8)
       .attr("stroke-linecap", "round");
 
-    // Left wing
+    // Left wing: membrane with finger ribs
     bg.append("path")
-      .attr("d", "M 14 -8 C 8 -22, 2 -26, -4 -20 C -2 -16, 4 -14, 14 -8")
-      .attr("fill", RED_INK)
-      .attr("opacity", 0.25)
-      .attr("stroke", RED_INK)
-      .attr("stroke-width", 1.0);
+      .attr("d", "M 10 -8 C 4 -24, -4 -28, -12 -22 C -10 -17, -4 -13, 2 -12 C 0 -14, 0 -17, 2 -19 C 4 -14, 6 -11, 10 -8 Z")
+      .attr("fill", RED_INK).attr("opacity", 0.2)
+      .attr("stroke", RED_INK).attr("stroke-width", 0.9);
+    // Wing rib ticks
+    bg.append("path")
+      .attr("d", "M 10 -8 C 6 -14, 2 -19, -2 -22 M 10 -8 C 4 -12, -2 -16, -8 -21")
+      .attr("fill", "none").attr("stroke", RED_INK)
+      .attr("stroke-width", 0.5).attr("opacity", 0.7);
 
     // Right wing
     bg.append("path")
-      .attr("d", "M 22 -12 C 28 -26, 36 -28, 40 -20 C 36 -16, 28 -14, 22 -12")
-      .attr("fill", RED_INK)
-      .attr("opacity", 0.25)
-      .attr("stroke", RED_INK)
-      .attr("stroke-width", 1.0);
-
-    // Head
+      .attr("d", "M 22 -13 C 28 -28, 38 -30, 44 -22 C 42 -17, 36 -14, 30 -13 C 32 -16, 34 -18, 34 -22 C 30 -18, 26 -15, 22 -13 Z")
+      .attr("fill", RED_INK).attr("opacity", 0.2)
+      .attr("stroke", RED_INK).attr("stroke-width", 0.9);
     bg.append("path")
-      .attr("d", "M 0 0 L -4 -3 L -2 2 Z")
-      .attr("fill", RED_INK)
-      .attr("opacity", 0.7);
+      .attr("d", "M 22 -13 C 28 -20, 34 -25, 38 -27 M 22 -13 C 30 -17, 36 -22, 40 -26")
+      .attr("fill", "none").attr("stroke", RED_INK)
+      .attr("stroke-width", 0.5).attr("opacity", 0.7);
 
-    // Tail tip
+    // Head with snout + eye
     bg.append("path")
-      .attr("d", "M 24 0 C 26 4, 30 6, 34 4")
-      .attr("fill", "none")
-      .attr("stroke", RED_INK)
-      .attr("stroke-width", 1.6)
+      .attr("d", "M -8 2 L -14 -1 L -12 4 Z")
+      .attr("fill", RED_INK).attr("opacity", 0.85);
+    bg.append("circle")
+      .attr("cx", -10).attr("cy", 0.5).attr("r", 0.5)
+      .attr("fill", "#f0e6cc").attr("opacity", 0.9);
+
+    // Puff of smoke / breath curl in front of head
+    bg.append("path")
+      .attr("d", "M -14 -1 C -18 -3, -22 -2, -22 -5 C -22 -7, -20 -8, -18 -7 M -20 -7 C -21 -10, -19 -12, -17 -10")
+      .attr("fill", "none").attr("stroke", RED_INK)
+      .attr("stroke-width", 0.7).attr("opacity", 0.55)
       .attr("stroke-linecap", "round");
+
+    // Long swooping tail with arrow tip
+    bg.append("path")
+      .attr("d", "M 44 2 C 50 6, 56 8, 60 6 M 60 6 L 58 9 M 60 6 L 63 5")
+      .attr("fill", "none").attr("stroke", RED_INK)
+      .attr("stroke-width", 1.3).attr("stroke-linecap", "round")
+      .attr("opacity", 0.85);
   },
 
   renderBeastMark(ctx) {
@@ -1100,5 +1232,69 @@ window.MapStyles.moonletters = {
         .attr("x2", x2).attr("y2", y2)
         .attr("stroke", BLUE_INK).attr("stroke-width", 0.5).attr("opacity", 0.65);
     }
+  },
+
+  // Off-map direction arrows — Thror's "East lie the Iron Hills" style.
+  // Reads ctx.offMapArrows: [{direction: "N|NE|E|SE|S|SW|W|NW", label: string}]
+  renderOffMapArrows(ctx) {
+    const { g, bounds, offMapArrows, colors } = ctx;
+    if (!offMapArrows || offMapArrows.length === 0) return;
+    const { BLUE_INK, BLUE_LIGHT, PARCHMENT } = colors;
+
+    const cx = (bounds.minX + bounds.maxX) / 2;
+    const cy = (bounds.minY + bounds.maxY) / 2;
+    const mapHalfW = (bounds.maxX - bounds.minX) / 2;
+    const mapHalfH = (bounds.maxY - bounds.minY) / 2;
+
+    const dirVec = {
+      N:  [0, -1],    NE: [0.707, -0.707],
+      E:  [1, 0],     SE: [0.707, 0.707],
+      S:  [0, 1],     SW: [-0.707, 0.707],
+      W:  [-1, 0],    NW: [-0.707, -0.707],
+    };
+
+    const arrowGroup = g.append("g").attr("class", "off-map-arrows");
+
+    offMapArrows.forEach(entry => {
+      const v = dirVec[entry.direction];
+      if (!v) return;
+      // Anchor point just outside the map bounds along the direction vector
+      const anchorDist = Math.abs(v[0]) * (mapHalfW + 60) + Math.abs(v[1]) * (mapHalfH + 60);
+      const ax = cx + v[0] * anchorDist;
+      const ay = cy + v[1] * anchorDist;
+      // Tail-to-tip arrow pointing outward
+      const tailLen = 28;
+      const tipX = ax + v[0] * tailLen * 0.6;
+      const tipY = ay + v[1] * tailLen * 0.6;
+      const baseX = ax - v[0] * tailLen * 0.4;
+      const baseY = ay - v[1] * tailLen * 0.4;
+      arrowGroup.append("line")
+        .attr("x1", baseX).attr("y1", baseY)
+        .attr("x2", tipX).attr("y2", tipY)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 1.0).attr("opacity", 0.85);
+      // Arrowhead
+      const perpX = -v[1], perpY = v[0];
+      arrowGroup.append("path")
+        .attr("d", `M ${tipX} ${tipY} L ${tipX - v[0] * 5 + perpX * 3} ${tipY - v[1] * 5 + perpY * 3} L ${tipX - v[0] * 5 - perpX * 3} ${tipY - v[1] * 5 - perpY * 3} Z`)
+        .attr("fill", BLUE_INK).attr("opacity", 0.85);
+      // Italic label, placed on the side of the arrow away from the map center
+      const labelOffset = 10;
+      const lx = baseX - v[0] * labelOffset;
+      const ly = baseY - v[1] * labelOffset;
+      // For vertical/horizontal arrows, place label centered on the cross-axis
+      const textAnchor = v[0] > 0.3 ? "end" : v[0] < -0.3 ? "start" : "middle";
+      const dyBase = v[1] > 0.3 ? "hanging" : v[1] < -0.3 ? "baseline" : "central";
+      arrowGroup.append("text")
+        .attr("x", lx).attr("y", ly)
+        .attr("text-anchor", textAnchor)
+        .attr("dominant-baseline", dyBase)
+        .attr("font-family", "'Palatino Linotype', serif")
+        .attr("font-size", "11px")
+        .attr("font-style", "italic")
+        .attr("fill", BLUE_LIGHT)
+        .attr("stroke", PARCHMENT).attr("stroke-width", 2.5)
+        .attr("paint-order", "stroke")
+        .text(entry.label);
+    });
   },
 };

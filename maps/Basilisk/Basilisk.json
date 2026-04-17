@@ -417,10 +417,21 @@
   "hex_terrain": {
     "0604": "forest",
     "0605": "forest",
-    "0704": "forested-hills",
-    "0705": "forested-hills",
+    "0602": "forested-hills",
+    "0603": "forested-hills",
+    "0700": "forest",
+    "0701": "forest",
+    "0702": "forest",
+    "0703": "forested-hills",
+    "0704": "forest",
+    "0705": "forest",
     "0706": "forest",
     "0707": "forest",
+    "0800": "forest",
+    "0801": "forest",
+    "0802": "forest",
+    "0803": "forest",
+    "0902": "forest",
     "0804": "forested-hills",
     "0805": "forested-hills",
     "0806": "forested-hills",
@@ -533,5 +544,11 @@
       "label": "half a day",
       "days": 0.5
     }
+  ],
+  "off_map_arrows": [
+    { "direction": "N",  "label": "North to the Belerion wilds" },
+    { "direction": "E",  "label": "Eastward to the coast" },
+    { "direction": "S",  "label": "South the road winds on" },
+    { "direction": "W",  "label": "West lie the Dragon Isles" }
   ]
 }

@@ -234,7 +234,7 @@ function renderRoad(ctx, roadColor, roadWidth) {
   const rowStep = size * Math.sqrt(3);
 
   const roadGroup = g.append("g").attr("class", "road");
-  const line = d3.line().curve(d3.curveBasis);
+  const line = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
 
   // Normalize entries: accept array (legacy), or {hexes, label?, days?}
   const paths = roadPath.map(entry => {
@@ -242,7 +242,6 @@ function renderRoad(ctx, roadColor, roadWidth) {
     if (entry && entry.hexes) return entry;
     return { hexes: roadPath };
   });
-  // Handle legacy single flat array
   const isFlatLegacy = typeof roadPath[0] === "string";
   const normalized = isFlatLegacy ? [{ hexes: roadPath }] : paths;
 
@@ -250,16 +249,21 @@ function renderRoad(ctx, roadColor, roadWidth) {
     const hexes = pathObj.hexes;
     if (!hexes || hexes.length < 2) return;
 
-    const points = hexes.map(h => {
-      const col = parseInt(h.substring(0, 2));
-      const row = parseInt(h.substring(2, 4));
-      const x = (col - bcCol) * colStep + WIDTH / 2;
-      const y = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
-      return [x, y];
-    });
+    const points = hexes
+      .filter(h => typeof h === "string" && h.length >= 4)
+      .map(h => {
+        const col = parseInt(h.substring(0, 2));
+        const row = parseInt(h.substring(2, 4));
+        const x = (col - bcCol) * colStep + WIDTH / 2;
+        const y = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
+        return [x, y];
+      });
+    if (points.length < 2) return;
 
     const rng = mulberry32(seedFromString("road-" + pathIdx));
 
+    // Dense wiggly sub-points per segment, with sine-envelope tapering so the
+    // road still passes through hex corridors but bends naturally between them.
     const wigglePoints = [];
     for (let i = 0; i < points.length - 1; i++) {
       const [x1, y1] = points[i];
@@ -268,26 +272,45 @@ function renderRoad(ctx, roadColor, roadWidth) {
       const len = Math.sqrt(dx * dx + dy * dy);
       const nx = -dy / len, ny = dx / len;
 
-      wigglePoints.push([x1, y1]);
+      const segs = 10 + Math.floor(rng() * 5);
+      const broadPhase = rng() * Math.PI * 2;
+      const broadFreq = 1.2 + rng() * 1.0;
+      const fineFreq = 6 + rng() * 4;
+      const finePhase = rng() * Math.PI * 2;
 
-      const segs = 2 + Math.floor(rng() * 2);
-      for (let s = 1; s <= segs; s++) {
-        const t = s / (segs + 1);
+      const startS = i === 0 ? 0 : 1;
+      for (let s = startS; s <= segs; s++) {
+        const t = s / segs;
         const mx = x1 + dx * t;
         const my = y1 + dy * t;
-        const wiggle = (rng() - 0.5) * len * 0.04;
-        wigglePoints.push([mx + nx * wiggle, my + ny * wiggle]);
+        const env = Math.sin(t * Math.PI);
+        const broad = Math.sin(broadPhase + t * Math.PI * broadFreq) * len * 0.12;
+        const fine = Math.sin(finePhase + t * Math.PI * fineFreq) * len * 0.03;
+        const noise = (rng() - 0.5) * len * 0.02;
+        const offset = (broad + fine + noise) * (0.25 + env * 0.75);
+        wigglePoints.push([mx + nx * offset, my + ny * offset]);
       }
     }
-    wigglePoints.push(points[points.length - 1]);
 
+    // Two overlapping hand-drawn strokes, slightly offset, for sketchy feel
+    const d = line(wigglePoints);
     roadGroup.append("path")
-      .attr("d", line(wigglePoints))
+      .attr("d", d)
       .attr("fill", "none")
       .attr("stroke", roadColor)
       .attr("stroke-width", roadWidth)
       .attr("stroke-linecap", "round")
-      .attr("opacity", 0.8);
+      .attr("stroke-linejoin", "round")
+      .attr("opacity", 0.75);
+    roadGroup.append("path")
+      .attr("d", d)
+      .attr("fill", "none")
+      .attr("stroke", roadColor)
+      .attr("stroke-width", roadWidth * 0.5)
+      .attr("stroke-linecap", "round")
+      .attr("stroke-dasharray", `${roadWidth * 2.5} ${roadWidth * 1.5}`)
+      .attr("transform", `translate(${(rng() - 0.5) * 1.2}, ${(rng() - 0.5) * 1.2})`)
+      .attr("opacity", 0.35);
 
     if (pathObj.label) {
       const midIdx = Math.floor(points.length / 2);
@@ -340,15 +363,195 @@ function renderHexTerrain(ctx, terrainDrawers) {
 
     const rng = mulberry32(seedFromString(hex));
 
-    // Draw multiple decorations scattered around the hex center
-    const count = 3 + Math.floor(rng() * 3);
-    for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2 + (rng() - 0.5) * 1.0;
-      const r = 10 + rng() * 25;
-      const dx = hx + Math.cos(angle) * r;
-      const dy = hy + Math.sin(angle) * r;
+    // Flat-top hex: circumscribed radius = size, inscribed ≈ size*√3/2.
+    // Scatter drawer centers across the whole hex body — drawers each render
+    // small clusters, so the total coverage tiles the hex edge-to-edge.
+    // 7×3 jittered grid covers evenly; angle + radius scatter adds organic feel.
+    const sqrt3 = Math.sqrt(3);
+    const gridPoints = [
+      // Ring: one at center, six around it at ~2/3 radius, six more at ~9/10 radius.
+      [0, 0],
+      // Inner ring at r ≈ 0.55 * size (covers middle band)
+      ...[0, 60, 120, 180, 240, 300].map(a => {
+        const r = size * 0.55;
+        return [Math.cos(a * Math.PI / 180) * r, Math.sin(a * Math.PI / 180) * r];
+      }),
+      // Outer ring at r ≈ 0.85 * size, offset 30° from inner ring (so it fills gaps)
+      ...[30, 90, 150, 210, 270, 330].map(a => {
+        const r = size * 0.78;
+        return [Math.cos(a * Math.PI / 180) * r, Math.sin(a * Math.PI / 180) * r];
+      }),
+    ];
+    // Clip outer ring to hex shape so we don't overshoot vertices.
+    // Flat-top hex: vertices at angles 0, 60, …, 300 from center at r=size.
+    // At angles between vertices, the edge is closer (r_edge = size*√3/2 / cos(a_from_nearest_vertex)).
+    // For simplicity we just add some jitter and let the drawers clip naturally.
+    gridPoints.forEach(([ox, oy]) => {
+      const jitterX = (rng() - 0.5) * size * 0.18;
+      const jitterY = (rng() - 0.5) * size * 0.18;
+      const dx = hx + ox + jitterX;
+      const dy = hy + oy + jitterY;
       drawer(terrainGroup, dx, dy, 8 + rng() * 5, rng);
+    });
+    // Sanity helper to silence unused var hint:
+    void sqrt3;
+  });
+}
+
+// --- Bridge rendering ---
+// Finds every hex that appears in both road_path and river_path and draws a
+// small hand-drawn bridge oriented along the road's local tangent.
+function renderBridges(ctx, bridgeStyle) {
+  const { g, riverPath, roadPath, HINT_SCALE, WIDTH, HEIGHT } = ctx;
+  if (!riverPath || !roadPath || riverPath.length === 0 || roadPath.length === 0) return;
+
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+
+  const { color = "#333", strokeWidth = 1.0, bridgeLen = 14, opacity = 0.85 } = bridgeStyle || {};
+
+  const riverSet = new Set(riverPath);
+  // Normalize road paths to {hexes}
+  const paths = roadPath.map(entry => {
+    if (Array.isArray(entry)) return { hexes: entry };
+    if (entry && entry.hexes) return entry;
+    return null;
+  }).filter(Boolean);
+  if (typeof roadPath[0] === "string") {
+    paths.length = 0;
+    paths.push({ hexes: roadPath });
+  }
+
+  const bridgeGroup = g.append("g").attr("class", "bridges");
+
+  const hexToXY = (h) => {
+    if (typeof h !== "string" || h.length < 4) return null;
+    const col = parseInt(h.substring(0, 2));
+    const row = parseInt(h.substring(2, 4));
+    if (isNaN(col) || isNaN(row)) return null;
+    const hx = (col - bcCol) * colStep + WIDTH / 2;
+    const hy = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
+    return [hx, hy];
+  };
+
+  const drawn = new Set();
+  paths.forEach(p => {
+    const hexes = p.hexes;
+    for (let i = 0; i < hexes.length; i++) {
+      const hex = hexes[i];
+      if (!riverSet.has(hex) || drawn.has(hex)) continue;
+      const center = hexToXY(hex);
+      if (!center) continue;
+      // Tangent from neighboring hexes in the road path
+      const prev = i > 0 ? hexToXY(hexes[i - 1]) : null;
+      const next = i < hexes.length - 1 ? hexToXY(hexes[i + 1]) : null;
+      let tx = 1, ty = 0;
+      if (prev && next) {
+        tx = next[0] - prev[0]; ty = next[1] - prev[1];
+      } else if (prev) {
+        tx = center[0] - prev[0]; ty = center[1] - prev[1];
+      } else if (next) {
+        tx = next[0] - center[0]; ty = next[1] - center[1];
+      }
+      const tl = Math.sqrt(tx * tx + ty * ty) || 1;
+      tx /= tl; ty /= tl;
+      // Perpendicular to road = bridge span direction
+      const px = -ty, py = tx;
+
+      const [cx, cy] = center;
+      const half = bridgeLen / 2;
+      // Two parallel planks across the road
+      const plankOffset = 3;
+      [-1, 1].forEach(side => {
+        const ox = tx * plankOffset * side;
+        const oy = ty * plankOffset * side;
+        bridgeGroup.append("line")
+          .attr("x1", cx + ox - px * half).attr("y1", cy + oy - py * half)
+          .attr("x2", cx + ox + px * half).attr("y2", cy + oy + py * half)
+          .attr("stroke", color).attr("stroke-width", strokeWidth)
+          .attr("stroke-linecap", "round").attr("opacity", opacity);
+      });
+      // Short crossbars (ties) between the planks for a hand-drawn bridge
+      for (let k = -2; k <= 2; k++) {
+        const f = k / 2 * half * 0.6;
+        bridgeGroup.append("line")
+          .attr("x1", cx + px * f - tx * plankOffset)
+          .attr("y1", cy + py * f - ty * plankOffset)
+          .attr("x2", cx + px * f + tx * plankOffset)
+          .attr("y2", cy + py * f + ty * plankOffset)
+          .attr("stroke", color).attr("stroke-width", strokeWidth * 0.6)
+          .attr("stroke-linecap", "round").attr("opacity", opacity * 0.8);
+      }
+      drawn.add(hex);
     }
+  });
+}
+
+// --- Format fractional days for display: 0.5 → "½", 0.25 → "¼", 0.75 → "¾" ---
+function formatDaysLabel(days) {
+  if (days === 1) return "1 day";
+  if (days === 0.5) return "\u00BD day";
+  if (days === 0.25) return "\u00BC day";
+  if (days === 0.75) return "\u00BE day";
+  const whole = Math.floor(days);
+  const frac = days - whole;
+  let fracStr = "";
+  if (frac === 0.5) fracStr = "\u00BD";
+  else if (frac === 0.25) fracStr = "\u00BC";
+  else if (frac === 0.75) fracStr = "\u00BE";
+  if (whole > 0 && fracStr) return whole + fracStr + " days";
+  return days + " days";
+}
+
+// --- Render day labels along the straight-line midpoint of each link,
+// rotated to follow the link direction and offset slightly above the line. ---
+function renderDayLabelsAlongLinks(ctx, style) {
+  const { g, links, FONT } = ctx;
+  const {
+    color = "#333",
+    strokeColor = "#f4e8d1",
+    fontSize = 9,
+    opacity = 1,
+    fontStyle = "italic",
+    offset = 8,
+    className = "day-labels",
+  } = style || {};
+
+  const labelGroup = g.append("g").attr("class", className);
+
+  links.forEach(link => {
+    if (!link.days || link.days < 0.25 || link.path_type === "river") return;
+
+    const sx = link.source.x, sy = link.source.y;
+    const tx = link.target.x, ty = link.target.y;
+    const dx = tx - sx, dy = ty - sy;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const mx = (sx + tx) / 2, my = (sy + ty) / 2;
+    // Angle in degrees; flip horizontally so text reads left-to-right.
+    let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    if (angle > 90) angle -= 180;
+    else if (angle < -90) angle += 180;
+    // Perpendicular offset so text floats just off the line
+    const nx = -dy / len, ny = dx / len;
+    const tx2 = mx + nx * offset;
+    const ty2 = my + ny * offset;
+
+    labelGroup.append("text")
+      .attr("x", tx2).attr("y", ty2)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .attr("font-family", FONT)
+      .attr("font-size", fontSize + "px")
+      .attr("font-style", fontStyle)
+      .attr("fill", color)
+      .attr("stroke", strokeColor)
+      .attr("stroke-width", 2.5)
+      .attr("paint-order", "stroke")
+      .attr("opacity", opacity)
+      .attr("transform", `rotate(${angle.toFixed(1)}, ${tx2}, ${ty2})`)
+      .text(formatDaysLabel(link.days));
   });
 }
 
@@ -455,65 +658,37 @@ function computeBounds(nodes) {
     const colStep = size * 2 * 0.75;
     const rowStep = size * Math.sqrt(3);
 
-    Object.keys(graphData.hex_terrain).forEach(hex => {
+    const addHexBounds = (hex) => {
+      if (typeof hex !== "string" || hex.length < 4) return;
       const col = parseInt(hex.substring(0, 2));
       const row = parseInt(hex.substring(2, 4));
+      if (isNaN(col) || isNaN(row)) return;
       const hx = (col - bcCol) * colStep + WIDTH / 2;
       const hy = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
       minX = Math.min(minX, hx);
       maxX = Math.max(maxX, hx);
       minY = Math.min(minY, hy);
       maxY = Math.max(maxY, hy);
-    });
-  }
+    };
 
-  // Expand to include river path positions
-  if (graphData && graphData.river_path) {
-    const bcCol = 10, bcRow = 10;
-    const size = HINT_SCALE / 2;
-    const colStep = size * 2 * 0.75;
-    const rowStep = size * Math.sqrt(3);
+    Object.keys(graphData.hex_terrain).forEach(addHexBounds);
 
-    graphData.river_path.forEach(hex => {
-      const col = parseInt(hex.substring(0, 2));
-      const row = parseInt(hex.substring(2, 4));
-      const hx = (col - bcCol) * colStep + WIDTH / 2;
-      const hy = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
-      minX = Math.min(minX, hx);
-      maxX = Math.max(maxX, hx);
-      minY = Math.min(minY, hy);
-      maxY = Math.max(maxY, hy);
-    });
-  }
-
-  // Expand to include road path positions
-  if (graphData && graphData.road_path) {
-    const bcCol = 10, bcRow = 10;
-    const size = HINT_SCALE / 2;
-    const colStep = size * 2 * 0.75;
-    const rowStep = size * Math.sqrt(3);
-
-    // road_path entries can be arrays, objects {hexes}, or a single flat array
-    let roadPaths;
-    if (typeof graphData.road_path[0] === "string") {
-      roadPaths = [graphData.road_path];
-    } else {
-      roadPaths = graphData.road_path.map(entry =>
-        Array.isArray(entry) ? entry : (entry && entry.hexes) || []
-      );
+    if (graphData.river_path) {
+      graphData.river_path.forEach(addHexBounds);
     }
-    roadPaths.forEach(path => {
-      path.forEach(hex => {
-        const col = parseInt(hex.substring(0, 2));
-        const row = parseInt(hex.substring(2, 4));
-        const hx = (col - bcCol) * colStep + WIDTH / 2;
-        const hy = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
-        minX = Math.min(minX, hx);
-        maxX = Math.max(maxX, hx);
-        minY = Math.min(minY, hy);
-        maxY = Math.max(maxY, hy);
-      });
-    });
+
+    if (graphData.road_path) {
+      // road_path entries can be arrays, {hexes, ...}, or a flat array of strings
+      let roadPaths;
+      if (typeof graphData.road_path[0] === "string") {
+        roadPaths = [graphData.road_path];
+      } else {
+        roadPaths = graphData.road_path.map(entry =>
+          Array.isArray(entry) ? entry : (entry && entry.hexes) || []
+        );
+      }
+      roadPaths.forEach(path => path.forEach(addHexBounds));
+    }
   }
 
   return {
@@ -677,7 +852,8 @@ function renderMap(styleName, gridName) {
     mulberry32, seedFromString, FONT,
     riverPath: graphData.river_path || [],
     roadPath: graphData.road_path || [],
-    hexTerrain: graphData.hex_terrain || {}
+    hexTerrain: graphData.hex_terrain || {},
+    offMapArrows: graphData.off_map_arrows || []
   };
 
   // Run the style's render pipeline
@@ -756,7 +932,7 @@ function exportSVG() {
 // Expose for global access
 Object.assign(MapCore, {
   HINT_SCALE, DAY_SCALE, FONT, INTERIOR_TERRAINS,
-  isOverlandNode, renderRiver, renderRoad, renderHexTerrain, renderTerrainEdges, mulberry32, seedFromString, computeBounds,
+  isOverlandNode, renderRiver, renderRoad, renderBridges, renderHexTerrain, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
   showDetail, closePanel,
   loadData, runSimulation, setupSVG, centerView,
   renderMap, applyTheme, exportSVG,

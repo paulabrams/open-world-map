@@ -37,8 +37,10 @@ window.MapStyles.hexcrawl = {
   /* ── Master render (called by core) ─────────────────────────── */
   render(ctx) {
     this.renderBackground(ctx);
+    this.renderTravelRadii(ctx);
     MapCore.renderRiver(ctx, ctx.colors.INK, 3);
     MapCore.renderRoad(ctx, ctx.colors.INK, 2);
+    MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.1, bridgeLen: 14 });
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
     this.renderNodes(ctx);
@@ -46,6 +48,43 @@ window.MapStyles.hexcrawl = {
     this.renderDayLabels(ctx);
     this.renderCompass(ctx);
     this.renderScaleBar(ctx);
+    this.renderCartouche(ctx);
+  },
+
+  // Faint concentric circles around the heart node — echoes the
+  // hand-drawn Basilisk map's travel-day ranges.
+  renderTravelRadii(ctx) {
+    const { g, nodes, DAY_SCALE } = ctx;
+    const { INK } = ctx.colors;
+    const heart = nodes.find(n => n.point_type === "heart" && n.scale !== "local");
+    if (!heart) return;
+
+    const radii = [
+      { days: 1, label: "1 day" },
+      { days: 3, label: "3 days" },
+    ];
+    const radiusGroup = g.append("g").attr("class", "travel-radii");
+
+    radii.forEach(({ days, label }) => {
+      const r = days * DAY_SCALE;
+      radiusGroup.append("circle")
+        .attr("cx", heart.x).attr("cy", heart.y).attr("r", r)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.7)
+        .attr("stroke-dasharray", "3 4")
+        .attr("opacity", 0.25);
+      // Small italic label on the upper-right of the circle
+      radiusGroup.append("text")
+        .attr("x", heart.x + r * 0.72).attr("y", heart.y - r * 0.72)
+        .attr("text-anchor", "middle")
+        .attr("font-family", ctx.FONT)
+        .attr("font-size", "10px")
+        .attr("font-style", "italic")
+        .attr("fill", INK)
+        .attr("opacity", 0.4)
+        .text(label);
+    });
   },
 
   /* ────────────────────────────────────────────────────────────
@@ -203,10 +242,39 @@ window.MapStyles.hexcrawl = {
       "swamp": (tg, x, y, sz, rng) => style.drawSwampReeds(tg, x, y, sz, rng, INK),
       "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK),
       "plains": (tg, x, y, sz, rng) => style.drawGrassTuft(tg, x, y, sz, rng, INK),
+      "graveyard": (tg, x, y, sz, rng) => style.drawGraveyard(tg, x, y, sz, rng, INK),
     });
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
       color: INK, strokeWidth: 1.0, opacity: 0.55, wobble: 2.0, className: "forest-edges",
     });
+  },
+
+  drawGraveyard(g, x, y, size, rng, INK) {
+    // Cluster of 3-5 small crosses / tombstones
+    const count = 3 + Math.floor(rng() * 3);
+    for (let i = 0; i < count; i++) {
+      const gx = x + (rng() - 0.5) * size * 1.1;
+      const gy = y + (rng() - 0.5) * size * 0.65;
+      const gh = size * (0.3 + rng() * 0.15);
+      const gw = gh * 0.55;
+      const style = rng();
+      if (style > 0.6) {
+        // Cross
+        g.append("line")
+          .attr("x1", gx).attr("y1", gy - gh * 0.45)
+          .attr("x2", gx).attr("y2", gy + gh * 0.45)
+          .attr("stroke", INK).attr("stroke-width", 0.7).attr("opacity", 0.7);
+        g.append("line")
+          .attr("x1", gx - gw * 0.5).attr("y1", gy - gh * 0.2)
+          .attr("x2", gx + gw * 0.5).attr("y2", gy - gh * 0.2)
+          .attr("stroke", INK).attr("stroke-width", 0.7).attr("opacity", 0.7);
+      } else {
+        // Rounded tombstone
+        g.append("path")
+          .attr("d", `M ${gx - gw / 2} ${gy + gh * 0.45} L ${gx - gw / 2} ${gy - gh * 0.15} Q ${gx} ${gy - gh * 0.5} ${gx + gw / 2} ${gy - gh * 0.15} L ${gx + gw / 2} ${gy + gh * 0.45} Z`)
+          .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.6).attr("opacity", 0.7);
+      }
+    }
   },
 
   // --- Node icon rendering ---
@@ -227,62 +295,140 @@ window.MapStyles.hexcrawl = {
       const s = isLocal ? 3 : 5;
 
       switch (node.point_type) {
-        case "heart":
-          ng.append("circle").attr("r", 7).attr("fill", INK).attr("stroke", "none");
-          ng.append("circle").attr("r", 9).attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.5);
-          break;
-        case "fortress":
-          ng.append("rect").attr("x", -s).attr("y", -s).attr("width", s*2).attr("height", s*2)
-            .attr("fill", INK).attr("stroke", "none");
-          // Crenellations
-          for (let i = -1; i <= 1; i++) {
-            ng.append("rect").attr("x", i * s * 0.7 - 1.5).attr("y", -s - 3).attr("width", 3).attr("height", 3)
+        case "heart": {
+          // Town cluster — multiple small filled houses, central one larger
+          const hs = 5;
+          const spots = [
+            { dx: 0, dy: 0, sc: 1.2 },
+            { dx: -hs * 1.4, dy: hs * 0.3, sc: 0.9 },
+            { dx: hs * 1.4, dy: hs * 0.2, sc: 0.9 },
+            { dx: -hs * 0.4, dy: -hs * 0.9, sc: 0.85 },
+            { dx: hs * 0.5, dy: -hs * 0.8, sc: 0.85 },
+          ];
+          spots.forEach(p => {
+            const w = hs * 0.9 * p.sc;
+            const h = hs * 0.6 * p.sc;
+            ng.append("rect").attr("x", p.dx - w / 2).attr("y", p.dy - h / 2 + h * 0.1)
+              .attr("width", w).attr("height", h).attr("fill", INK);
+            ng.append("path")
+              .attr("d", `M ${p.dx - w / 2 - 0.5} ${p.dy - h / 2 + h * 0.1} L ${p.dx} ${p.dy - h * 0.9} L ${p.dx + w / 2 + 0.5} ${p.dy - h / 2 + h * 0.1} Z`)
               .attr("fill", INK);
-          }
-          break;
-        case "tavern":
-          ng.append("rect").attr("x", -3).attr("y", -3).attr("width", 6).attr("height", 6)
-            .attr("fill", INK).attr("stroke", "none");
-          break;
-        case "settlement":
-          ng.append("circle").attr("r", s).attr("fill", INK).attr("stroke", "none");
-          break;
-        case "wilderness":
-          ng.append("circle").attr("r", s).attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.5);
-          break;
-        case "dungeon": {
-          const dd = s * 1.3;
-          ng.append("path")
-            .attr("d", `M 0 ${-dd} L ${dd} 0 L 0 ${dd} L ${-dd} 0 Z`)
-            .attr("fill", INK).attr("stroke", "none");
+          });
           break;
         }
-        case "sanctuary":
-          ng.append("circle").attr("r", s).attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.5);
-          ng.append("circle").attr("r", 2).attr("fill", INK);
+        case "fortress": {
+          // Castle: wall with twin towers + central keep
+          const hs = 5;
+          ng.append("rect").attr("x", -hs).attr("y", -hs * 0.35).attr("width", hs * 2).attr("height", hs * 0.85)
+            .attr("fill", INK);
+          // Twin towers
+          [-1, 1].forEach(side => {
+            ng.append("rect").attr("x", side * hs - hs * 0.3).attr("y", -hs).attr("width", hs * 0.55).attr("height", hs * 1.55)
+              .attr("fill", INK);
+            // Crenellations
+            for (let c = 0; c < 2; c++) {
+              ng.append("rect").attr("x", side * hs - hs * 0.25 + c * hs * 0.25).attr("y", -hs - hs * 0.2).attr("width", hs * 0.13).attr("height", hs * 0.2)
+                .attr("fill", INK);
+            }
+          });
+          // Central gate
+          ng.append("rect").attr("x", -hs * 0.15).attr("y", 0).attr("width", hs * 0.3).attr("height", hs * 0.5)
+            .attr("fill", "none").attr("stroke", "#fff").attr("stroke-width", 0.6).attr("opacity", 0.8);
           break;
-        case "tower":
-          ng.append("rect").attr("x", -2).attr("y", -s - 2).attr("width", 4).attr("height", s * 2 + 4)
-            .attr("fill", INK).attr("stroke", "none");
-          // Crenellation at top
-          ng.append("rect").attr("x", -3.5).attr("y", -s - 4).attr("width", 7).attr("height", 2)
+        }
+        case "tavern": {
+          // Inn: small house with sign post
+          const hs = isLocal ? 3 : 4;
+          ng.append("rect").attr("x", -hs * 0.8).attr("y", -hs * 0.3).attr("width", hs * 1.6).attr("height", hs * 1.1)
+            .attr("fill", INK);
+          ng.append("path")
+            .attr("d", `M ${-hs * 0.95} ${-hs * 0.3} L 0 ${-hs * 1.1} L ${hs * 0.95} ${-hs * 0.3} Z`)
+            .attr("fill", INK);
+          // Sign post to the right
+          ng.append("line").attr("x1", hs * 1.0).attr("y1", 0).attr("x2", hs * 1.5).attr("y2", 0)
+            .attr("stroke", INK).attr("stroke-width", 0.7);
+          ng.append("rect").attr("x", hs * 1.2).attr("y", -hs * 0.4).attr("width", hs * 0.45).attr("height", hs * 0.4)
             .attr("fill", INK);
           break;
-        case "ruin":
-          ng.append("rect").attr("x", -s).attr("y", -s).attr("width", s*2).attr("height", s*2)
-            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2)
-            .attr("stroke-dasharray", "2 2");
+        }
+        case "settlement": {
+          // Two small houses
+          const hs = isLocal ? 3 : 4;
+          [-1, 1].forEach(side => {
+            const dx = side * hs * 0.9;
+            ng.append("rect").attr("x", dx - hs * 0.55).attr("y", -hs * 0.25).attr("width", hs * 1.1).attr("height", hs * 0.75)
+              .attr("fill", INK);
+            ng.append("path")
+              .attr("d", `M ${dx - hs * 0.7} ${-hs * 0.25} L ${dx} ${-hs * 0.95} L ${dx + hs * 0.7} ${-hs * 0.25} Z`)
+              .attr("fill", INK);
+          });
           break;
+        }
+        case "wilderness":
+          ng.append("circle").attr("r", s).attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.5);
+          ng.append("circle").attr("r", 1.2).attr("fill", INK);
+          break;
+        case "dungeon": {
+          // Cave mouth: arched opening
+          const dd = s * 1.2;
+          ng.append("path")
+            .attr("d", `M ${-dd} ${dd * 0.4} L ${-dd} 0 Q ${-dd} ${-dd} 0 ${-dd} Q ${dd} ${-dd} ${dd} 0 L ${dd} ${dd * 0.4} Z`)
+            .attr("fill", INK);
+          break;
+        }
+        case "sanctuary": {
+          // Small chapel with cross on top
+          const hs = s * 0.9;
+          ng.append("rect").attr("x", -hs * 0.7).attr("y", -hs * 0.3).attr("width", hs * 1.4).attr("height", hs * 1.1)
+            .attr("fill", INK);
+          ng.append("path")
+            .attr("d", `M ${-hs * 0.85} ${-hs * 0.3} L 0 ${-hs * 1.1} L ${hs * 0.85} ${-hs * 0.3} Z`)
+            .attr("fill", INK);
+          // Cross on roof peak
+          ng.append("line").attr("x1", 0).attr("y1", -hs * 1.1).attr("x2", 0).attr("y2", -hs * 1.7)
+            .attr("stroke", INK).attr("stroke-width", 0.9);
+          ng.append("line").attr("x1", -hs * 0.3).attr("y1", -hs * 1.45).attr("x2", hs * 0.3).attr("y2", -hs * 1.45)
+            .attr("stroke", INK).attr("stroke-width", 0.9);
+          break;
+        }
+        case "tower":
+          ng.append("rect").attr("x", -2).attr("y", -s - 2).attr("width", 4).attr("height", s * 2 + 4)
+            .attr("fill", INK);
+          // Crenellation at top — 3 teeth
+          for (let c = -1; c <= 1; c++) {
+            ng.append("rect").attr("x", c * 1.6 - 0.7).attr("y", -s - 4.5).attr("width", 1.4).attr("height", 2.5)
+              .attr("fill", INK);
+          }
+          // Small door at base
+          ng.append("rect").attr("x", -1).attr("y", s - 0.5).attr("width", 2).attr("height", 2.5)
+            .attr("fill", "none").attr("stroke", "#fff").attr("stroke-width", 0.4).attr("opacity", 0.7);
+          break;
+        case "ruin": {
+          // Broken wall fragment
+          const hs = s;
+          ng.append("path")
+            .attr("d", `M ${-hs} ${hs * 0.6} L ${-hs} ${-hs * 0.3} L ${-hs * 0.5} ${-hs * 0.7} L ${-hs * 0.2} ${-hs * 0.1} L ${hs * 0.3} ${-hs * 0.5} L ${hs * 0.7} ${-hs * 0.1} L ${hs} ${hs * 0.6} Z`)
+            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.0);
+          // Crack lines
+          ng.append("line").attr("x1", 0).attr("y1", -hs * 0.2).attr("x2", 0).attr("y2", hs * 0.5)
+            .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.6);
+          break;
+        }
         case "waypoint":
-          ng.append("path")
-            .attr("d", `M 0 ${-s} L ${s} ${s} L ${-s} ${s} Z`)
-            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2);
+          // Standing stone / menhir
+          ng.append("rect").attr("x", -1.5).attr("y", -s).attr("width", 3).attr("height", s * 1.8)
+            .attr("fill", INK);
+          ng.append("line").attr("x1", -s * 0.8).attr("y1", s * 0.8).attr("x2", s * 0.8).attr("y2", s * 0.8)
+            .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.5);
           break;
-        case "lair":
+        case "lair": {
+          // Skull-like silhouette: larger cave mouth with fangs
+          const dd = s * 1.3;
           ng.append("path")
-            .attr("d", `M 0 ${-s} L ${s} ${s} L ${-s} ${s} Z`)
-            .attr("fill", INK).attr("stroke", "none");
+            .attr("d", `M ${-dd} ${dd * 0.5} L ${-dd} 0 Q ${-dd} ${-dd} 0 ${-dd} Q ${dd} ${-dd} ${dd} 0 L ${dd} ${dd * 0.5} L ${dd * 0.5} ${dd * 0.1} L ${dd * 0.2} ${dd * 0.5} L ${-dd * 0.2} ${dd * 0.1} L ${-dd * 0.5} ${dd * 0.5} Z`)
+            .attr("fill", INK);
           break;
+        }
         default:
           ng.append("circle").attr("r", 4).attr("fill", INK);
       }
@@ -320,32 +466,9 @@ window.MapStyles.hexcrawl = {
 
   // --- Day labels on paths ---
   renderDayLabels(ctx) {
-    const { g, links, FONT } = ctx;
     const { INK_LIGHT, PARCHMENT } = ctx.colors;
-
-    const labelGroup = g.append("g").attr("class", "day-labels");
-
-    links.forEach(link => {
-      if (!link.days || link.days < 0.25 || link.path_type === "river") return;
-
-      const sx = link.source.x, sy = link.source.y;
-      const tx = link.target.x, ty = link.target.y;
-      const mx = (sx + tx) / 2, my = (sy + ty) / 2;
-
-      const text = link.days === 1 ? "1 day" : link.days + " days";
-
-      labelGroup.append("text")
-        .attr("x", mx)
-        .attr("y", my + 3)
-        .attr("text-anchor", "middle")
-        .attr("font-family", FONT)
-        .attr("font-size", "9px")
-        .attr("font-style", "italic")
-        .attr("fill", INK_LIGHT)
-        .attr("stroke", PARCHMENT)
-        .attr("stroke-width", 2.5)
-        .attr("paint-order", "stroke")
-        .text(text);
+    MapCore.renderDayLabelsAlongLinks(ctx, {
+      color: INK_LIGHT, strokeColor: PARCHMENT, fontSize: 9, offset: 8,
     });
   },
 
@@ -447,13 +570,13 @@ window.MapStyles.hexcrawl = {
     const peaks = [];
     for (let i = 0; i < peakCount; i++) {
       const offsetX = (i - (peakCount - 1) / 2) * baseSpacing + (rng() - 0.5) * size * 0.15;
-      const hMul = 0.85 + rng() * 0.55;
-      peaks.push({ cx: x + offsetX, h: size * (1.0 + rng() * 0.4) * hMul });
+      const hMul = 0.75 + rng() * 0.35;
+      peaks.push({ cx: x + offsetX, h: size * (0.7 + rng() * 0.25) * hMul });
     }
     // Render back-to-front so front peaks overlap back ones
     peaks.sort((a, b) => b.h - a.h);
     peaks.forEach(p => {
-      const w = size * (0.7 + rng() * 0.25);
+      const w = size * (0.9 + rng() * 0.25);
       const skew = (rng() - 0.5) * w * 0.12;
       const px = p.cx + skew;
       const py = y - p.h;
@@ -520,49 +643,68 @@ window.MapStyles.hexcrawl = {
   },
 
   drawSwampReeds(g, x, y, size, rng, INK) {
-    // Wavy water lines
-    for (let i = 0; i < 3; i++) {
-      const ly = y + i * size * 0.3;
-      const lx = x - size * 0.5;
-      const d = `M ${lx} ${ly} Q ${lx + size * 0.25} ${ly - size * 0.1} ${lx + size * 0.5} ${ly} Q ${lx + size * 0.75} ${ly + size * 0.1} ${lx + size} ${ly}`;
+    // Layered water ripples with varying lengths and amplitudes
+    const ripples = 4 + Math.floor(rng() * 2);
+    for (let i = 0; i < ripples; i++) {
+      const ly = y - size * 0.35 + i * size * 0.22 + (rng() - 0.5) * 2;
+      const w = size * (0.7 + rng() * 0.5);
+      const lx = x - w / 2 + (rng() - 0.5) * 3;
+      const amp = size * (0.06 + rng() * 0.05);
+      const d = `M ${lx} ${ly} Q ${lx + w * 0.25} ${ly - amp} ${lx + w * 0.5} ${ly} Q ${lx + w * 0.75} ${ly + amp} ${lx + w} ${ly}`;
       g.append("path")
         .attr("d", d)
         .attr("fill", "none")
         .attr("stroke", INK)
-        .attr("stroke-width", 0.8)
+        .attr("stroke-width", 0.7)
         .attr("opacity", 0.5);
     }
-    // Reed stalks
-    for (let i = 0; i < 3; i++) {
-      const rx = x - size * 0.3 + rng() * size * 0.6;
-      const ry = y - size * 0.2;
-      g.append("line")
-        .attr("x1", rx).attr("y1", ry)
-        .attr("x2", rx).attr("y2", ry - size * 0.6)
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.8);
-      g.append("circle")
-        .attr("cx", rx).attr("cy", ry - size * 0.6 - 2)
-        .attr("r", 1.5)
-        .attr("fill", INK);
+    // Reed tufts: 2-3 clusters, each with 2-4 stalks + cattail tip
+    const tufts = 2 + Math.floor(rng() * 2);
+    for (let t = 0; t < tufts; t++) {
+      const cx = x + (rng() - 0.5) * size * 0.9;
+      const baseY = y + (rng() - 0.3) * size * 0.1;
+      const stalks = 2 + Math.floor(rng() * 3);
+      for (let i = 0; i < stalks; i++) {
+        const rx = cx + (i - (stalks - 1) / 2) * 1.4 + (rng() - 0.5) * 0.6;
+        const topLean = (rng() - 0.5) * 1.5;
+        const topY = baseY - size * (0.35 + rng() * 0.2);
+        g.append("line")
+          .attr("x1", rx).attr("y1", baseY)
+          .attr("x2", rx + topLean).attr("y2", topY)
+          .attr("stroke", INK).attr("stroke-width", 0.6).attr("opacity", 0.75);
+        // Cattail head on some stalks
+        if (rng() > 0.45) {
+          g.append("ellipse")
+            .attr("cx", rx + topLean).attr("cy", topY - 1.5)
+            .attr("rx", 0.8).attr("ry", 1.6)
+            .attr("fill", INK).attr("opacity", 0.75);
+        }
+      }
     }
   },
 
   drawGrassTuft(g, x, y, size, rng, INK) {
-    const blades = 3;
-    for (let i = 0; i < blades; i++) {
-      const angle = -Math.PI / 2 + (i - 1) * 0.4 + (rng() - 0.5) * 0.2;
-      const len = size * (0.4 + rng() * 0.3);
-      const tx = x + Math.cos(angle) * len;
-      const ty = y + Math.sin(angle) * len;
-      const cx = x + Math.cos(angle) * len * 0.5 + (rng() - 0.5) * 3;
-      const cy = y + Math.sin(angle) * len * 0.5;
-      g.append("path")
-        .attr("d", `M ${x} ${y} Q ${cx} ${cy} ${tx} ${ty}`)
-        .attr("fill", "none")
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.7)
-        .attr("opacity", 0.4);
+    // Multiple small tufts scattered around the hex center
+    const tufts = 3 + Math.floor(rng() * 3);
+    for (let t = 0; t < tufts; t++) {
+      const tx0 = x + (rng() - 0.5) * size * 1.1;
+      const ty0 = y + (rng() - 0.5) * size * 0.65;
+      const blades = 3 + Math.floor(rng() * 2);
+      const tuftLean = (rng() - 0.5) * 0.4;
+      for (let i = 0; i < blades; i++) {
+        const angle = -Math.PI / 2 + tuftLean + (i - blades / 2) * 0.3 + (rng() - 0.5) * 0.18;
+        const len = size * (0.22 + rng() * 0.18);
+        const txe = tx0 + Math.cos(angle) * len;
+        const tye = ty0 + Math.sin(angle) * len;
+        const cxe = tx0 + Math.cos(angle) * len * 0.5 + (rng() - 0.5) * 1.5;
+        const cye = ty0 + Math.sin(angle) * len * 0.5;
+        g.append("path")
+          .attr("d", `M ${tx0} ${ty0} Q ${cxe} ${cye} ${txe} ${tye}`)
+          .attr("fill", "none")
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.6)
+          .attr("opacity", 0.45);
+      }
     }
   },
 
@@ -598,30 +740,88 @@ window.MapStyles.hexcrawl = {
   },
 
   drawFarm(g, x, y, size, rng, INK) {
-    const bw = 3 + rng() * 2;
-    const bh = 2 + rng() * 1.5;
+    // 2-3 small farm buildings clustered + furrows on both sides
+    const buildings = 2 + Math.floor(rng() * 2);
+    const spacing = size * 0.45;
+    for (let b = 0; b < buildings; b++) {
+      const bx = x + (b - (buildings - 1) / 2) * spacing + (rng() - 0.5) * 1;
+      const by = y + (rng() - 0.5) * size * 0.2;
+      const bw = size * (0.24 + rng() * 0.15);
+      const bh = size * (0.17 + rng() * 0.12);
+      g.append("rect")
+        .attr("x", bx - bw / 2).attr("y", by - bh / 2)
+        .attr("width", bw).attr("height", bh)
+        .attr("fill", "none").attr("stroke", INK)
+        .attr("stroke-width", 0.55).attr("opacity", 0.65);
+      g.append("path")
+        .attr("d", `M ${bx - bw / 2 - 0.3} ${by - bh / 2} L ${bx} ${by - bh / 2 - bh * 0.8} L ${bx + bw / 2 + 0.3} ${by - bh / 2}`)
+        .attr("fill", "none").attr("stroke", INK)
+        .attr("stroke-width", 0.55).attr("opacity", 0.65);
+    }
+    // Furrows fanning out on both sides of the cluster
+    const perSide = 3 + Math.floor(rng() * 2);
+    for (let side = -1; side <= 1; side += 2) {
+      for (let i = 0; i < perSide; i++) {
+        const fx = x + side * size * (0.6 + i * 0.18);
+        g.append("line")
+          .attr("x1", fx).attr("y1", y - size * 0.28)
+          .attr("x2", fx).attr("y2", y + size * 0.28)
+          .attr("stroke", INK).attr("stroke-width", 0.35).attr("opacity", 0.35);
+      }
+    }
+  },
+
+  // --- Cartouche (tactical/OSR style: plain boxed block at bottom-left) ---
+  renderCartouche(ctx) {
+    const { g, bounds, meta, FONT } = ctx;
+    const { INK, PARCHMENT } = ctx.colors;
+
+    const boxW = 200;
+    const boxH = 48;
+    const bx = bounds.minX - 10;
+    const by = bounds.maxY - boxH + 40;
+
+    // Outer box
     g.append("rect")
-      .attr("x", x - bw/2).attr("y", y - bh/2)
-      .attr("width", bw).attr("height", bh)
+      .attr("x", bx).attr("y", by)
+      .attr("width", boxW).attr("height", boxH)
+      .attr("fill", PARCHMENT)
+      .attr("stroke", INK)
+      .attr("stroke-width", 1.5);
+
+    // Inner border
+    g.append("rect")
+      .attr("x", bx + 3).attr("y", by + 3)
+      .attr("width", boxW - 6).attr("height", boxH - 6)
       .attr("fill", "none")
       .attr("stroke", INK)
-      .attr("stroke-width", 0.5)
-      .attr("opacity", 0.4);
-    g.append("path")
-      .attr("d", `M ${x - bw/2 - 0.5} ${y - bh/2} L ${x} ${y - bh/2 - 2} L ${x + bw/2 + 0.5} ${y - bh/2}`)
-      .attr("fill", "none")
-      .attr("stroke", INK)
-      .attr("stroke-width", 0.5)
-      .attr("opacity", 0.4);
-    const fieldDir = rng() > 0.5 ? 1 : -1;
-    for (let i = 0; i < 3; i++) {
-      const fx = x + fieldDir * (bw + 2 + i * 2);
-      g.append("line")
-        .attr("x1", fx).attr("y1", y - 2)
-        .attr("x2", fx).attr("y2", y + 2)
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.3)
-        .attr("opacity", 0.25);
+      .attr("stroke-width", 0.5);
+
+    // Title
+    g.append("text")
+      .attr("x", bx + boxW / 2)
+      .attr("y", by + 22)
+      .attr("text-anchor", "middle")
+      .attr("font-family", FONT)
+      .attr("font-size", "14px")
+      .attr("font-weight", "bold")
+      .attr("letter-spacing", "2px")
+      .attr("fill", INK)
+      .text((meta.region || meta.campaign).toUpperCase());
+
+    // Subtitle (world + era)
+    const sub = [meta.world, meta.era].filter(Boolean).join(" \u2014 ");
+    if (sub) {
+      g.append("text")
+        .attr("x", bx + boxW / 2)
+        .attr("y", by + 38)
+        .attr("text-anchor", "middle")
+        .attr("font-family", FONT)
+        .attr("font-size", "9px")
+        .attr("font-style", "italic")
+        .attr("fill", INK)
+        .attr("opacity", 0.75)
+        .text(sub);
     }
   },
 };
