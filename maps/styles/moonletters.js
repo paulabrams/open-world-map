@@ -44,6 +44,7 @@ window.MapStyles.moonletters = {
     this.renderBackground(ctx);
     this.renderRunicBorder(ctx);
     MapCore.renderRiver(ctx, ctx.colors.BLUE_INK, 3);
+    MapCore.renderRiverLabel(ctx, { color: ctx.colors.BLUE_INK, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderBridges(ctx, { color: ctx.colors.BLUE_INK, strokeWidth: 1.0, bridgeLen: 14 });
     MapCore.renderRoad(ctx, ctx.colors.BLUE_INK, 2);
     this.renderLinks(ctx);
@@ -66,14 +67,11 @@ window.MapStyles.moonletters = {
      ──────────────────────────────────────────────────────────── */
 
   drawMountainSketch(g, x, y, size, rng, colors) {
-    const variant = Math.floor(rng() * 5);
+    const variant = Math.floor(rng() * 4);
     if (variant === 0) {
       this.drawPeakTwin(g, x, y, size, rng, colors);
     } else if (variant === 1) {
       this.drawPeakStubby(g, x, y, size, rng, colors);
-    } else if (variant === 2) {
-      this.drawPeakSingle(g, x - size * 0.7, y, size * 0.85, rng, colors);
-      this.drawPeakSingle(g, x + size * 0.6, y + 1, size * 1.0, rng, colors);
     } else {
       this.drawPeakSingle(g, x, y, size, rng, colors);
     }
@@ -176,14 +174,14 @@ window.MapStyles.moonletters = {
   },
 
   drawSparseTree(g, x, y, size, rng, colors) {
-    // Cluster of 2-4 small tree glyphs — mixes Y-shape and fir shape for variety
-    const count = 2 + Math.floor(rng() * 3);
+    // Small cluster of 1-2 tree glyphs — mixes Y-shape and fir shape for variety
+    const count = 1 + Math.floor(rng() * 2);
     const trees = [];
     for (let i = 0; i < count; i++) {
       trees.push({
-        tx: x + (rng() - 0.5) * size * 1.3,
-        ty: y + (rng() - 0.5) * size * 0.8,
-        sz: size * (0.5 + rng() * 0.4),
+        tx: x + (rng() - 0.5) * size * 0.8,
+        ty: y + (rng() - 0.5) * size * 0.5,
+        sz: size * (0.45 + rng() * 0.35),
         style: rng() > 0.4 ? "y" : "fir",
       });
     }
@@ -300,9 +298,9 @@ window.MapStyles.moonletters = {
 
   drawHill(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
-    // Gentle cluster of 2-3 faint hillocks
-    const count = 2 + Math.floor(rng() * 2);
-    const spacing = size * 0.5;
+    // Gentle cluster of 1-2 faint hillocks
+    const count = 1 + Math.floor(rng() * 2);
+    const spacing = size * 0.75;
     const humps = [];
     for (let i = 0; i < count; i++) {
       humps.push({
@@ -412,6 +410,7 @@ window.MapStyles.moonletters = {
         .attr("class", "node")
         .style("cursor", "pointer")
         .on("click", (event) => { event.stopPropagation(); MapCore.showDetail(node); });
+      ng.append("title").text(node.name);
 
       const isLocal = node.scale === "local";
       const s = isLocal ? 3.5 : 5;
@@ -800,6 +799,14 @@ window.MapStyles.moonletters = {
     const bx = bounds.minX - 30;
     const by = bounds.maxY + 25;
 
+    // Small crescent moon to the left of the title — evokes the "moon letters" namesake.
+    const moonG = g.append("g").attr("class", "moon-cartouche").attr("opacity", 0.75);
+    const moonCX = bx - 14, moonCY = by - 4, moonR = 5;
+    // Crescent: full disc minus offset disc (SVG path using arcs)
+    moonG.append("path")
+      .attr("d", `M ${moonCX} ${moonCY - moonR} A ${moonR} ${moonR} 0 1 0 ${moonCX} ${moonCY + moonR} A ${moonR * 0.7} ${moonR} 0 1 1 ${moonCX} ${moonCY - moonR} Z`)
+      .attr("fill", BLUE_INK);
+
     g.append("text")
       .attr("x", bx)
       .attr("y", by)
@@ -1179,10 +1186,28 @@ window.MapStyles.moonletters = {
       .attr("fill", "none")
       .attr("stroke", BLUE_INK).attr("stroke-width", 0.7).attr("opacity", 0.75);
 
-    // Center dot
-    cg.append("circle")
-      .attr("cx", 0).attr("cy", 0).attr("r", 1.5)
-      .attr("fill", BLUE_INK).attr("opacity", 0.8);
+    // Center fleur-de-lis marking North — a classic cartographic flourish.
+    const fleurG = cg.append("g").attr("opacity", 0.85);
+    // Vertical stem
+    fleurG.append("path")
+      .attr("d", `M 0 ${-size * 0.25} L 0 ${size * 0.1}`)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.9).attr("fill", "none");
+    // Top bud (lobe at the tip)
+    fleurG.append("path")
+      .attr("d", `M 0 ${-size * 0.3} C -${size * 0.08} ${-size * 0.35}, -${size * 0.08} ${-size * 0.22}, 0 ${-size * 0.2} C ${size * 0.08} ${-size * 0.22}, ${size * 0.08} ${-size * 0.35}, 0 ${-size * 0.3} Z`)
+      .attr("fill", BLUE_INK);
+    // Side curls (left and right petals)
+    fleurG.append("path")
+      .attr("d", `M 0 ${-size * 0.15} C -${size * 0.13} ${-size * 0.1}, -${size * 0.14} ${size * 0.02}, -${size * 0.05} ${size * 0.05}`)
+      .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.8);
+    fleurG.append("path")
+      .attr("d", `M 0 ${-size * 0.15} C ${size * 0.13} ${-size * 0.1}, ${size * 0.14} ${size * 0.02}, ${size * 0.05} ${size * 0.05}`)
+      .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.8);
+    // Crossbar band near the base
+    fleurG.append("line")
+      .attr("x1", -size * 0.1).attr("y1", size * 0.05)
+      .attr("x2", size * 0.1).attr("y2", size * 0.05)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 1.0);
 
     // Four cardinal rays with filled half-diamond pointers (N/E/S/W)
     const rays = [

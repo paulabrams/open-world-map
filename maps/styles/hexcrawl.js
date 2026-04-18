@@ -37,8 +37,10 @@ window.MapStyles.hexcrawl = {
   /* ── Master render (called by core) ─────────────────────────── */
   render(ctx) {
     this.renderBackground(ctx);
+    this.renderBorder(ctx);
     this.renderTravelRadii(ctx);
     MapCore.renderRiver(ctx, ctx.colors.INK, 3);
+    MapCore.renderRiverLabel(ctx, { color: ctx.colors.INK, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderRoad(ctx, ctx.colors.INK, 2);
     MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.1, bridgeLen: 14 });
     this.renderLinks(ctx);
@@ -139,6 +141,27 @@ window.MapStyles.hexcrawl = {
       .attr("y", -HEIGHT)
       .attr("fill", "url(#parchment-grad)")
       .attr("filter", "url(#parchment-texture)");
+  },
+
+  // --- Simple tactical-style border ---
+  renderBorder(ctx) {
+    const { g, bounds } = ctx;
+    const { INK } = ctx.colors;
+    const pad = 40;
+    const x = bounds.minX - pad, y = bounds.minY - pad;
+    const w = bounds.maxX - bounds.minX + pad * 2;
+    const h = bounds.maxY - bounds.minY + pad * 2;
+    g.append("rect")
+      .attr("x", x).attr("y", y).attr("width", w).attr("height", h)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2).attr("opacity", 0.8);
+    // Short tick marks at corners
+    const cm = 10;
+    [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]].forEach(([cx, cy, sx, sy]) => {
+      g.append("line").attr("x1", cx).attr("y1", cy).attr("x2", cx + cm * sx).attr("y2", cy)
+        .attr("stroke", INK).attr("stroke-width", 1.0);
+      g.append("line").attr("x1", cx).attr("y1", cy).attr("x2", cx).attr("y2", cy + cm * sy)
+        .attr("stroke", INK).attr("stroke-width", 1.0);
+    });
   },
 
   // --- Path / link rendering ---
@@ -290,6 +313,7 @@ window.MapStyles.hexcrawl = {
         .attr("class", "node")
         .style("cursor", "pointer")
         .on("click", (event) => { event.stopPropagation(); MapCore.showDetail(node); });
+      ng.append("title").text(node.name);
 
       const isLocal = node.scale === "local";
       const s = isLocal ? 3 : 5;
@@ -477,40 +501,76 @@ window.MapStyles.hexcrawl = {
     const { g, bounds, FONT } = ctx;
     const { INK } = ctx.colors;
 
-    const x = bounds.maxX + 60;
+    const x = bounds.maxX + 40;
     const y = bounds.minY - 20;
+    const size = 26;
 
-    const cg = g.append("g")
-      .attr("transform", `translate(${x}, ${y})`)
-      .attr("opacity", 0.5);
+    const cg = g.append("g").attr("transform", `translate(${x}, ${y})`);
 
-    const size = 30;
-    // North arrow
-    cg.append("path")
-      .attr("d", `M 0 ${-size} L ${size * 0.15} ${-size * 0.3} L 0 ${-size * 0.15} L ${-size * 0.15} ${-size * 0.3} Z`)
+    // Outer circle
+    cg.append("circle")
+      .attr("cx", 0).attr("cy", 0).attr("r", size)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.0).attr("opacity", 0.75);
+    cg.append("circle")
+      .attr("cx", 0).attr("cy", 0).attr("r", size * 0.32)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.7).attr("opacity", 0.65);
+
+    // Filled half-diamond pointers with cardinal labels
+    const cardinals = [
+      { dx: 0, dy: -1, label: "N" },
+      { dx: 1, dy: 0, label: "E" },
+      { dx: 0, dy: 1, label: "S" },
+      { dx: -1, dy: 0, label: "W" },
+    ];
+    cardinals.forEach(({ dx, dy, label }) => {
+      const tipX = dx * size, tipY = dy * size;
+      const baseX = dx * size * 0.32, baseY = dy * size * 0.32;
+      const perpX = -dy * size * 0.11, perpY = dx * size * 0.11;
+      cg.append("path")
+        .attr("d", `M ${baseX} ${baseY} L ${tipX} ${tipY} L ${(baseX + tipX) / 2 + perpX} ${(baseY + tipY) / 2 + perpY} Z`)
+        .attr("fill", INK).attr("opacity", 0.85);
+      cg.append("path")
+        .attr("d", `M ${baseX} ${baseY} L ${tipX} ${tipY} L ${(baseX + tipX) / 2 - perpX} ${(baseY + tipY) / 2 - perpY} Z`)
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.7).attr("opacity", 0.8);
+      const labelDist = size + 7;
+      cg.append("text")
+        .attr("x", dx * labelDist).attr("y", dy * labelDist + (dy === 0 ? 3 : 0))
+        .attr("text-anchor", dx === 0 ? "middle" : dx > 0 ? "start" : "end")
+        .attr("dominant-baseline", dy === 0 ? "middle" : dy > 0 ? "hanging" : "baseline")
+        .attr("font-family", FONT)
+        .attr("font-size", "12px")
+        .attr("font-weight", "bold")
+        .attr("fill", INK).attr("opacity", 0.9)
+        .text(label);
+    });
+
+    // Minor tick marks between cardinals
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI / 4) + Math.PI / 8;
+      cg.append("line")
+        .attr("x1", Math.cos(a) * size).attr("y1", Math.sin(a) * size)
+        .attr("x2", Math.cos(a) * (size - 3)).attr("y2", Math.sin(a) * (size - 3))
+        .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.6);
+    }
+    // Center fleur-de-lis marking North
+    const fsz = 26;
+    const fleurG = cg.append("g").attr("opacity", 0.9);
+    fleurG.append("path")
+      .attr("d", `M 0 ${-fsz * 0.25} L 0 ${fsz * 0.1}`)
+      .attr("stroke", INK).attr("stroke-width", 1.0).attr("fill", "none");
+    fleurG.append("path")
+      .attr("d", `M 0 ${-fsz * 0.3} C -${fsz * 0.08} ${-fsz * 0.35}, -${fsz * 0.08} ${-fsz * 0.22}, 0 ${-fsz * 0.2} C ${fsz * 0.08} ${-fsz * 0.22}, ${fsz * 0.08} ${-fsz * 0.35}, 0 ${-fsz * 0.3} Z`)
       .attr("fill", INK);
-    // South
-    cg.append("path")
-      .attr("d", `M 0 ${size} L ${size * 0.15} ${size * 0.3} L 0 ${size * 0.15} L ${-size * 0.15} ${size * 0.3} Z`)
-      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.8);
-    // East
-    cg.append("path")
-      .attr("d", `M ${size} 0 L ${size * 0.3} ${-size * 0.15} L ${size * 0.15} 0 L ${size * 0.3} ${size * 0.15} Z`)
-      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.8);
-    // West
-    cg.append("path")
-      .attr("d", `M ${-size} 0 L ${-size * 0.3} ${-size * 0.15} L ${-size * 0.15} 0 L ${-size * 0.3} ${size * 0.15} Z`)
-      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.8);
-
-    // N label
-    cg.append("text")
-      .attr("x", 0).attr("y", -size - 6)
-      .attr("text-anchor", "middle")
-      .attr("font-family", FONT)
-      .attr("font-size", "12px")
-      .attr("font-weight", "bold")
-      .attr("fill", INK)
-      .text("N");
+    fleurG.append("path")
+      .attr("d", `M 0 ${-fsz * 0.15} C -${fsz * 0.13} ${-fsz * 0.1}, -${fsz * 0.14} ${fsz * 0.02}, -${fsz * 0.05} ${fsz * 0.05}`)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.9);
+    fleurG.append("path")
+      .attr("d", `M 0 ${-fsz * 0.15} C ${fsz * 0.13} ${-fsz * 0.1}, ${fsz * 0.14} ${fsz * 0.02}, ${fsz * 0.05} ${fsz * 0.05}`)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.9);
+    fleurG.append("line")
+      .attr("x1", -fsz * 0.1).attr("y1", fsz * 0.05)
+      .attr("x2", fsz * 0.1).attr("y2", fsz * 0.05)
+      .attr("stroke", INK).attr("stroke-width", 1.0);
   },
 
   // --- Scale bar ---
@@ -565,8 +625,8 @@ window.MapStyles.hexcrawl = {
      ──────────────────────────────────────────────────────────── */
 
   drawMountain(g, x, y, size, rng, INK) {
-    const peakCount = 2 + Math.floor(rng() * 2);
-    const baseSpacing = size * 0.55;
+    const peakCount = 1 + Math.floor(rng() * 2);
+    const baseSpacing = size * 0.7;
     const peaks = [];
     for (let i = 0; i < peakCount; i++) {
       const offsetX = (i - (peakCount - 1) / 2) * baseSpacing + (rng() - 0.5) * size * 0.15;
@@ -605,14 +665,14 @@ window.MapStyles.hexcrawl = {
   },
 
   drawTree(g, x, y, size, rng, INK) {
-    // Cluster of 3-5 overlapping egg-shaped canopies, sorted back-to-front
-    const count = 3 + Math.floor(rng() * 3);
+    // Small cluster of 1-2 egg-shaped canopies, sorted back-to-front
+    const count = 1 + Math.floor(rng() * 2);
     const trees = [];
     for (let i = 0; i < count; i++) {
       trees.push({
-        tx: x + (rng() - 0.5) * size * 1.6,
-        ty: y + (rng() - 0.5) * size * 0.9,
-        sz: size * (0.55 + rng() * 0.45),
+        tx: x + (rng() - 0.5) * size * 0.9,
+        ty: y + (rng() - 0.5) * size * 0.5,
+        sz: size * (0.45 + rng() * 0.35),
       });
     }
     trees.sort((a, b) => a.ty - b.ty);
@@ -709,9 +769,9 @@ window.MapStyles.hexcrawl = {
   },
 
   drawHill(g, x, y, size, rng, INK) {
-    // Cluster of 2-3 gentle humps back-to-front
-    const count = 2 + Math.floor(rng() * 2);
-    const spacing = size * 0.55;
+    // Cluster of 1-2 gentle humps back-to-front
+    const count = 1 + Math.floor(rng() * 2);
+    const spacing = size * 0.75;
     const humps = [];
     for (let i = 0; i < count; i++) {
       humps.push({

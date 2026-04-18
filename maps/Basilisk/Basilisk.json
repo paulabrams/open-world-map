@@ -521,6 +521,7 @@
   ],
   "road_path": [
     {
+      "name": "Old Northern Trade Road",
       "hexes": [
         "0800",
         "0801",
@@ -545,6 +546,7 @@
       "days": 0.5
     }
   ],
+  "river_name": "Blackwater River",
   "off_map_arrows": [
     { "direction": "N",  "label": "North to the Belerion wilds" },
     { "direction": "E",  "label": "Eastward to the coast" },

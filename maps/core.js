@@ -185,6 +185,16 @@ function renderRiver(ctx, riverColor, riverWidth) {
     .attr("stroke-linecap", "round")
     .attr("opacity", 0.8);
 
+  // Invisible spine path as a textPath anchor for the river name label.
+  const spineId = "river-spine-" + Math.random().toString(36).slice(2, 8);
+  riverGroup.append("path")
+    .attr("id", spineId)
+    .attr("d", line(wigglePoints))
+    .attr("fill", "none")
+    .attr("stroke", "none");
+  // Expose the id so styles can render the river name on it.
+  ctx._riverSpineId = spineId;
+
   // Small islands in wider stretches
   for (const p of poolCenters) {
     if (rng() > 0.45) continue;
@@ -219,6 +229,41 @@ function renderRiver(ctx, riverColor, riverWidth) {
       .attr("stroke-width", bankStroke * 0.9)
       .attr("opacity", 0.9);
   }
+}
+
+// --- River name label ---
+// Places the river name along the river's spine using SVG textPath.
+// The spine path id is stashed by renderRiver on ctx._riverSpineId.
+// Call this AFTER renderRiver. graphData.river_name or default "River".
+function renderRiverLabel(ctx, style) {
+  const { g, _riverSpineId } = ctx;
+  if (!_riverSpineId) return;
+  const name = (graphData && graphData.river_name) || null;
+  if (!name) return;
+  const {
+    color = "#335",
+    strokeColor = "#f4e8d1",
+    fontSize = 13,
+    opacity = 0.8,
+    startOffset = "45%",
+    letterSpacing = "2px",
+    fontStyle = "italic",
+  } = style || {};
+  g.append("text")
+    .attr("font-family", FONT)
+    .attr("font-size", fontSize + "px")
+    .attr("font-style", fontStyle)
+    .attr("letter-spacing", letterSpacing)
+    .attr("fill", color)
+    .attr("stroke", strokeColor)
+    .attr("stroke-width", 3)
+    .attr("paint-order", "stroke")
+    .attr("opacity", opacity)
+    .append("textPath")
+    .attr("href", "#" + _riverSpineId)
+    .attr("startOffset", startOffset)
+    .attr("text-anchor", "middle")
+    .text(name);
 }
 
 // --- Road rendering ---
@@ -294,7 +339,9 @@ function renderRoad(ctx, roadColor, roadWidth) {
 
     // Two overlapping hand-drawn strokes, slightly offset, for sketchy feel
     const d = line(wigglePoints);
+    const spineId = "road-spine-" + pathIdx + "-" + Math.random().toString(36).slice(2, 8);
     roadGroup.append("path")
+      .attr("id", spineId)
       .attr("d", d)
       .attr("fill", "none")
       .attr("stroke", roadColor)
@@ -311,6 +358,25 @@ function renderRoad(ctx, roadColor, roadWidth) {
       .attr("stroke-dasharray", `${roadWidth * 2.5} ${roadWidth * 1.5}`)
       .attr("transform", `translate(${(rng() - 0.5) * 1.2}, ${(rng() - 0.5) * 1.2})`)
       .attr("opacity", 0.35);
+
+    // Road name along the spine via textPath
+    if (pathObj.name) {
+      roadGroup.append("text")
+        .attr("font-family", FONT)
+        .attr("font-size", "12px")
+        .attr("font-style", "italic")
+        .attr("letter-spacing", "2px")
+        .attr("fill", roadColor)
+        .attr("stroke", "#f4e8d1")
+        .attr("stroke-width", 3)
+        .attr("paint-order", "stroke")
+        .attr("opacity", 0.8)
+        .append("textPath")
+        .attr("href", "#" + spineId)
+        .attr("startOffset", "50%")
+        .attr("text-anchor", "middle")
+        .text(pathObj.name);
+    }
 
     if (pathObj.label) {
       const midIdx = Math.floor(points.length / 2);
@@ -363,29 +429,16 @@ function renderHexTerrain(ctx, terrainDrawers) {
 
     const rng = mulberry32(seedFromString(hex));
 
-    // Flat-top hex: circumscribed radius = size, inscribed ≈ size*√3/2.
-    // Scatter drawer centers across the whole hex body — drawers each render
-    // small clusters, so the total coverage tiles the hex edge-to-edge.
-    // 7×3 jittered grid covers evenly; angle + radius scatter adds organic feel.
-    const sqrt3 = Math.sqrt(3);
+    // Flat-top hex: center + 6 ring points at ~0.65 * size covers the whole
+    // hex body reliably, and keeps element counts manageable. Drawers render
+    // their own small clusters around each scatter center.
     const gridPoints = [
-      // Ring: one at center, six around it at ~2/3 radius, six more at ~9/10 radius.
       [0, 0],
-      // Inner ring at r ≈ 0.55 * size (covers middle band)
       ...[0, 60, 120, 180, 240, 300].map(a => {
-        const r = size * 0.55;
-        return [Math.cos(a * Math.PI / 180) * r, Math.sin(a * Math.PI / 180) * r];
-      }),
-      // Outer ring at r ≈ 0.85 * size, offset 30° from inner ring (so it fills gaps)
-      ...[30, 90, 150, 210, 270, 330].map(a => {
-        const r = size * 0.78;
+        const r = size * 0.65;
         return [Math.cos(a * Math.PI / 180) * r, Math.sin(a * Math.PI / 180) * r];
       }),
     ];
-    // Clip outer ring to hex shape so we don't overshoot vertices.
-    // Flat-top hex: vertices at angles 0, 60, …, 300 from center at r=size.
-    // At angles between vertices, the edge is closer (r_edge = size*√3/2 / cos(a_from_nearest_vertex)).
-    // For simplicity we just add some jitter and let the drawers clip naturally.
     gridPoints.forEach(([ox, oy]) => {
       const jitterX = (rng() - 0.5) * size * 0.18;
       const jitterY = (rng() - 0.5) * size * 0.18;
@@ -393,8 +446,6 @@ function renderHexTerrain(ctx, terrainDrawers) {
       const dy = hy + oy + jitterY;
       drawer(terrainGroup, dx, dy, 8 + rng() * 5, rng);
     });
-    // Sanity helper to silence unused var hint:
-    void sqrt3;
   });
 }
 
@@ -553,6 +604,139 @@ function renderDayLabelsAlongLinks(ctx, style) {
       .attr("transform", `rotate(${angle.toFixed(1)}, ${tx2}, ${ty2})`)
       .text(formatDaysLabel(link.days));
   });
+}
+
+// --- Hex hover info ---
+// Updates the side info panel based on which hex the pointer is over.
+// Uses SVG-level mousemove so node click handlers keep working.
+function renderHexHover(ctx) {
+  const { g, HINT_SCALE, WIDTH, HEIGHT, nodes, hexTerrain } = ctx;
+  const panel = document.getElementById("hex-panel");
+  if (!panel) return;
+
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+
+  // Build hex → nodes lookup
+  const hexNodes = {};
+  (nodes || []).forEach(n => {
+    if (!n.hex) return;
+    (hexNodes[n.hex] = hexNodes[n.hex] || []).push(n);
+  });
+  // Also include local-scale nodes from graphData (filtered out of nodes for overland).
+  if (graphData && Array.isArray(graphData.nodes)) {
+    graphData.nodes.forEach(n => {
+      if (!n.hex) return;
+      if ((hexNodes[n.hex] || []).some(existing => existing.id === n.id)) return;
+      (hexNodes[n.hex] = hexNodes[n.hex] || []).push(n);
+    });
+  }
+
+  // Attach mousemove on the SVG itself so nodes retain their click handlers.
+  // d3.pointer against `g` translates event coords into the map's user
+  // coordinate system, accounting for zoom/pan.
+  const svgSel = d3.select(g.node().ownerSVGElement);
+
+  // Hover highlight polygon — drawn once, repositioned on mousemove.
+  const hexVertices = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i * 60) * Math.PI / 180;
+    hexVertices.push([size * Math.cos(a), size * Math.sin(a)]);
+  }
+  const highlight = g.append("polygon")
+    .attr("class", "hex-hover-highlight")
+    .attr("points", hexVertices.map(v => v.join(",")).join(" "))
+    .attr("fill", "none")
+    .attr("stroke", "currentColor")
+    .attr("stroke-width", 1.2)
+    .attr("opacity", 0)
+    .style("pointer-events", "none");
+
+  // Approximate pixel → hex for flat-top offset layout
+  function pixelToHex(px, py) {
+    const xRel = px - WIDTH / 2;
+    // Iterate nearby candidate cols and pick the one whose center is closest
+    const colGuess = Math.round(xRel / colStep) + bcCol;
+    let best = null, bestDist = Infinity;
+    for (let dc = -1; dc <= 1; dc++) {
+      const col = colGuess + dc;
+      const isShifted = (col % 2) !== (bcCol % 2);
+      const colX = (col - bcCol) * colStep + WIDTH / 2;
+      const rowOff = isShifted ? rowStep / 2 : 0;
+      const yRel = py - HEIGHT / 2 - rowOff;
+      const rowGuess = Math.round(yRel / rowStep) + bcRow;
+      for (let dr = -1; dr <= 1; dr++) {
+        const row = rowGuess + dr;
+        const rowY = (row - bcRow) * rowStep + rowOff + HEIGHT / 2;
+        const dx = px - colX, dy = py - rowY;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestDist) { bestDist = d2; best = { col, row }; }
+      }
+    }
+    if (!best) return null;
+    const { col, row } = best;
+    return `${String(col).padStart(2, "0")}${String(row).padStart(2, "0")}`;
+  }
+
+  function hexCenter(hex) {
+    const col = parseInt(hex.substring(0, 2));
+    const row = parseInt(hex.substring(2, 4));
+    const isShifted = (col % 2) !== (bcCol % 2);
+    const hx = (col - bcCol) * colStep + WIDTH / 2;
+    const hy = (row - bcRow) * rowStep + (isShifted ? rowStep / 2 : 0) + HEIGHT / 2;
+    return [hx, hy];
+  }
+
+  let currentHex = null;
+  svgSel.on("mousemove.hex-hover", function (event) {
+    const pt = d3.pointer(event, g.node());
+    const hex = pixelToHex(pt[0], pt[1]);
+    if (!hex || hex === currentHex) return;
+    currentHex = hex;
+    const [cx, cy] = hexCenter(hex);
+    highlight
+      .attr("transform", `translate(${cx}, ${cy})`)
+      .attr("opacity", 0.5);
+    updatePanel(hex);
+  });
+  svgSel.on("mouseleave.hex-hover", () => {
+    currentHex = null;
+    highlight.attr("opacity", 0);
+    panel.classList.remove("visible");
+  });
+
+  function updatePanel(hex) {
+    const terrain = (hexTerrain && hexTerrain[hex]) || null;
+    const pois = hexNodes[hex] || [];
+    if (!terrain && pois.length === 0) {
+      panel.classList.remove("visible");
+      return;
+    }
+    document.getElementById("hex-panel-id").textContent = "Hex " + hex;
+    document.getElementById("hex-panel-terrain").textContent = terrain ? terrain.replace(/-/g, " ") : "—";
+    const poisEl = document.getElementById("hex-panel-pois");
+    if (pois.length === 0) {
+      poisEl.innerHTML = '<div class="hex-empty">No points of interest</div>';
+    } else {
+      poisEl.innerHTML = pois.map(n => {
+        const name = escapeHtml(n.name || n.id);
+        const type = escapeHtml((n.point_type || "") + (n.scale === "local" ? " (local)" : ""));
+        const desc = n.description ? escapeHtml(n.description) : "";
+        return `<div class="poi"><div class="poi-name">${name}</div>` +
+          (type ? `<div class="poi-type">${type}</div>` : "") +
+          (desc ? `<div class="poi-desc">${desc}</div>` : "") +
+          "</div>";
+      }).join("");
+    }
+    panel.classList.add("visible");
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"})[c]);
 }
 
 // --- Terrain region edges ---
@@ -742,6 +926,36 @@ async function loadData(campaign) {
   return graphData;
 }
 
+// --- Sub-hex offsets (unit vectors toward the 6 flat-top neighbors) ---
+const SUBHEX_OFFSETS = {
+  C:  [0, 0],
+  N:  [0, -1],
+  NE: [0.866, -0.5],
+  SE: [0.866, 0.5],
+  S:  [0, 1],
+  SW: [-0.866, 0.5],
+  NW: [-0.866, -0.5],
+};
+const SUBHEX_FRACTION = 0.4; // how far toward the neighbor as a fraction of hex size
+
+function hexToXY(hex, subhex) {
+  const WIDTH = window.innerWidth;
+  const HEIGHT = window.innerHeight;
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+
+  const col = parseInt(hex.substring(0, 2));
+  const row = parseInt(hex.substring(2, 4));
+  const cx = (col - bcCol) * colStep + WIDTH / 2;
+  const cy = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
+
+  const [ox, oy] = SUBHEX_OFFSETS[subhex || "C"] || SUBHEX_OFFSETS.C;
+  const d = size * SUBHEX_FRACTION;
+  return [cx + ox * d, cy + oy * d];
+}
+
 function runSimulation(rawData, filterFn) {
   const WIDTH = window.innerWidth;
   const HEIGHT = window.innerHeight;
@@ -757,16 +971,19 @@ function runSimulation(rawData, filterFn) {
   const links = freshLinks.filter(l => l.visible !== false && nodeIds.has(l.source) && nodeIds.has(l.target));
 
   nodes.forEach(n => {
-    if (n.x_hint !== undefined) n.x = n.x_hint * HINT_SCALE + WIDTH / 2;
-    if (n.y_hint !== undefined) n.y = n.y_hint * HINT_SCALE + HEIGHT / 2;
+    if (n.hex) {
+      const [x, y] = hexToXY(n.hex, n.subhex);
+      n.x = x;
+      n.y = y;
+    }
   });
 
   const simulation = d3.forceSimulation(nodes)
     .force("link", d3.forceLink(links).id(d => d.id).distance(d => Math.max(40, (d.days || 1) * DAY_SCALE)).strength(0.05))
     .force("charge", d3.forceManyBody().strength(-50))
     .force("collide", d3.forceCollide(15))
-    .force("x", d3.forceX(d => (d.x_hint || 0) * HINT_SCALE + WIDTH / 2).strength(0.9))
-    .force("y", d3.forceY(d => (d.y_hint || 0) * HINT_SCALE + HEIGHT / 2).strength(0.9));
+    .force("x", d3.forceX(d => d.hex ? hexToXY(d.hex, d.subhex)[0] : WIDTH / 2).strength(0.9))
+    .force("y", d3.forceY(d => d.hex ? hexToXY(d.hex, d.subhex)[1] : HEIGHT / 2).strength(0.9));
 
   simulation.stop();
   for (let i = 0; i < 300; i++) simulation.tick();
@@ -864,6 +1081,9 @@ function renderMap(styleName, gridName) {
     MapGrids[gridName].render(ctx);
   }
 
+  // Hex hover panel — runs on top so it captures pointer events.
+  renderHexHover(ctx);
+
   // Center the view
   centerView(svg, zoom, sim.bounds);
 
@@ -931,8 +1151,8 @@ function exportSVG() {
 
 // Expose for global access
 Object.assign(MapCore, {
-  HINT_SCALE, DAY_SCALE, FONT, INTERIOR_TERRAINS,
-  isOverlandNode, renderRiver, renderRoad, renderBridges, renderHexTerrain, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
+  HINT_SCALE, DAY_SCALE, FONT, INTERIOR_TERRAINS, SUBHEX_OFFSETS,
+  isOverlandNode, hexToXY, renderRiver, renderRiverLabel, renderRoad, renderBridges, renderHexTerrain, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
   showDetail, closePanel,
   loadData, runSimulation, setupSVG, centerView,
   renderMap, applyTheme, exportSVG,

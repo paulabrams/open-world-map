@@ -41,6 +41,7 @@ window.MapStyles.wilderland = {
     this.renderBackground(ctx);
     this.renderBorder(ctx);
     MapCore.renderRiver(ctx, ctx.colors.BLUE, 4);
+    MapCore.renderRiverLabel(ctx, { color: ctx.colors.BLUE, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.0, bridgeLen: 14 });
     MapCore.renderRoad(ctx, ctx.colors.INK, 2);
     this.renderLinks(ctx);
@@ -248,9 +249,9 @@ window.MapStyles.wilderland = {
     // --- Local terrain symbol helper functions ---
 
     function drawMountain(tg, x, y, size, rng) {
-      // Draw a tight ridge of 2-4 narrow peaks, sorted tallest-back to shortest-front
-      const peakCount = 2 + Math.floor(rng() * 3);
-      const spacing = size * 0.35;
+      // Ridge of 1-2 narrow peaks, sorted tallest-back to shortest-front
+      const peakCount = 1 + Math.floor(rng() * 2);
+      const spacing = size * 0.6;
       const peaks = [];
       for (let i = 0; i < peakCount; i++) {
         const offsetX = (i - (peakCount - 1) / 2) * spacing + (rng() - 0.5) * size * 0.12;
@@ -296,15 +297,15 @@ window.MapStyles.wilderland = {
     }
 
     function drawTreeCanopy(tg, x, y, size, rng) {
-      // Cluster of 4-7 overlapping round canopy blobs — matches Wilderland reference
-      const count = 4 + Math.floor(rng() * 4);
-      const spread = size * 1.1;
+      // Small cluster of 1-3 canopy blobs — modest overlap, not dense blanket
+      const count = 1 + Math.floor(rng() * 3);
+      const spread = size * 0.6;
       const canopies = [];
       for (let i = 0; i < count; i++) {
         canopies.push({
           cx: x + (rng() - 0.5) * spread,
           cy: y + (rng() - 0.5) * spread * 0.7,
-          cr: size * (0.3 + rng() * 0.22),
+          cr: size * (0.25 + rng() * 0.18),
         });
       }
       canopies.sort((a, b) => a.cy - b.cy);
@@ -337,6 +338,11 @@ window.MapStyles.wilderland = {
             .attr("x2", c.cx).attr("y2", c.cy + markLen * 0.6)
             .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.55);
         }
+        // Thin shadow stroke just below the canopy — grounds the tree on the map
+        tg.append("line")
+          .attr("x1", c.cx - c.cr * 0.55).attr("y1", c.cy + c.cr * 0.92)
+          .attr("x2", c.cx + c.cr * 0.55).attr("y2", c.cy + c.cr * 0.92)
+          .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.35);
       });
     }
 
@@ -479,9 +485,9 @@ window.MapStyles.wilderland = {
     // --- Terrain drawing helpers for hills and farms ---
 
     function drawHill(tg, x, y, size, rng) {
-      // Gentle cluster of 2-3 rounded hillocks — Wilderland style
-      const count = 2 + Math.floor(rng() * 2);
-      const spacing = size * 0.5;
+      // Gentle cluster of 1-2 rounded hillocks — Wilderland style
+      const count = 1 + Math.floor(rng() * 2);
+      const spacing = size * 0.75;
       const humps = [];
       for (let i = 0; i < count; i++) {
         humps.push({
@@ -587,6 +593,7 @@ window.MapStyles.wilderland = {
         .attr("class", "node")
         .style("cursor", "pointer")
         .on("click", (event) => { event.stopPropagation(); MapCore.showDetail(node); });
+      ng.append("title").text(node.name);
 
       const isLocal = node.scale === "local";
       const s = isLocal ? 3 : 5;
@@ -842,10 +849,25 @@ window.MapStyles.wilderland = {
         .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.6);
     }
 
-    // Center dot
-    cg.append("circle")
-      .attr("cx", 0).attr("cy", 0).attr("r", 1.5)
-      .attr("fill", INK).attr("opacity", 0.8);
+    // Center fleur-de-lis marking North
+    const size2 = 22;
+    const fleurG = cg.append("g").attr("opacity", 0.85);
+    fleurG.append("path")
+      .attr("d", `M 0 ${-size2 * 0.25} L 0 ${size2 * 0.1}`)
+      .attr("stroke", INK).attr("stroke-width", 0.9).attr("fill", "none");
+    fleurG.append("path")
+      .attr("d", `M 0 ${-size2 * 0.3} C -${size2 * 0.08} ${-size2 * 0.35}, -${size2 * 0.08} ${-size2 * 0.22}, 0 ${-size2 * 0.2} C ${size2 * 0.08} ${-size2 * 0.22}, ${size2 * 0.08} ${-size2 * 0.35}, 0 ${-size2 * 0.3} Z`)
+      .attr("fill", INK);
+    fleurG.append("path")
+      .attr("d", `M 0 ${-size2 * 0.15} C -${size2 * 0.13} ${-size2 * 0.1}, -${size2 * 0.14} ${size2 * 0.02}, -${size2 * 0.05} ${size2 * 0.05}`)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.8);
+    fleurG.append("path")
+      .attr("d", `M 0 ${-size2 * 0.15} C ${size2 * 0.13} ${-size2 * 0.1}, ${size2 * 0.14} ${size2 * 0.02}, ${size2 * 0.05} ${size2 * 0.05}`)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.8);
+    fleurG.append("line")
+      .attr("x1", -size2 * 0.1).attr("y1", size2 * 0.05)
+      .attr("x2", size2 * 0.1).attr("y2", size2 * 0.05)
+      .attr("stroke", INK).attr("stroke-width", 1.0);
   },
 
   // --- Scale bar ---

@@ -41,7 +41,9 @@ window.MapStyles.thirdage = {
   /* ── Master render (called by core) ─────────────────────────── */
   render(ctx) {
     this.renderBackground(ctx);
+    this.renderBorder(ctx);
     MapCore.renderRiver(ctx, ctx.colors.INK, 3);
+    MapCore.renderRiverLabel(ctx, { color: ctx.colors.INK, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.1, bridgeLen: 14 });
     MapCore.renderRoad(ctx, ctx.colors.INK, 2);
     this.renderLinks(ctx);
@@ -105,6 +107,30 @@ window.MapStyles.thirdage = {
       .attr("y", -HEIGHT)
       .attr("fill", "url(#parchment-grad)")
       .attr("filter", "url(#parchment-texture)");
+  },
+
+  // --- Map border: double ruled line with corner flourishes ---
+  renderBorder(ctx) {
+    const { g, bounds } = ctx;
+    const { INK } = ctx.colors;
+    const pad = 40;
+    const x = bounds.minX - pad, y = bounds.minY - pad;
+    const w = bounds.maxX - bounds.minX + pad * 2;
+    const h = bounds.maxY - bounds.minY + pad * 2;
+
+    g.append("rect")
+      .attr("x", x).attr("y", y).attr("width", w).attr("height", h)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.4).attr("opacity", 0.85);
+    g.append("rect")
+      .attr("x", x + 5).attr("y", y + 5).attr("width", w - 10).attr("height", h - 10)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.7).attr("opacity", 0.7);
+
+    // Corner flourishes: small filled diamonds
+    [[x + 5, y + 5], [x + w - 5, y + 5], [x + 5, y + h - 5], [x + w - 5, y + h - 5]].forEach(([cx, cy]) => {
+      g.append("path")
+        .attr("d", `M ${cx} ${cy - 4} L ${cx + 4} ${cy} L ${cx} ${cy + 4} L ${cx - 4} ${cy} Z`)
+        .attr("fill", INK).attr("opacity", 0.8);
+    });
   },
 
   // --- Path / link rendering ---
@@ -251,6 +277,7 @@ window.MapStyles.thirdage = {
         .attr("class", "node")
         .style("cursor", "pointer")
         .on("click", (event) => { event.stopPropagation(); MapCore.showDetail(node); });
+      ng.append("title").text(node.name);
 
       const isLocal = node.scale === "local";
       const s = isLocal ? 3 : 5;
@@ -660,10 +687,10 @@ window.MapStyles.thirdage = {
      INK is passed explicitly so they stay pure functions.
      ──────────────────────────────────────────────────────────── */
 
-  // Dense engraving-style mountain range: 2-4 overlapping sharp peaks
+  // Dense engraving-style mountain range: 1-3 overlapping sharp peaks
   drawMountainRange(g, x, y, size, rng, INK) {
-    const peakCount = 2 + Math.floor(rng() * 3);
-    const spacing = size * 0.5;
+    const peakCount = 1 + Math.floor(rng() * 2);
+    const spacing = size * 0.7;
     const peaks = [];
     for (let i = 0; i < peakCount; i++) {
       const offsetX = (i - (peakCount - 1) / 2) * spacing + (rng() - 0.5) * size * 0.12;
@@ -721,16 +748,16 @@ window.MapStyles.thirdage = {
     }
   },
 
-  // Cluster of small triangular fir trees — matches Middle Earth tree-chain style
+  // Small cluster of 2-3 triangular fir trees — Middle Earth tree-chain style
   drawForestHatch(g, x, y, size, rng, INK) {
-    const count = 4 + Math.floor(rng() * 3);
-    const spread = size * 0.7;
+    const count = 2 + Math.floor(rng() * 2);
+    const spread = size * 0.55;
     const trees = [];
     for (let i = 0; i < count; i++) {
       trees.push({
-        tx: x + (rng() - 0.5) * spread * 1.4,
-        ty: y + (rng() - 0.5) * spread * 0.6,
-        th: size * (0.55 + rng() * 0.3),
+        tx: x + (rng() - 0.5) * spread * 1.2,
+        ty: y + (rng() - 0.5) * spread * 0.5,
+        th: size * (0.45 + rng() * 0.25),
       });
     }
     // Back-to-front so nearer trees overlap further ones
@@ -803,8 +830,9 @@ window.MapStyles.thirdage = {
 
   // Dot-stipple grass pattern
   drawGrassStipple(g, x, y, size, rng, INK) {
-    const count = 12 + Math.floor(rng() * 7);
-    for (let i = 0; i < count; i++) {
+    // Base dot stipple
+    const dotCount = 10 + Math.floor(rng() * 6);
+    for (let i = 0; i < dotCount; i++) {
       g.append("circle")
         .attr("cx", x + (rng() - 0.5) * size * 1.2)
         .attr("cy", y + (rng() - 0.5) * size * 0.8)
@@ -812,12 +840,27 @@ window.MapStyles.thirdage = {
         .attr("fill", INK)
         .attr("opacity", 0.4);
     }
+    // Occasional tiny grass tufts — a few short vertical strokes
+    const tuftCount = 2 + Math.floor(rng() * 3);
+    for (let t = 0; t < tuftCount; t++) {
+      const cx = x + (rng() - 0.5) * size * 1.1;
+      const cy = y + (rng() - 0.5) * size * 0.7;
+      const blades = 3;
+      for (let b = 0; b < blades; b++) {
+        const bx = cx + (b - 1) * 1.2 + (rng() - 0.5) * 0.6;
+        const lean = (rng() - 0.5) * 1.0;
+        g.append("line")
+          .attr("x1", bx).attr("y1", cy)
+          .attr("x2", bx + lean).attr("y2", cy - size * (0.18 + rng() * 0.08))
+          .attr("stroke", INK).attr("stroke-width", 0.45).attr("opacity", 0.45);
+      }
+    }
   },
 
   drawHill(g, x, y, size, rng, INK) {
-    // Cluster of 2-3 humps with engraving-style cross-hatch shading
-    const count = 2 + Math.floor(rng() * 2);
-    const spacing = size * 0.55;
+    // Cluster of 1-2 humps with engraving-style cross-hatch shading
+    const count = 1 + Math.floor(rng() * 2);
+    const spacing = size * 0.75;
     const humps = [];
     for (let i = 0; i < count; i++) {
       humps.push({
