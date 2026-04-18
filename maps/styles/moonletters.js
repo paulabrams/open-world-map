@@ -47,6 +47,7 @@ window.MapStyles.moonletters = {
     MapCore.renderRiverLabel(ctx, { color: ctx.colors.BLUE_INK, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderBridges(ctx, { color: ctx.colors.BLUE_INK, strokeWidth: 1.0, bridgeLen: 14 });
     MapCore.renderRoad(ctx, ctx.colors.BLUE_INK, 2);
+    MapCore.renderCrevasse(ctx, "#2a1f14", 3);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
     MapCore.renderRegionLabels(ctx, {
@@ -93,21 +94,31 @@ window.MapStyles.moonletters = {
     const py = y - h;
     const bl = x - w / 2;
     const br = x + w / 2;
-    const lcx = (bl + px) / 2 - rng() * 0.8;
-    const lcy = (y + py) / 2 + (rng() - 0.3) * 1.2;
-    const rcx = (br + px) / 2 + rng() * 0.8;
-    const rcy = (y + py) / 2 + (rng() - 0.3) * 1.2;
+    // Small kink part-way up each slope for a jagged, Thror-style silhouette
+    const leftKinkX = bl + (px - bl) * 0.55 + (rng() - 0.5) * 1.2;
+    const leftKinkY = y + (py - y) * 0.55 + (rng() - 0.5) * 1.2;
+    const rightKinkX = px + (br - px) * 0.4 + (rng() - 0.5) * 1.2;
+    const rightKinkY = py + (y - py) * 0.4 + (rng() - 0.5) * 1.2;
 
     g.append("path")
-      .attr("d", `M ${bl} ${y} Q ${lcx} ${lcy} ${px} ${py} Q ${rcx} ${rcy} ${br} ${y}`)
+      .attr("d", `M ${bl} ${y} L ${leftKinkX} ${leftKinkY} L ${px} ${py} L ${rightKinkX} ${rightKinkY} L ${br} ${y}`)
       .attr("fill", "none")
       .attr("stroke", BLUE_INK)
       .attr("stroke-width", 1.0)
       .attr("stroke-linecap", "round")
       .attr("stroke-linejoin", "round")
-      .attr("opacity", 0.85);
+      .attr("opacity", 0.9);
 
-    this.drawPeakShading(g, px, py, br, y, rng, colors, 3 + Math.floor(rng() * 2));
+    // Interior ridge line from the peak down — adds depth like Thror's Lonely Mountain
+    const ridgeEndX = px + (rng() - 0.5) * w * 0.18;
+    const ridgeEndY = y - h * 0.15;
+    g.append("line")
+      .attr("x1", px).attr("y1", py)
+      .attr("x2", ridgeEndX).attr("y2", ridgeEndY)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.55)
+      .attr("stroke-linecap", "round").attr("opacity", 0.55);
+
+    this.drawPeakShading(g, px, py, br, y, rng, colors, 4 + Math.floor(rng() * 2));
   },
 
   drawPeakTwin(g, x, y, size, rng, colors) {
@@ -246,6 +257,11 @@ window.MapStyles.moonletters = {
 
   drawSwampMark(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
+    // Extremely faint blue wash beneath the ripples — suggests marsh water
+    g.append("ellipse")
+      .attr("cx", x).attr("cy", y)
+      .attr("rx", size * 0.8).attr("ry", size * 0.45)
+      .attr("fill", BLUE_INK).attr("opacity", 0.07);
     // Wavy water ripple lines
     const rippleCount = 3 + Math.floor(rng() * 2);
     for (let i = 0; i < rippleCount; i++) {
@@ -278,8 +294,9 @@ window.MapStyles.moonletters = {
 
   drawDesolationDots(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
-    // Sparse dots (desolation) mixed with occasional tiny tick marks
-    const dotCount = 7 + Math.floor(rng() * 5);
+    // Sparse dots (desolation) mixed with occasional bare-tree glyphs, echoing
+    // Thror's "Desolation of Smaug" empty-wasted-land pattern.
+    const dotCount = 5 + Math.floor(rng() * 4);
     for (let i = 0; i < dotCount; i++) {
       const dx = (rng() - 0.5) * size * 1.5;
       const dy = (rng() - 0.5) * size * 0.9;
@@ -289,17 +306,32 @@ window.MapStyles.moonletters = {
         .attr("fill", BLUE_INK)
         .attr("opacity", 0.45);
     }
-    // A few tiny tick marks — Thror's subtle ground-detail touch
-    const tickCount = 1 + Math.floor(rng() * 3);
-    for (let i = 0; i < tickCount; i++) {
-      const tx = x + (rng() - 0.5) * size * 1.3;
-      const ty = y + (rng() - 0.5) * size * 0.8;
-      const len = 1.5 + rng() * 1.0;
+    // Occasional bare/dead tree glyph — a single curving trunk with 1-2 twig strokes
+    const bareTreeCount = rng() > 0.5 ? 1 : 0;
+    for (let i = 0; i < bareTreeCount; i++) {
+      const tx = x + (rng() - 0.5) * size * 1.2;
+      const ty = y + (rng() - 0.2) * size * 0.4;
+      const h = size * (0.35 + rng() * 0.15);
+      const lean = (rng() - 0.5) * 1.5;
+      // Trunk
+      g.append("path")
+        .attr("d", `M ${tx} ${ty} Q ${tx + lean * 0.6} ${ty - h * 0.6} ${tx + lean} ${ty - h}`)
+        .attr("fill", "none")
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.5)
+        .attr("stroke-linecap", "round").attr("opacity", 0.6);
+      // Twigs — 2 small branches at the top
+      const twigY = ty - h * 0.75;
+      const twigBaseX = tx + lean * 0.75;
       g.append("line")
-        .attr("x1", tx).attr("y1", ty)
-        .attr("x2", tx + (rng() - 0.5) * 0.8).attr("y2", ty - len)
-        .attr("stroke", BLUE_INK).attr("stroke-width", 0.45)
-        .attr("stroke-linecap", "round").attr("opacity", 0.5);
+        .attr("x1", twigBaseX).attr("y1", twigY)
+        .attr("x2", twigBaseX - 2 - rng()).attr("y2", twigY - 1.5 - rng())
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.4)
+        .attr("stroke-linecap", "round").attr("opacity", 0.55);
+      g.append("line")
+        .attr("x1", twigBaseX).attr("y1", twigY)
+        .attr("x2", twigBaseX + 2 + rng()).attr("y2", twigY - 1.5 - rng())
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.4)
+        .attr("stroke-linecap", "round").attr("opacity", 0.55);
     }
   },
 
@@ -324,40 +356,43 @@ window.MapStyles.moonletters = {
         .attr("fill", "none")
         .attr("stroke", BLUE_INK)
         .attr("stroke-width", 0.7)
-        .attr("opacity", 0.5);
+        .attr("opacity", 0.55);
+      // Occasional crown stroke — hints at rolling downs, Thror-subtle
+      if (rng() > 0.45) {
+        const sx0 = cx - w * 0.25 + (rng() - 0.5);
+        const sy0 = y - h * 0.7;
+        g.append("path")
+          .attr("d", `M ${sx0} ${sy0} Q ${sx0 + w * 0.1} ${sy0 - 1.5} ${sx0 + w * 0.22} ${sy0 - 0.5}`)
+          .attr("fill", "none")
+          .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.4);
+      }
     });
   },
 
   drawFarm(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
-    // 2-3 small farm buildings clustered, with furrows fanning out
-    const buildings = 2 + Math.floor(rng() * 2);
-    const spacing = size * 0.45;
-    for (let b = 0; b < buildings; b++) {
-      const bx = x + (b - (buildings - 1) / 2) * spacing + (rng() - 0.5) * 1;
-      const by = y + (rng() - 0.5) * size * 0.2;
-      const bw = size * (0.22 + rng() * 0.15);
-      const bh = size * (0.16 + rng() * 0.12);
-      g.append("rect")
-        .attr("x", bx - bw / 2).attr("y", by - bh / 2)
-        .attr("width", bw).attr("height", bh)
-        .attr("fill", "none").attr("stroke", BLUE_INK)
-        .attr("stroke-width", 0.55).attr("opacity", 0.7);
-      g.append("path")
-        .attr("d", `M ${bx - bw / 2 - 0.3} ${by - bh / 2} L ${bx} ${by - bh / 2 - bh * 0.7} L ${bx + bw / 2 + 0.3} ${by - bh / 2}`)
-        .attr("fill", "none").attr("stroke", BLUE_INK)
-        .attr("stroke-width", 0.55).attr("opacity", 0.7);
-    }
-    // Furrows on both sides
-    const furrowCount = 4 + Math.floor(rng() * 3);
+    // Sparse Thror-style farm: a single tiny house with a handful of short
+    // furrow ticks to one side. Thror's Map stays minimal.
+    const bw = size * (0.22 + rng() * 0.1);
+    const bh = size * (0.15 + rng() * 0.08);
+    g.append("rect")
+      .attr("x", x - bw / 2).attr("y", y - bh / 2)
+      .attr("width", bw).attr("height", bh)
+      .attr("fill", "none").attr("stroke", BLUE_INK)
+      .attr("stroke-width", 0.55).attr("opacity", 0.75);
+    g.append("path")
+      .attr("d", `M ${x - bw / 2 - 0.3} ${y - bh / 2} L ${x} ${y - bh / 2 - bh * 0.75} L ${x + bw / 2 + 0.3} ${y - bh / 2}`)
+      .attr("fill", "none").attr("stroke", BLUE_INK)
+      .attr("stroke-width", 0.55).attr("opacity", 0.75);
+    // 3-4 short furrow ticks on one side only
+    const side = rng() > 0.5 ? 1 : -1;
+    const furrowCount = 3 + Math.floor(rng() * 2);
     for (let i = 0; i < furrowCount; i++) {
-      const side = i < furrowCount / 2 ? -1 : 1;
-      const dist = size * (0.55 + (i % Math.ceil(furrowCount / 2)) * 0.18);
-      const fx = x + side * dist;
+      const fx = x + side * size * (0.45 + i * 0.18);
       g.append("line")
-        .attr("x1", fx).attr("y1", y - size * 0.25)
-        .attr("x2", fx).attr("y2", y + size * 0.25)
-        .attr("stroke", BLUE_INK).attr("stroke-width", 0.35).attr("opacity", 0.35);
+        .attr("x1", fx).attr("y1", y - size * 0.12)
+        .attr("x2", fx).attr("y2", y + size * 0.12)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.35).attr("opacity", 0.4);
     }
   },
 
@@ -395,21 +430,28 @@ window.MapStyles.moonletters = {
 
   drawGraveyard(g, x, y, size, rng, colors) {
     const { BLUE_INK } = colors;
-    const count = 3 + Math.floor(rng() * 3);
+    // Sparse Thror-style: just 2-3 small crosses, leaves the area visibly quiet
+    const count = 2 + Math.floor(rng() * 2);
     for (let i = 0; i < count; i++) {
-      const gx = x + (rng() - 0.5) * size * 1.1;
-      const gy = y + (rng() - 0.5) * size * 0.6;
-      const gh = size * (0.3 + rng() * 0.15);
+      const gx = x + (rng() - 0.5) * size * 1.0;
+      const gy = y + (rng() - 0.5) * size * 0.55;
+      const gh = size * (0.28 + rng() * 0.12);
       const gw = gh * 0.55;
-      // All crosses in Thror's sparse ink style
       g.append("line")
         .attr("x1", gx).attr("y1", gy - gh * 0.45)
         .attr("x2", gx).attr("y2", gy + gh * 0.45)
-        .attr("stroke", BLUE_INK).attr("stroke-width", 0.6).attr("opacity", 0.7);
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.55).attr("opacity", 0.7);
       g.append("line")
         .attr("x1", gx - gw * 0.5).attr("y1", gy - gh * 0.2)
         .attr("x2", gx + gw * 0.5).attr("y2", gy - gh * 0.2)
-        .attr("stroke", BLUE_INK).attr("stroke-width", 0.6).attr("opacity", 0.7);
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.55).attr("opacity", 0.7);
+      // Occasional small ground-line beneath a cross — suggests a burial mound
+      if (rng() > 0.6) {
+        g.append("line")
+          .attr("x1", gx - gw * 0.6).attr("y1", gy + gh * 0.5)
+          .attr("x2", gx + gw * 0.6).attr("y2", gy + gh * 0.5)
+          .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.5);
+      }
     }
   },
 
@@ -457,6 +499,28 @@ window.MapStyles.moonletters = {
               .attr("d", `M ${p.x - hs*0.55} ${p.y - hs*0.2} L ${p.x} ${p.y - hs*0.75} L ${p.x + hs*0.55} ${p.y - hs*0.2}`)
               .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
           });
+          // Slim spire rising from the center — signals capital/heart-of-region
+          ng.append("line")
+            .attr("x1", 0).attr("y1", -hs * 0.75).attr("x2", 0).attr("y2", -hs * 1.7)
+            .attr("stroke", BLUE_INK).attr("stroke-width", 0.7);
+          ng.append("path")
+            .attr("d", `M ${-hs * 0.3} ${-hs * 1.7} L 0 ${-hs * 2.1} L ${hs * 0.3} ${-hs * 1.7}`)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+          // Small pennant above the spire peak
+          ng.append("line")
+            .attr("x1", 0).attr("y1", -hs * 2.1).attr("x2", 0).attr("y2", -hs * 2.55)
+            .attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+          ng.append("path")
+            .attr("d", `M 0 ${-hs * 2.55} L ${hs * 0.45} ${-hs * 2.43} L 0 ${-hs * 2.3} Z`)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+          // Faint walled-town oval — thin Thror-style outline around the capital
+          ng.append("ellipse")
+            .attr("cx", 0).attr("cy", 0)
+            .attr("rx", hs * 2.3).attr("ry", hs * 1.75)
+            .attr("fill", "none")
+            .attr("stroke", BLUE_INK)
+            .attr("stroke-width", 0.5)
+            .attr("opacity", 0.4);
           break;
         }
         case "fortress": {
@@ -472,6 +536,16 @@ window.MapStyles.moonletters = {
           ng.append("path")
             .attr("d", `M ${-hs*0.2} ${hs*0.45} L ${-hs*0.2} ${hs*0.1} A ${hs*0.2} ${hs*0.2} 0 0 1 ${hs*0.2} ${hs*0.1} L ${hs*0.2} ${hs*0.45}`)
             .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+          // Small pennant on a pole atop the keep — a Thror's/Tolkien convention
+          const poleX = hs * 0.15;
+          const poleTop = -hs - hs * 0.55;
+          ng.append("line")
+            .attr("x1", poleX).attr("y1", -hs - hs * 0.2)
+            .attr("x2", poleX).attr("y2", poleTop)
+            .attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+          ng.append("path")
+            .attr("d", `M ${poleX} ${poleTop} L ${poleX + hs*0.55} ${poleTop + hs*0.13} L ${poleX} ${poleTop + hs*0.26} Z`)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
           break;
         }
         case "tavern": {
@@ -481,10 +555,19 @@ window.MapStyles.moonletters = {
           ng.append("path")
             .attr("d", `M ${-hs*0.8} ${-hs*0.3} L 0 ${-hs*1.1} L ${hs*0.8} ${-hs*0.3}`)
             .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+          // Small arched door on the front wall — thin-line Thror style
+          ng.append("path")
+            .attr("d", `M ${-hs*0.15} ${hs*0.7} L ${-hs*0.15} ${hs*0.25} Q 0 ${hs*0.05} ${hs*0.15} ${hs*0.25} L ${hs*0.15} ${hs*0.7}`)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+          // Hanging sign: arm + two short chains + outlined board
           ng.append("line").attr("x1", hs*0.7).attr("y1", -hs*0.1).attr("x2", hs*1.2).attr("y2", -hs*0.1)
             .attr("stroke", BLUE_INK).attr("stroke-width", 0.4);
-          ng.append("rect").attr("x", hs*1.0).attr("y", -hs*0.1).attr("width", hs*0.4).attr("height", hs*0.35)
-            .attr("fill", BLUE_INK).attr("stroke", "none").attr("opacity", 0.5);
+          ng.append("line").attr("x1", hs*1.03).attr("y1", -hs*0.1).attr("x2", hs*1.03).attr("y2", -hs*0.02)
+            .attr("stroke", BLUE_INK).attr("stroke-width", 0.35);
+          ng.append("line").attr("x1", hs*1.37).attr("y1", -hs*0.1).attr("x2", hs*1.37).attr("y2", -hs*0.02)
+            .attr("stroke", BLUE_INK).attr("stroke-width", 0.35);
+          ng.append("rect").attr("x", hs*1.0).attr("y", -hs*0.02).attr("width", hs*0.4).attr("height", hs*0.35)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
           break;
         }
         case "settlement": {
@@ -497,6 +580,16 @@ window.MapStyles.moonletters = {
             ng.append("path")
               .attr("d", `M ${hx - hs*0.7} ${hy - hs*0.3} L ${hx} ${hy - hs} L ${hx + hs*0.7} ${hy - hs*0.3}`)
               .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+            // Smoke plume from the right house — inhabited marker
+            if (hi === 1) {
+              const sx = hx + hs * 0.2;
+              const sy = hy - hs;
+              ng.append("path")
+                .attr("d", `M ${sx} ${sy} C ${sx - hs*0.3} ${sy - hs*0.45}, ${sx + hs*0.3} ${sy - hs*0.85}, ${sx - hs*0.1} ${sy - hs*1.35}`)
+                .attr("fill", "none").attr("stroke", BLUE_INK)
+                .attr("stroke-width", 0.5).attr("stroke-linecap", "round")
+                .attr("opacity", 0.55);
+            }
           }
           break;
         }
@@ -511,21 +604,45 @@ window.MapStyles.moonletters = {
             .attr("stroke", color).attr("stroke-width", 1.5);
           break;
         }
-        case "sanctuary":
-          ng.append("circle").attr("r", s).attr("fill", "none").attr("stroke", color).attr("stroke-width", 0.8);
-          ng.append("circle").attr("r", 1.5).attr("fill", color);
+        case "sanctuary": {
+          // Thin-line chapel with arched door and cross — Thror-sketch version
+          const hs = s * 0.9;
+          ng.append("rect").attr("x", -hs * 0.55).attr("y", -hs * 0.2).attr("width", hs * 1.1).attr("height", hs * 0.85)
+            .attr("fill", "none").attr("stroke", color).attr("stroke-width", 0.6);
+          ng.append("path")
+            .attr("d", `M ${-hs * 0.65} ${-hs * 0.2} L 0 ${-hs * 0.9} L ${hs * 0.65} ${-hs * 0.2}`)
+            .attr("fill", "none").attr("stroke", color).attr("stroke-width", 0.6);
+          // Arched door on the front wall
+          ng.append("path")
+            .attr("d", `M ${-hs * 0.18} ${hs * 0.65} L ${-hs * 0.18} ${hs * 0.25} Q 0 ${hs * 0.05} ${hs * 0.18} ${hs * 0.25} L ${hs * 0.18} ${hs * 0.65}`)
+            .attr("fill", "none").attr("stroke", color).attr("stroke-width", 0.5);
+          ng.append("line").attr("x1", 0).attr("y1", -hs * 0.9).attr("x2", 0).attr("y2", -hs * 1.55)
+            .attr("stroke", color).attr("stroke-width", 0.6);
+          ng.append("line").attr("x1", -hs * 0.3).attr("y1", -hs * 1.25).attr("x2", hs * 0.3).attr("y2", -hs * 1.25)
+            .attr("stroke", color).attr("stroke-width", 0.6);
           break;
+        }
         case "tower":
+          // Tall thin tower silhouette with a small pennant up top
           ng.append("line").attr("x1", 0).attr("y1", -s - 3).attr("x2", 0).attr("y2", s + 1)
             .attr("stroke", color).attr("stroke-width", 1.0);
-          ng.append("circle").attr("cx", 0).attr("cy", -s - 4).attr("r", 1.5)
-            .attr("fill", color);
+          // Pennant on a short pole above
+          ng.append("line").attr("x1", 0).attr("y1", -s - 3).attr("x2", 0).attr("y2", -s - 7)
+            .attr("stroke", color).attr("stroke-width", 0.6);
+          ng.append("path")
+            .attr("d", `M 0 ${-s - 7} L 4 ${-s - 6} L 0 ${-s - 5} Z`)
+            .attr("fill", "none").attr("stroke", color).attr("stroke-width", 0.6);
           break;
-        case "ruin":
-          ng.append("rect").attr("x", -s).attr("y", -s).attr("width", s*2).attr("height", s*2)
-            .attr("fill", "none").attr("stroke", color).attr("stroke-width", 0.8)
-            .attr("stroke-dasharray", "2 2").attr("opacity", 0.7);
+        case "ruin": {
+          // Broken wall silhouette with a crack — Thror-thin-line version
+          const rs = s;
+          ng.append("path")
+            .attr("d", `M ${-rs} ${rs * 0.6} L ${-rs} ${-rs * 0.3} L ${-rs * 0.5} ${-rs * 0.7} L ${-rs * 0.2} ${-rs * 0.1} L ${rs * 0.3} ${-rs * 0.5} L ${rs * 0.7} ${-rs * 0.1} L ${rs} ${rs * 0.6} Z`)
+            .attr("fill", "none").attr("stroke", color).attr("stroke-width", 0.7).attr("opacity", 0.85);
+          ng.append("line").attr("x1", 0).attr("y1", -rs * 0.2).attr("x2", 0).attr("y2", rs * 0.5)
+            .attr("stroke", color).attr("stroke-width", 0.4).attr("opacity", 0.6);
           break;
+        }
         case "waypoint":
           ng.append("circle").attr("r", 2).attr("fill", color).attr("opacity", 0.6);
           break;
@@ -606,16 +723,16 @@ window.MapStyles.moonletters = {
 
       switch (link.path_type) {
         case "road":
-          path.attr("stroke-width", 2.0);
+          path.attr("stroke-width", 1.6).attr("opacity", 0.85);
           break;
         case "trail":
-          path.attr("stroke-width", 1.0).attr("stroke-dasharray", "5 4");
+          path.attr("stroke-width", 0.9).attr("stroke-dasharray", "5 4").attr("opacity", 0.75);
           break;
         case "wilderness":
-          path.attr("stroke-width", 0.8).attr("stroke-dasharray", "2 4");
+          path.attr("stroke-width", 0.7).attr("stroke-dasharray", "2 4").attr("opacity", 0.6);
           break;
         default:
-          path.attr("stroke-width", 1.2);
+          path.attr("stroke-width", 1.1).attr("opacity", 0.8);
       }
     });
   },
@@ -662,6 +779,39 @@ window.MapStyles.moonletters = {
           .attr("x1", node.x - approxWidth / 2).attr("y1", ulY)
           .attr("x2", node.x + approxWidth / 2).attr("y2", ulY)
           .attr("stroke", color).attr("stroke-width", 0.6).attr("opacity", 0.65);
+      }
+
+      // Optional red moon-rune glyph floating above the node when declared —
+      // evokes Thror's Map "N" mark over the secret door of the Lonely Mountain.
+      if (node.rune) {
+        labelGroup.append("text")
+          .attr("x", node.x).attr("y", node.y - 12)
+          .attr("text-anchor", "middle")
+          .attr("font-family", "'Noto Sans Runic', 'Palatino Linotype', serif")
+          .attr("font-size", "15px")
+          .attr("fill", RED_INK)
+          .attr("stroke", PARCHMENT).attr("stroke-width", 2.5)
+          .attr("paint-order", "stroke")
+          .attr("opacity", 0.85)
+          .text(node.rune);
+      }
+      // Small boxed rune-hint for nodes flagged with `has_secret_door` —
+      // echoes the framed door-rune illustration on Thror's Map.
+      if (node.has_secret_door) {
+        const bx = node.x + 14, by = node.y - 8;
+        const bw = 14, bh = 10;
+        labelGroup.append("rect")
+          .attr("x", bx).attr("y", by - bh).attr("width", bw).attr("height", bh)
+          .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.7).attr("opacity", 0.8);
+        // A simple rune-like glyph inside (vertical stave + diagonal)
+        labelGroup.append("line")
+          .attr("x1", bx + bw / 2).attr("y1", by - bh + 1.5)
+          .attr("x2", bx + bw / 2).attr("y2", by - 1.5)
+          .attr("stroke", BLUE_INK).attr("stroke-width", 0.8).attr("opacity", 0.85);
+        labelGroup.append("line")
+          .attr("x1", bx + bw / 2).attr("y1", by - bh * 0.65)
+          .attr("x2", bx + bw * 0.85).attr("y2", by - bh * 0.85)
+          .attr("stroke", BLUE_INK).attr("stroke-width", 0.8).attr("opacity", 0.85);
       }
     });
   },
@@ -773,38 +923,40 @@ window.MapStyles.moonletters = {
     const barSegments = 3;
     const segLen = HINT_SCALE;
     const barW = barSegments * segLen;
-    const barH = 6;
+    const barH = 4; // slimmer bar, Thror-sparse
     const bx = bounds.maxX - barW - 10;
     const by = bounds.maxY + 30;
 
-    const sg = g.append("g").attr("class", "scale-bar");
+    const sg = g.append("g").attr("class", "scale-bar").attr("opacity", 0.85);
 
     for (let i = 0; i < barSegments; i++) {
       sg.append("rect")
         .attr("x", bx + i * segLen).attr("y", by)
         .attr("width", segLen).attr("height", barH)
         .attr("fill", i % 2 === 0 ? BLUE_INK : PARCHMENT)
-        .attr("stroke", BLUE_INK).attr("stroke-width", 0.8);
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
     }
 
     for (let i = 0; i <= barSegments; i++) {
       sg.append("text")
-        .attr("x", bx + i * segLen).attr("y", by + barH + 12)
+        .attr("x", bx + i * segLen).attr("y", by + barH + 11)
         .attr("text-anchor", "middle")
         .attr("font-family", FONT)
         .attr("font-size", "8px")
+        .attr("font-style", "italic")
         .attr("fill", BLUE_INK)
         .text(i * milesPerInch);
     }
 
     sg.append("text")
-      .attr("x", bx + barW / 2).attr("y", by + barH + 24)
+      .attr("x", bx + barW / 2).attr("y", by + barH + 23)
       .attr("text-anchor", "middle")
       .attr("font-family", FONT)
-      .attr("font-size", "9px")
+      .attr("font-size", "10px")
       .attr("font-style", "italic")
+      .attr("letter-spacing", "2px")
       .attr("fill", BLUE_INK)
-      .text("Miles");
+      .text("miles");
   },
 
   renderCartouche(ctx) {
@@ -820,6 +972,17 @@ window.MapStyles.moonletters = {
     moonG.append("path")
       .attr("d", `M ${moonCX} ${moonCY - moonR} A ${moonR} ${moonR} 0 1 0 ${moonCX} ${moonCY + moonR} A ${moonR * 0.7} ${moonR} 0 1 1 ${moonCX} ${moonCY - moonR} Z`)
       .attr("fill", BLUE_INK);
+    // Three tiny stars around the moon — adds a nocturnal Thror's touch
+    const starSpots = [
+      { x: moonCX - 9, y: moonCY - 7 },
+      { x: moonCX - 12, y: moonCY + 3 },
+      { x: moonCX + 6, y: moonCY - 9 },
+    ];
+    starSpots.forEach(s => {
+      moonG.append("path")
+        .attr("d", `M ${s.x} ${s.y - 1.5} L ${s.x + 0.5} ${s.y - 0.5} L ${s.x + 1.5} ${s.y} L ${s.x + 0.5} ${s.y + 0.5} L ${s.x} ${s.y + 1.5} L ${s.x - 0.5} ${s.y + 0.5} L ${s.x - 1.5} ${s.y} L ${s.x - 0.5} ${s.y - 0.5} Z`)
+        .attr("fill", BLUE_INK).attr("opacity", 0.75);
+    });
 
     g.append("text")
       .attr("x", bx)
@@ -859,10 +1022,17 @@ window.MapStyles.moonletters = {
     }
 
     const textLen = meta.campaign.length * 6.5;
+    // Thin underline, flanked by tiny tick-marks — Thror's calligraphic touch
     g.append("line")
       .attr("x1", bx).attr("y1", by + 3)
       .attr("x2", bx + textLen).attr("y2", by + 3)
-      .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.5);
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.55);
+    g.append("line")
+      .attr("x1", bx - 2).attr("y1", by + 1).attr("x2", bx - 2).attr("y2", by + 5)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.55);
+    g.append("line")
+      .attr("x1", bx + textLen + 2).attr("y1", by + 1).attr("x2", bx + textLen + 2).attr("y2", by + 5)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.55);
   },
 
   // Cobweb tucked into the bottom-left inside corner of the border,
@@ -916,6 +1086,27 @@ window.MapStyles.moonletters = {
           .attr("stroke", BLUE_INK).attr("stroke-width", 0.45).attr("opacity", 0.7);
       }
     }
+    // Tiny spider hanging on the web — a Thror's touch of whimsy
+    const spiderR = (radii[2] + radii[3]) / 2;
+    const spiderA = toRad((angles[1] + angles[2]) / 2);
+    const sX = cornerX + Math.cos(spiderA) * spiderR;
+    const sY = cornerY + Math.sin(spiderA) * spiderR;
+    // Body
+    cg.append("ellipse")
+      .attr("cx", sX).attr("cy", sY).attr("rx", 1.2).attr("ry", 1.8)
+      .attr("fill", BLUE_INK).attr("opacity", 0.85);
+    // Legs — 3 tiny strokes on each side
+    for (let j = -1; j <= 1; j++) {
+      const off = (j - 0.5) * 1.5;
+      cg.append("line")
+        .attr("x1", sX - 0.5).attr("y1", sY + off)
+        .attr("x2", sX - 3).attr("y2", sY + off - 1)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.85);
+      cg.append("line")
+        .attr("x1", sX + 0.5).attr("y1", sY + off)
+        .attr("x2", sX + 3).attr("y2", sY + off - 1)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.85);
+    }
   },
 
   renderAnnotations(ctx) {
@@ -953,8 +1144,12 @@ window.MapStyles.moonletters = {
         .attr("stroke-width", 0.55)
         .attr("stroke-linecap", "round")
         .attr("stroke-dasharray", "2 2.5")
-        .attr("opacity", 0.55);
-      // Small dot at the node end of the connector
+        .attr("opacity", 0.6);
+      // Tiny tick at the annotation-text end, dot at the node end
+      annotGroup.append("line")
+        .attr("x1", nearAnnotX - Math.cos(angle) * 1.5).attr("y1", nearAnnotY - Math.sin(angle) * 1.5)
+        .attr("x2", nearAnnotX + Math.cos(angle) * 1.5).attr("y2", nearAnnotY + Math.sin(angle) * 1.5)
+        .attr("stroke", connectorColor).attr("stroke-width", 0.6).attr("opacity", 0.7);
       annotGroup.append("circle")
         .attr("cx", nearNodeX).attr("cy", nearNodeY).attr("r", 0.9)
         .attr("fill", connectorColor).attr("opacity", 0.7);
@@ -974,7 +1169,13 @@ window.MapStyles.moonletters = {
           "here of old was a place of note",
           "known to few who wander far",
           "travellers rest upon this ground",
-          "the road goes ever on from here"
+          "the road goes ever on from here",
+          "mark well this hidden place",
+          "long ago were men here",
+          "beware the shadow beneath",
+          "many a wanderer has passed",
+          "tales are told of this stone",
+          "the wind alone remembers",
         ];
         phrase = flavorPhrases[Math.floor(rng() * flavorPhrases.length)];
       }
@@ -1311,12 +1512,22 @@ window.MapStyles.moonletters = {
       arrowGroup.append("line")
         .attr("x1", baseX).attr("y1", baseY)
         .attr("x2", tipX).attr("y2", tipY)
-        .attr("stroke", BLUE_INK).attr("stroke-width", 1.0).attr("opacity", 0.85);
-      // Arrowhead
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.9)
+        .attr("stroke-linecap", "round").attr("opacity", 0.85);
+      // Hand-drawn arrowhead — two angled strokes, not a filled triangle
       const perpX = -v[1], perpY = v[0];
-      arrowGroup.append("path")
-        .attr("d", `M ${tipX} ${tipY} L ${tipX - v[0] * 5 + perpX * 3} ${tipY - v[1] * 5 + perpY * 3} L ${tipX - v[0] * 5 - perpX * 3} ${tipY - v[1] * 5 - perpY * 3} Z`)
-        .attr("fill", BLUE_INK).attr("opacity", 0.85);
+      const barbBackX = tipX - v[0] * 6;
+      const barbBackY = tipY - v[1] * 6;
+      arrowGroup.append("line")
+        .attr("x1", tipX).attr("y1", tipY)
+        .attr("x2", barbBackX + perpX * 3.5).attr("y2", barbBackY + perpY * 3.5)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.9)
+        .attr("stroke-linecap", "round").attr("opacity", 0.85);
+      arrowGroup.append("line")
+        .attr("x1", tipX).attr("y1", tipY)
+        .attr("x2", barbBackX - perpX * 3.5).attr("y2", barbBackY - perpY * 3.5)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.9)
+        .attr("stroke-linecap", "round").attr("opacity", 0.85);
       // Italic label, placed on the side of the arrow away from the map center
       const labelOffset = 10;
       const lx = baseX - v[0] * labelOffset;

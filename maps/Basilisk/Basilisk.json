@@ -12,7 +12,7 @@
       "point_type": "heart",
       "terrain": "plains",
       "visible": true,
-      "description": "A walled frontier town in Belerion, Dragon Isles, at the intersection of the Old Northern Trade Road and the Blackwater River. Built on both river banks, connected by an old stone bridge. The starting point of the Basilisk Campaign.",
+      "description": "A walled frontier town at the crossing of the Old Northern Trade Road and the Blackwater River, joined by an old stone bridge. Farms ring the walls; habitable copses are squatted by the poor, resented by farmers for thieves. Guard Captain Ulf keeps order above, but below lies a cursed well, old tunnels, and a vampire brothel beneath the east side. Fog nights bring the Mist Hounds — red lights in pairs — and children vanish across the districts. The party's base of operations.",
       "x_hint": 0.0,
       "y_hint": 0.0,
       "hex": "1010"
@@ -23,7 +23,7 @@
       "point_type": "tavern",
       "terrain": "town",
       "visible": true,
-      "description": "A tavern inside Blackwater Crossing, near the north gate. The party's home base.",
+      "description": "A tavern near the north gate of Blackwater Crossing and the party's declared home base. Mustering from the Basilisk lets characters roll Hearts with advantage — the place restores them in a way few frontier inns do.",
       "x_hint": 0.0,
       "y_hint": 0.0,
       "hex": "1010",
@@ -36,7 +36,7 @@
       "point_type": "tavern",
       "terrain": "town",
       "visible": true,
-      "description": "A tavern on the east (bad) side of the Blackwater River. Connected to the suspicious meat rumor. Below: stairs to vampire tunnels.",
+      "description": "A dockside tavern on the east (bad) side of the Blackwater, tangled in the suspicious-meat rumor. In Session 43 the party tore down the crumbling building beside it, fought red-eyed rats, and found stairs leading down to the old tunnels and the vampire brothel below. A demon desk clerk greets arrivals; townspeople pass through in pseudonyms as clients or chattel.",
       "x_hint": 0.0,
       "y_hint": 0.0,
       "hex": "1010",
@@ -49,7 +49,7 @@
       "point_type": "settlement",
       "terrain": "town",
       "visible": true,
-      "description": "A maze of alleys near the Laughing Basilisk. Controlled by a thieves guild (\"canting crew\").",
+      "description": "A labyrinth of alleys near the Laughing Basilisk, held by a local canting crew — the town's thieves guild. Easy to get lost in, easier still to be found by the wrong people.",
       "x_hint": 0.0,
       "y_hint": 0.0,
       "hex": "1010",
@@ -62,7 +62,7 @@
       "point_type": "dungeon",
       "terrain": "underground",
       "visible": true,
-      "description": "Old tunnels under the city. Contains a vampire brothel. Connected to the mystery of the missing children and the fog.",
+      "description": "Old tunnels beneath the city, entered through stairs under a crumbling building next to the Sweaty Mermaid. Just past a beaded curtain arch lies a vampire brothel — receptionist with a giant red-eyed rat, multiple rooms, at least one vampire, and a noble patron who buys blood before each new moon. The fog's Mist Hounds serve the vampires here, and children vanish above to feed them.",
       "x_hint": 0.0,
       "y_hint": 0.0,
       "hex": "1010",
@@ -75,7 +75,7 @@
       "point_type": "ruin",
       "terrain": "plains",
       "visible": true,
-      "description": "A ruined farmstead along the Old Northern Trade Road, south of Blackwater Crossing. It has a basement. There was a fire here. Something cursed lingers.",
+      "description": "A ruined farmstead south of Blackwater Crossing along the Trade Road, scorched by an old fire. A basement still opens beneath the blackened timbers. Something cursed lingers in the ash — locals give it a wide berth.",
       "x_hint": 0.0,
       "y_hint": 0.87,
       "hex": "1011"
@@ -86,7 +86,7 @@
       "point_type": "waypoint",
       "terrain": "forest",
       "visible": true,
-      "description": "On the Trade Road, 2 hours south of the Old Forest edge. Landmark for navigation to Kalla Cave.",
+      "description": "A transitional landmark where the Trade Road leaves the Old Forest and descends into farmland — two hours south of the forest edge. Leaning stones and sparse trees mark civilization's northern limit. A gallows further south carries a sign reading \"THEEF.\" Travelers here turn east to reach Kalla Cave.",
       "x_hint": 0.0,
       "y_hint": -2.6,
       "hex": "1007"
@@ -97,7 +97,7 @@
       "point_type": "dungeon",
       "terrain": "plains",
       "visible": true,
-      "description": "4 hours east of the Graveyard. Contains kalla (food). Mud Tooth Porcs relocated here. A stream runs through this hex toward the cave.",
+      "description": "A cave four hours east of the Graveyard, stocked with a large supply of kalla. A stream winds through the hex toward the mouth. The surviving Mud Tooth Porcs — Soak Tusk, Warm Wallow, Steam Snout, Mud Plume and Bubble Trotter — resettled here after Whip convinced them to abandon the Mud Wallow. They lost a sibling, Sulphur Bristle, to the basilisk on the road south, and remain deeply shaken.",
       "x_hint": 1.5,
       "y_hint": -2.6,
       "hex": "1207"
@@ -108,7 +108,7 @@
       "point_type": "sanctuary",
       "terrain": "forest",
       "visible": true,
-      "description": "Hot spring west of the Trade Road in the Old Forest. Therapeutic mud heals 1 Heart/hour. Former Mud Tooth Porc territory.",
+      "description": "A sulfur-smelling hot spring west of the Trade Road, also called the Pork Swither Hot Spring Mud Pool. A stream of steaming water runs east across the road. The therapeutic mud heals 1 Heart per hour of soaking. Former territory of the Mud Tooth Porcs, who were squeezed out by giant spiders, the Feather Clan, and a nearby Pine Troll (HD 6, regenerates, fears fire).",
       "x_hint": -1.5,
       "y_hint": -6.06,
       "hex": "0803"
@@ -119,7 +119,7 @@
       "point_type": "settlement",
       "terrain": "forest",
       "visible": true,
-      "description": "Organized porc settlement in the Old Forest. ~3/4 day north of BC on the Trade Road, then ~1 hour west.",
+      "description": "An organized porc settlement in the black pines roughly 3/4 of a day north of Blackwater Crossing, then an hour west by the widest cart path. Narrower trails take three to six hours; the wide cart path exists because these porcs carry off stolen wagons whole. A recurring regional threat, with raiding forces disciplined enough to cut proper roads.",
       "x_hint": -0.75,
       "y_hint": -3.9,
       "hex": "0905"
@@ -130,7 +130,7 @@
       "point_type": "dungeon",
       "terrain": "underground",
       "visible": true,
-      "description": "Right behind Pjörk Choppe Hille (~1 hour scramble). Daemon spiders, tunnels to skeletal lord's throne room, Evil Chaos Shrine.",
+      "description": "A cave system near the summit of Pjörk Choppe Hille — about an hour's scramble over rocks from the settlement. Daemon spiders with writings on their chitin nest above; below wind tunnels to a skeletal lord's throne room, an Evil Chaos Shrine, a store room, and a torture chamber. The party has used it as a base camp across several expeditions. Slavers led by Painweaver (\"Suffering Teaches\") reportedly hold caves on the southern side near the cursed spiders.",
       "x_hint": -0.75,
       "y_hint": -3.9,
       "hex": "0905"
@@ -141,7 +141,7 @@
       "point_type": "lair",
       "terrain": "forest",
       "visible": true,
-      "description": "SE of Mud Wallow, 2 hours north of Kobold Crevasse. Crag King (barrow wight) on bone throne with 8 skeleton guards. Level 5 encounter.",
+      "description": "A barrow mound southeast of the Mud Wallow and two hours north of the Kobold Crevasse. On a throne of bones sits the Crag King, a barrow wight chieftain, flanked by eight skeleton guards. The dead zone around the mound is growing. A Thornespire Keep helmet lies among the bones — a trophy from the missing patrol. No trail leads here; the Mud Tooth Porcs guided the party in around the spider nests. A Level 5 encounter the party scouted but did not engage.",
       "x_hint": 0.0,
       "y_hint": -5.2,
       "hex": "1004"
@@ -152,7 +152,7 @@
       "point_type": "settlement",
       "terrain": "forest",
       "visible": true,
-      "description": "A deep crevasse in the Old Forest east of the Trade Road. Southern entrance in hex 1005, middle in 1105, northern tip in 1205. A path leads down to a kobold settlement. Mystic ring of trees with thaumaturgical runes at the surface. Home to Yip-Snap and her clan.",
+      "description": "A minecraft-deep crevasse east of the Trade Road, with a path winding down to a kobold settlement. At the surface stands a mystic ring of trees around a stone table carved with thaumaturgical runes — a binding spell for receiving prophetic dreams as the moon's shadow crosses it. Home to Yip-Snap the hunter and her clan under Chieftain Snarl-Tooth; the kobolds communicate and trash-talk the porcs by drum. A kobold kit was recently taken by spiders from a nearby drum-post, leaving only web.",
       "x_hint": 0.75,
       "y_hint": -3.9,
       "hex": "1105"
@@ -163,7 +163,7 @@
       "point_type": "sanctuary",
       "terrain": "forest",
       "visible": true,
-      "description": "Old-growth forest between Pjörk Choppe Hille and Thornespire Keep. Silver-bark trees with faces. Time differential: minutes inside = hours outside. Also called \"The Garden.\"",
+      "description": "Old-growth forest hidden between Pjörk Choppe Hille and Thornespire Keep, also called The Garden. Silver- and white-barked trees seem to wear faces; curated paths wind between them. Time runs wrong inside — minutes here pass as hours outside. No trail leads in; the party stumbled onto it while crossing between the porc hill and the keep, and the way back cannot be counted on.",
       "x_hint": -2.25,
       "y_hint": -6.5,
       "hex": "0702"
@@ -174,7 +174,7 @@
       "point_type": "fortress",
       "terrain": "forest",
       "visible": true,
-      "description": "Stone fortress on a hilltop in the Old Forest. ~1.5 days from BC (1 day north to forest, 4 hours west). Outer Bailey, Traveler's Inn, Chapel of Muir. The Castellan governs from the Inner Bailey.",
+      "description": "A stone fortress atop a tall hill in the Old Forest, commanding views of the river valley and the Trade Road below. Roughly 1.5 days from Blackwater Crossing — a day north to the forest, then four hours west on a well-maintained side road. Contains an Outer Bailey with a Traveler's Inn, the Chapel of Muir, and an Inner Bailey where the Castellan governs. Multicolored lights dance between the towers at night; shared dreams of a brass door beneath the keep grow sharper, and a crack has opened in the foundation directly above where the door is said to lie. Something scrapes in the deep cellars.",
       "x_hint": -2.25,
       "y_hint": -4.76,
       "hex": "0704"
@@ -185,7 +185,7 @@
       "point_type": "ruin",
       "terrain": "forest",
       "visible": true,
-      "description": "Abandoned watchtower in the Old Forest, accessed from the Trade Road north of the Thornespire Keep turnoff. Party rescued the Castellan's missing scouts here.",
+      "description": "An abandoned watchtower in the deep Old Forest, reached by a side road that branches west off the Trade Road north of the Thornespire turnoff. The Castellan's scouts vanished here; the party investigated, rescued three of them, and earned a feast at the Inner Bailey and Inner Bailey passes. The manifest for a later \"Strange Shipment\" (ritual silver daggers for the Vault of First Light) was also recovered from this tower.",
       "x_hint": -1.5,
       "y_hint": -6.93,
       "hex": "0802"
@@ -196,7 +196,7 @@
       "point_type": "wilderness",
       "terrain": "swamp",
       "visible": true,
-      "description": "NW of Thornespire Keep, upstream on the Blackwater River. Lizardmen, a hermit who drinks ice wine. Once populated, now flooded.",
+      "description": "Flooded wetlands northwest of Thornespire Keep, at the upstream headwaters of the Blackwater River. Lizardmen have grown more aggressive. A crazy old hermit drinks ice wine and knows things — he has been seen trading for supplies, asking about the cursed well and the murdered guards, and performing rituals at the waterline on full moons. Strange lights pulse deep in the water at night, answering when he paddles toward them. The region was inhabited before the flood; treasure-hunters believe much sank with it.",
       "x_hint": -3.75,
       "y_hint": -4.76,
       "hex": "0504"
@@ -207,7 +207,7 @@
       "point_type": "sanctuary",
       "terrain": "forest",
       "visible": true,
-      "description": "Mystical sanctuary ~2-3 days SW of BC. The Kalla'din pocket realm. Home to the Thornbeard Circle, Snezynja, and Stone-Nose Clan forest trolls.",
+      "description": "A mystical sanctuary 2–3 days southwest of Blackwater Crossing through tough forest. The Kalla'din is a pocket realm woven between three house-wide oaks — platforms twenty feet above scorched ground, floating rune-stones, upward-flowing waterfalls, and silver-bark trees growing both upright and inverted. Home to seven immortal Dwur Eldar of the Thornbeard Circle under Gunnar \"Brambleheart,\" now trapped in blissful captivity by stonedcunning fungi. Snezynja, an Aethiiri sorceress bound in starlight chains, keeps ancient memories of the Vault of First Light. The Stone-Nose Clan forest trolls under Grandmother Lichen-Beard dwell at the Standing Stones nearby.",
       "x_hint": -0.75,
       "y_hint": 2.17,
       "hex": "0812"
@@ -218,7 +218,7 @@
       "point_type": "waypoint",
       "terrain": "plains",
       "visible": true,
-      "description": "Brunhilde Ironfoot's camp & inn on the south road. Waypoint and recruiting camp. Has a moat. Baron Thornwise claims jurisdiction.",
+      "description": "Brunhilde Ironfoot's inn and recruiting camp, set in the foothills right on the Trade Road before Serpent's Pass. A moat surrounds the camp — a gelatinous ooze once haunted it, drowning Hawk before the party cleared it out. Brunhilde recruits for the Mountain Watch; lightning blights and wyverns trouble the foothills, and dwur patrols range nearby. Baron Thornwise (gold wheat sheaf on blue) claims jurisdiction through a tax collector.",
       "x_hint": 0.75,
       "y_hint": 2.17,
       "hex": "1112"
@@ -229,7 +229,7 @@
       "point_type": "waypoint",
       "terrain": "mountains",
       "visible": true,
-      "description": "Mountain pass where the Trade Road passes through the Serpent's Teeth Crags. ~2 days south of BC.",
+      "description": "The narrow mountain pass where the Trade Road threads the Serpent's Teeth Crags, roughly two days south of Blackwater Crossing. Perilous terrain between jagged peaks; the crags themselves span a week of travel in either direction and hide gargoyles, an obsidian quarry, and brigands. Side routes from the pass lead overland to the Vault of First Light.",
       "x_hint": 0.75,
       "y_hint": 3.03,
       "hex": "1113"
@@ -240,7 +240,7 @@
       "point_type": "lair",
       "terrain": "hills",
       "visible": true,
-      "description": "A rocky hill on the western edge of hex 1113, nearest to hex 1013. Covered in stones and natural cover — an excellent position for a small army to camp, like a Weathertop. The bandits from Hangman Hill used this as an ambush site overlooking the main road. Connected to Hangman Hill's water grotto via underground streambed.",
+      "description": "A rocky Weathertop-like hill on the west edge of the pass, strewn with stones and natural cover — an ideal camp for a small army. The Hangman Hill bandits used it as an ambush perch over the Trade Road, linked back to their water grotto by an underground streambed. The position was finally broken when lightning from the Tower of the Stargazer destroyed the camp.",
       "x_hint": 0.75,
       "y_hint": 3.03,
       "hex": "1113"
@@ -251,7 +251,7 @@
       "point_type": "tower",
       "terrain": "plains",
       "visible": true,
-      "description": "Home of Sir Uravulon Calcidius. ~2 days south on Trade Road, half day west. 80-foot stone tower with constant lightning. Calcidius trapped in salt circle ~59 years ago.",
+      "description": "An 80-foot stone tower with no visible windows, crowned by a layered metal dome like a globe and ringed with steel spikes; four 40-foot spikes lean inward from the blasted lunar ground fifty feet out. Lightning strikes constantly, even under clear skies. Two days south of Blackwater Crossing, then half a day west into the foothills. Home of Sir Uravulon Calcidius, an evil wizard corrupted by contact with other worlds and trapped in a salt circle some 59 years ago by his servant Argyle Timmons, who stole his spellbook and fled. His senile fumbling is a mask — once freed he is imperious and murderous.",
       "x_hint": -0.75,
       "y_hint": 3.03,
       "hex": "0913"
@@ -262,7 +262,7 @@
       "point_type": "dungeon",
       "terrain": "mountains",
       "visible": true,
-      "description": "Ancient dwarven dungeon in the Serpent's Teeth. 2 days south + 1 day overland. Contains traps, the Fallen (undead dwur), cosmic forces.",
+      "description": "An ancient dwarven dungeon reached by two days south on the Trade Road and a further day overland through hills and up a pass between the Serpent's Teeth. Rooms, traps, and the Fallen — undead dwur miners — guard ties to older cosmic forces. The party has already explored it and brought back an eternal candle that speaks in ancient tongues; scholars and treasure-hunters have since flocked to Blackwater Crossing. The ritual silver daggers recovered from Raven's Perch are the keys to deeper chambers.",
       "x_hint": 1.5,
       "y_hint": 4.33,
       "hex": "1215"
@@ -273,7 +273,7 @@
       "point_type": "waypoint",
       "terrain": "forest",
       "visible": true,
-      "description": "The Old Northern Trade Road exits the known map to the north through hex 1000. The road continues through 1004, 1003, 1002, 1001, 1000 and beyond into unexplored territory.",
+      "description": "The Trade Road passes beyond the known map here, pressed in on both sides by dense Old Forest. The way is well-maintained as far as explored territory goes, but no one the party has spoken with has reliable report of what lies further north into the Belerion wilds.",
       "x_hint": -1.5,
       "y_hint": -8.66,
       "hex": "0800"
@@ -284,7 +284,7 @@
       "point_type": "waypoint",
       "terrain": "mountains",
       "visible": true,
-      "description": "The Trade Road emerges from the Serpent's Teeth and continues south.",
+      "description": "Where the Trade Road emerges from the Serpent's Teeth pass at the southern edge of the known map, descending out of the mountains toward unknown lands beyond.",
       "x_hint": 1.5,
       "y_hint": 5.2,
       "hex": "1216"
@@ -295,7 +295,7 @@
       "point_type": "sanctuary",
       "terrain": "forest",
       "visible": true,
-      "description": "A carved stone with protective runes in the Old Forest near the Mud Wallow. One of two Vampire Warding Stones that create an invisible fence vampires cannot cross. The warding line runs southwest to its partner at the river.",
+      "description": "A carved rune-stone standing west of the Trade Road near the Mud Wallow — one of the Vampire Warding Stones. Only two have been found so far; the pattern is likely an arc or ring rather than a pair. The warding is believed tied to the vampire brothel beneath Blackwater Crossing and possibly to a larger ley-line network, and its runes resemble those on the Kobold Crevasse stone table and the seal of the Silent Eater.",
       "x_hint": -0.75,
       "y_hint": -3.03,
       "hex": "0906"
@@ -306,7 +306,7 @@
       "point_type": "sanctuary",
       "terrain": "forest",
       "visible": true,
-      "description": "A carved stone with protective runes where the Blackwater River enters the Old Forest. One of two Vampire Warding Stones that create an invisible fence vampires cannot cross. The warding line runs northeast to its partner near the Mud Wallow.",
+      "description": "A carved rune-stone where the Blackwater River enters the Old Forest from the northwest — the second known Vampire Warding Stone. Its runes match older carvings tied to the Silent Eater's seal and the stone table at the Kobold Crevasse. The full set is unknown; more likely stand undiscovered elsewhere in the forest.",
       "x_hint": -2.25,
       "y_hint": -2.17,
       "hex": "0707"
@@ -317,10 +317,32 @@
       "point_type": "lair",
       "terrain": "forest",
       "visible": true,
-      "description": "A deep wood in the Old Forest, home to the basilisk (the campaign's namesake creature) and overlapping with giant spider nests. The Mud Tooth Porcs call the basilisk's clearing 'the quiet ground'. Petrified stone figures have been found in the spider webs — the basilisk was there before the spiders.",
+      "description": "A deep wood southwest of the Mud Wallow where the basilisk's territory overlaps with giant spider nests. The Mud Tooth Porcs call the clearing at its heart \"the quiet ground\" and lost kin there. Petrified figures stand in the webs — including the naturalist Saerin Voth, caught studying the stone garden — proof the basilisk was here long before the spiders. The \"basilisk\" and the brood-mother spider are one and the same: an ancient eight-legged priestess-guardian feeding a pre-Dwur seal beneath the forest, and each victim thickens the binding.",
       "x_hint": -0.75,
       "y_hint": -5.63,
       "hex": "0903"
+    },
+    {
+      "id": "old-forest-edge",
+      "name": "Old Forest Edge",
+      "point_type": "waypoint",
+      "terrain": "forest",
+      "visible": true,
+      "description": "The waypoint where the Trade Road crosses from tilled farmland into dense Old Forest, about a day's march (18 miles) north of Blackwater Crossing. The treeline curves away east and west — a prominent band of tall black pines marking the edge of civilized country.",
+      "x_hint": 0.45,
+      "y_hint": -2.88,
+      "hex": "1106"
+    },
+    {
+      "id": "hangman-hill",
+      "name": "Hangman Hill Bandit Camp",
+      "point_type": "lair",
+      "terrain": "forest",
+      "visible": true,
+      "description": "A large bandit operation an hour north of the Tower of the Stargazer, just inside the forest's southern edge — 120 people in all, 48 bandits and 72 slaves. Krin \"The Cunning\" led a 20-strong strike force; Rath \"Iron-Will\" ran the slave-pit and quarry, waving a dubious writ for \"contract labor\"; Corth \"Whip-Crack\" never spoke. The obsidian quarry is a shale crater around a single dark spire — possibly hollow, possibly deeper than it looks — and digging at its base was forbidden on pain of death. Carved serpent marks on the trees hinted at plans beyond lumber. Lightning from the Tower eventually reduced the camp to ash; captives were freed, and the party earned 4 XP in Session 42.",
+      "x_hint": -0.75,
+      "y_hint": 2.6,
+      "hex": "0912"
     }
   ],
   "links": [
@@ -412,6 +434,24 @@
       "path_type": "trail",
       "terrain_difficulty": "easy",
       "visible": true
+    },
+    {
+      "source": "thornespire-keep",
+      "target": "the-swamp",
+      "name": "Upstream Along the Blackwater",
+      "path_type": "river",
+      "terrain_difficulty": "tough",
+      "visible": true,
+      "days": 1.0
+    },
+    {
+      "source": "tower-of-stargazer",
+      "target": "hangman-hill",
+      "name": "North to Hangman Hill",
+      "path_type": "trail",
+      "terrain_difficulty": "easy",
+      "visible": true,
+      "days": 0.1
     }
   ],
   "hex_terrain": {
@@ -464,11 +504,9 @@
     "0911": "forest",
     "1011": "farmland",
     "1212": "forest",
-    "1910": "forest",
     "0809": "farmland",
     "0810": "farmland",
     "0713": "forest",
-    "1913": "hills",
     "0814": "forested-hills",
     "0913": "hills",
     "1312": "forested-hills",
@@ -554,6 +592,12 @@
       "hexes": ["0704", "0804"],
       "label": "half a day",
       "days": 0.5
+    }
+  ],
+  "crevasse_path": [
+    {
+      "hexes": ["1005", "1105", "1205"],
+      "name": "The Kobold Crevasse"
     }
   ],
   "river_name": "Blackwater River",

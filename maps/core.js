@@ -404,6 +404,95 @@ function renderRoad(ctx, roadColor, roadWidth) {
   });
 }
 
+// --- Crevasse rendering ---
+// Jagged zig-zag canyon through hex centers plus perpendicular shadow hatches.
+// crevassePath entries look like { hexes: [...], name? }.
+function renderCrevasse(ctx, color, width) {
+  const { g, crevassePath, HINT_SCALE, WIDTH, HEIGHT } = ctx;
+  if (!crevassePath || crevassePath.length === 0) return;
+
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+
+  const crevasseColor = color || "#2a1f14";
+  const w = width || 3;
+  const group = g.append("g").attr("class", "crevasse");
+
+  crevassePath.forEach((entry, pathIdx) => {
+    const hexes = Array.isArray(entry) ? entry : (entry && entry.hexes);
+    if (!hexes || hexes.length < 2) return;
+
+    const centers = hexes
+      .filter(h => typeof h === "string" && h.length >= 4)
+      .map(h => {
+        const col = parseInt(h.substring(0, 2));
+        const row = parseInt(h.substring(2, 4));
+        const x = (col - bcCol) * colStep + WIDTH / 2;
+        const y = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
+        return [x, y];
+      });
+    if (centers.length < 2) return;
+
+    const rng = mulberry32(seedFromString("crevasse-" + pathIdx));
+
+    // Build zig-zag spine: each segment between centers is broken into jagged
+    // sub-segments with alternating perpendicular offsets.
+    const spine = [centers[0]];
+    for (let i = 0; i < centers.length - 1; i++) {
+      const [x1, y1] = centers[i];
+      const [x2, y2] = centers[i + 1];
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const nx = -dy / len, ny = dx / len;
+      const zigs = 6;
+      for (let s = 1; s <= zigs; s++) {
+        const t = s / zigs;
+        const mx = x1 + dx * t;
+        const my = y1 + dy * t;
+        const alt = (s % 2 === 0 ? 1 : -1);
+        const amp = size * 0.12 * (0.7 + rng() * 0.6);
+        spine.push([mx + nx * alt * amp, my + ny * alt * amp]);
+      }
+    }
+
+    // Main jagged line — no curve, just linear between points
+    const line = d3.line();
+    const d = line(spine);
+    group.append("path")
+      .attr("d", d)
+      .attr("fill", "none")
+      .attr("stroke", crevasseColor)
+      .attr("stroke-width", w)
+      .attr("stroke-linecap", "round")
+      .attr("stroke-linejoin", "miter")
+      .attr("opacity", 0.9);
+
+    // Perpendicular cross-hatches every couple of spine points to suggest depth
+    for (let i = 1; i < spine.length - 1; i += 2) {
+      const [px, py] = spine[i];
+      const [pxN, pyN] = spine[i + 1];
+      const tx = pxN - px, ty = pyN - py;
+      const tl = Math.sqrt(tx * tx + ty * ty) || 1;
+      const perpX = -ty / tl, perpY = tx / tl;
+      const hatchLen = size * (0.18 + rng() * 0.14);
+      const side = rng() > 0.5 ? 1 : -1;
+      const x1 = px;
+      const y1 = py;
+      const x2 = px + perpX * hatchLen * side;
+      const y2 = py + perpY * hatchLen * side;
+      group.append("line")
+        .attr("x1", x1).attr("y1", y1)
+        .attr("x2", x2).attr("y2", y2)
+        .attr("stroke", crevasseColor)
+        .attr("stroke-width", w * 0.45)
+        .attr("stroke-linecap", "round")
+        .attr("opacity", 0.55);
+    }
+  });
+}
+
 // --- Hex terrain rendering ---
 // Draws terrain decorations at hex centers based on hex_terrain data.
 // terrainDrawers is an object mapping terrain type to a draw function: (g, x, y, size, rng) => void
@@ -1165,6 +1254,13 @@ function computeBounds(nodes) {
       }
       roadPaths.forEach(path => path.forEach(addHexBounds));
     }
+
+    if (graphData.crevasse_path) {
+      graphData.crevasse_path.forEach(entry => {
+        const hexes = Array.isArray(entry) ? entry : (entry && entry.hexes) || [];
+        hexes.forEach(addHexBounds);
+      });
+    }
   }
 
   return {
@@ -1248,6 +1344,73 @@ function hexToXY(hex, subhex) {
   return [cx + ox * d, cy + oy * d];
 }
 
+// Inverse of hexToXY: SVG coords in the g-group space → CCRR hex code.
+// Picks whichever of the nearby candidate hex centers is closest.
+function xyToHex(x, y) {
+  const WIDTH = window.innerWidth;
+  const HEIGHT = window.innerHeight;
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+
+  const xRel = x - WIDTH / 2;
+  const colGuess = Math.round(xRel / colStep) + bcCol;
+  let best = null, bestDist = Infinity;
+  for (let dc = -1; dc <= 1; dc++) {
+    const col = colGuess + dc;
+    const isShifted = (col % 2) !== (bcCol % 2);
+    const colX = (col - bcCol) * colStep + WIDTH / 2;
+    const rowOff = isShifted ? rowStep / 2 : 0;
+    const yRel = y - HEIGHT / 2 - rowOff;
+    const rowGuess = Math.round(yRel / rowStep) + bcRow;
+    for (let dr = -1; dr <= 1; dr++) {
+      const row = rowGuess + dr;
+      const rowY = (row - bcRow) * rowStep + rowOff + HEIGHT / 2;
+      const dx = x - colX, dy = y - rowY;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestDist) { bestDist = d2; best = { col, row }; }
+    }
+  }
+  if (!best) return null;
+  return `${String(best.col).padStart(2, "0")}${String(best.row).padStart(2, "0")}`;
+}
+
+// Six flat-top hex neighbors for a given CCRR hex (parity-aware).
+function hexNeighbors(hex) {
+  if (typeof hex !== "string" || hex.length < 4) return [];
+  const col = parseInt(hex.substring(0, 2));
+  const row = parseInt(hex.substring(2, 4));
+  if (isNaN(col) || isNaN(row)) return [];
+  const bcCol = 10;
+  const isShifted = (col % 2) !== (bcCol % 2);
+  const offsets = isShifted
+    ? [[0, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]]
+    : [[0, -1], [1, -1], [1, 0], [0, 1], [-1, 0], [-1, -1]];
+  return offsets.map(([dc, dr]) =>
+    String(col + dc).padStart(2, "0") + String(row + dr).padStart(2, "0")
+  );
+}
+
+// Offset CCRR → cube coords (for straight-line hex paths in Dijkstra fallback).
+function hexToCube(hex) {
+  const col = parseInt(hex.substring(0, 2));
+  const row = parseInt(hex.substring(2, 4));
+  const bcCol = 10;
+  // odd-q offset: shifted columns have different parity from bcCol (10 = even).
+  const parity = (col % 2) !== (bcCol % 2) ? 1 : 0;
+  const x = col;
+  const z = row - (col - parity) / 2;
+  const y = -x - z;
+  return [x, y, z];
+}
+
+function hexDistance(a, b) {
+  const [ax, ay, az] = hexToCube(a);
+  const [bx, by, bz] = hexToCube(b);
+  return (Math.abs(ax - bx) + Math.abs(ay - by) + Math.abs(az - bz)) / 2;
+}
+
 function runSimulation(rawData, filterFn) {
   const WIDTH = window.innerWidth;
   const HEIGHT = window.innerHeight;
@@ -1305,10 +1468,300 @@ function setupSVG() {
   const zoom = d3.zoom()
     .scaleExtent([0.3, 4])
     .on("zoom", (event) => g.attr("transform", event.transform));
-  svg.call(zoom);
+  // Disable d3's default double-click zoom so our handler owns that gesture.
+  svg.call(zoom).on("dblclick.zoom", null);
   svg.on("click", () => closePanel());
 
   return { svg, defs, g, zoom };
+}
+
+// --- Route highlight (feature 2) ---
+// Module-level because they must be cleared on style/grid re-render.
+let _routeStartHex = null;
+let _routeEndHex = null;
+
+function _clearRouteState() {
+  _routeStartHex = null;
+  _routeEndHex = null;
+}
+
+// Build an undirected graph keyed by hex code. Road entries define faster edges
+// (wins over overland). Overland neighbor edges default to 0.5 days.
+function _buildTravelGraph() {
+  const graph = new Map();
+  const addEdge = (a, b, days) => {
+    if (!graph.has(a)) graph.set(a, new Map());
+    if (!graph.has(b)) graph.set(b, new Map());
+    const cur = graph.get(a).get(b);
+    if (cur == null || days < cur) {
+      graph.get(a).set(b, days);
+      graph.get(b).set(a, days);
+    }
+  };
+
+  // Road edges — one per consecutive pair within each road entry
+  const roads = graphData && graphData.road_path ? graphData.road_path : [];
+  const roadEntries = typeof roads[0] === "string" ? [{ hexes: roads }] : roads;
+  roadEntries.forEach(entry => {
+    const hexes = Array.isArray(entry) ? entry : (entry && entry.hexes) || [];
+    if (hexes.length < 2) return;
+    const perHop = entry && entry.days && hexes.length > 1
+      ? entry.days / (hexes.length - 1)
+      : 1 / 8; // default 1 hour per hex on road
+    for (let i = 0; i < hexes.length - 1; i++) {
+      addEdge(hexes[i], hexes[i + 1], perHop);
+    }
+  });
+
+  // Seed known hexes for overland neighbor edges from terrain / nodes / river / road
+  const known = new Set();
+  if (graphData) {
+    if (graphData.hex_terrain) Object.keys(graphData.hex_terrain).forEach(h => known.add(h));
+    if (graphData.river_path) graphData.river_path.forEach(h => known.add(h));
+    if (graphData.nodes) graphData.nodes.forEach(n => { if (n.hex) known.add(n.hex); });
+    roadEntries.forEach(entry => {
+      const hexes = Array.isArray(entry) ? entry : (entry && entry.hexes) || [];
+      hexes.forEach(h => known.add(h));
+    });
+  }
+
+  known.forEach(hex => {
+    hexNeighbors(hex).forEach(n => {
+      if (known.has(n)) addEdge(hex, n, 0.5);
+    });
+  });
+
+  return { graph, known };
+}
+
+function _dijkstra(graph, start, end) {
+  if (!graph.has(start) || !graph.has(end)) return null;
+  const dist = new Map();
+  const prev = new Map();
+  dist.set(start, 0);
+  const visited = new Set();
+  // Simple priority queue via linear scan — graphs here are tiny (a few hundred hexes).
+  while (true) {
+    let u = null, uDist = Infinity;
+    dist.forEach((d, k) => {
+      if (!visited.has(k) && d < uDist) { u = k; uDist = d; }
+    });
+    if (u == null) break;
+    if (u === end) break;
+    visited.add(u);
+    const nbrs = graph.get(u);
+    if (!nbrs) continue;
+    nbrs.forEach((w, v) => {
+      if (visited.has(v)) return;
+      const alt = uDist + w;
+      if (alt < (dist.get(v) ?? Infinity)) {
+        dist.set(v, alt);
+        prev.set(v, u);
+      }
+    });
+  }
+  if (!dist.has(end)) return null;
+  const path = [];
+  let cur = end;
+  while (cur != null) {
+    path.unshift(cur);
+    cur = prev.get(cur);
+  }
+  return { path, days: dist.get(end) };
+}
+
+// Straight-line hex path via cube-coord linear interpolation — fallback when
+// Dijkstra can't reach (one or both endpoints outside the known graph).
+function _hexLinePath(start, end) {
+  const n = hexDistance(start, end);
+  const [x1, y1, z1] = hexToCube(start);
+  const [x2, y2, z2] = hexToCube(end);
+  const steps = Math.max(1, Math.round(n));
+  const cubeToOffset = (cx, cz) => {
+    const col = cx;
+    const bcCol = 10;
+    const parity = (col % 2) !== (bcCol % 2) ? 1 : 0;
+    const row = cz + (col - parity) / 2;
+    return String(col).padStart(2, "0") + String(row).padStart(2, "0");
+  };
+  const cubeRound = (x, y, z) => {
+    let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
+    const dx = Math.abs(rx - x), dy = Math.abs(ry - y), dz = Math.abs(rz - z);
+    if (dx > dy && dx > dz) rx = -ry - rz;
+    else if (dy > dz) ry = -rx - rz;
+    else rz = -rx - ry;
+    return [rx, ry, rz];
+  };
+  const path = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const [rx, , rz] = cubeRound(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, z1 + (z2 - z1) * t);
+    path.push(cubeToOffset(rx, rz));
+  }
+  return { path, days: n * 0.5 };
+}
+
+function _findRoute(startHex, endHex) {
+  if (startHex === endHex) return { path: [startHex], days: 0 };
+  const { graph, known } = _buildTravelGraph();
+  if (known.has(startHex) && known.has(endHex)) {
+    const res = _dijkstra(graph, startHex, endHex);
+    if (res) return res;
+  }
+  return _hexLinePath(startHex, endHex);
+}
+
+function _hexCenterXY(hex) {
+  const WIDTH = window.innerWidth;
+  const HEIGHT = window.innerHeight;
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+  const col = parseInt(hex.substring(0, 2));
+  const row = parseInt(hex.substring(2, 4));
+  const x = (col - bcCol) * colStep + WIDTH / 2;
+  const y = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
+  return [x, y];
+}
+
+function _clearRouteGroups(g) {
+  g.selectAll("g.route-highlight").remove();
+  g.selectAll("g.route-start-marker").remove();
+}
+
+function _renderRouteStart(g, hex) {
+  _clearRouteGroups(g);
+  if (!hex) return;
+  const size = HINT_SCALE / 2;
+  const [cx, cy] = _hexCenterXY(hex);
+  const pts = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i * 60) * Math.PI / 180;
+    pts.push([cx + size * Math.cos(a), cy + size * Math.sin(a)]);
+  }
+  const markerGroup = g.append("g").attr("class", "route-start-marker").style("pointer-events", "none");
+  markerGroup.append("polygon")
+    .attr("points", pts.map(p => p.join(",")).join(" "))
+    .attr("fill", "var(--route-accent, #c25b2b)")
+    .attr("opacity", 0.22);
+  markerGroup.append("polygon")
+    .attr("points", pts.map(p => p.join(",")).join(" "))
+    .attr("fill", "none")
+    .attr("stroke", "var(--route-accent, #c25b2b)")
+    .attr("stroke-width", 2)
+    .attr("opacity", 0.7);
+}
+
+function _renderRoute(g, path, days) {
+  _clearRouteGroups(g);
+  if (!path || path.length === 0) return;
+  const size = HINT_SCALE / 2;
+  const group = g.append("g").attr("class", "route-highlight").style("pointer-events", "none");
+
+  // Filled hex highlights along the route
+  path.forEach(hex => {
+    const [cx, cy] = _hexCenterXY(hex);
+    const pts = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (i * 60) * Math.PI / 180;
+      pts.push([cx + size * Math.cos(a), cy + size * Math.sin(a)]);
+    }
+    group.append("polygon")
+      .attr("points", pts.map(p => p.join(",")).join(" "))
+      .attr("fill", "var(--route-accent, #c25b2b)")
+      .attr("opacity", 0.3);
+  });
+
+  // Thick polyline through hex centers
+  if (path.length >= 2) {
+    const centers = path.map(_hexCenterXY);
+    const line = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
+    group.append("path")
+      .attr("d", line(centers))
+      .attr("fill", "none")
+      .attr("stroke", "var(--route-accent, #c25b2b)")
+      .attr("stroke-width", 4)
+      .attr("stroke-linecap", "round")
+      .attr("opacity", 0.7);
+  }
+
+  // Travel-time label at route midpoint
+  if (days != null && path.length >= 2) {
+    const centers = path.map(_hexCenterXY);
+    const midIdx = Math.floor(centers.length / 2);
+    const [lx, ly] = centers[midIdx];
+    const label = group.append("g").attr("transform", `translate(${lx}, ${ly - 14})`);
+    const text = formatDaysLabel(Math.round(days * 4) / 4);
+    label.append("text")
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .attr("font-family", FONT)
+      .attr("font-size", "14px")
+      .attr("font-weight", "bold")
+      .attr("fill", "var(--route-accent, #c25b2b)")
+      .attr("stroke", "#f4e8d1")
+      .attr("stroke-width", 4)
+      .attr("paint-order", "stroke")
+      .text(text);
+  }
+}
+
+// Set up single-click / shift-click route handling on the svg. Uses the
+// svg-level click, then hit-tests against the hex under the pointer, so clicks
+// on terrain or empty parchment still register without touching node click
+// handlers (nodes stop propagation separately when appropriate).
+function _setupRouteInteraction(svg, g, zoom) {
+  svg.on("click.route", function (event) {
+    // Ignore clicks on node elements — they have their own handlers.
+    if (event.target && event.target.closest && event.target.closest(".node")) return;
+    const [px, py] = d3.pointer(event, g.node());
+    const hex = xyToHex(px, py);
+    if (!hex) {
+      _clearRouteState();
+      _clearRouteGroups(g);
+      return;
+    }
+    if (event.shiftKey && _routeStartHex) {
+      _routeEndHex = hex;
+      const res = _findRoute(_routeStartHex, hex);
+      if (res) _renderRoute(g, res.path, res.days);
+      return;
+    }
+    // Plain click (including shift-click with no start): set new start
+    _routeStartHex = hex;
+    _routeEndHex = null;
+    _renderRouteStart(g, hex);
+  });
+
+  // Double-click: zoom onto clicked hex + its 6 neighbors
+  svg.on("dblclick.hex", function (event) {
+    const [px, py] = d3.pointer(event, g.node());
+    const hex = xyToHex(px, py);
+    if (!hex) return;
+    const cluster = [hex, ...hexNeighbors(hex)];
+    const radius = HINT_SCALE / 2;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    cluster.forEach(h => {
+      const [cx, cy] = _hexCenterXY(h);
+      minX = Math.min(minX, cx - radius);
+      minY = Math.min(minY, cy - radius);
+      maxX = Math.max(maxX, cx + radius);
+      maxY = Math.max(maxY, cy + radius);
+    });
+    const W = window.innerWidth, H = window.innerHeight;
+    const padFactor = 1.25; // ~20% margin
+    const bw = (maxX - minX) * padFactor;
+    const bh = (maxY - minY) * padFactor;
+    const scale = Math.min(W / bw, H / bh, 4);
+    const clampedScale = Math.max(0.3, Math.min(4, scale));
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const transform = d3.zoomIdentity
+      .translate(W / 2 - cx * clampedScale, H / 2 - cy * clampedScale)
+      .scale(clampedScale);
+    svg.transition().duration(400).call(zoom.transform, transform);
+  });
 }
 
 function centerView(svg, zoom, bounds) {
@@ -1336,6 +1789,9 @@ function renderMap(styleName, gridName) {
   const style = MapStyles[styleName];
   if (!style) { console.error("Unknown style:", styleName); return; }
 
+  // Reset route highlight state on every re-render (style/grid change).
+  _clearRouteState();
+
   _currentStyle = styleName;
   _currentGrid = gridName;
 
@@ -1361,6 +1817,7 @@ function renderMap(styleName, gridName) {
     mulberry32, seedFromString, FONT,
     riverPath: graphData.river_path || [],
     roadPath: graphData.road_path || [],
+    crevassePath: graphData.crevasse_path || [],
     hexTerrain: graphData.hex_terrain || {},
     offMapArrows: graphData.off_map_arrows || []
   };
@@ -1375,6 +1832,9 @@ function renderMap(styleName, gridName) {
 
   // Hex hover panel — runs on top so it captures pointer events.
   renderHexHover(ctx);
+
+  // Double-click zoom + shift-click routing
+  _setupRouteInteraction(svg, g, zoom);
 
   // Center the view
   centerView(svg, zoom, sim.bounds);
@@ -1444,7 +1904,7 @@ function exportSVG() {
 // Expose for global access
 Object.assign(MapCore, {
   HINT_SCALE, DAY_SCALE, FONT, INTERIOR_TERRAINS, SUBHEX_OFFSETS,
-  isOverlandNode, hexToXY, renderRiver, renderRiverLabel, renderRoad, renderBridges, renderHexTerrain, renderMountainsWithElevation, renderForestEdgeTrees, renderRegionLabels, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
+  isOverlandNode, hexToXY, xyToHex, hexNeighbors, renderRiver, renderRiverLabel, renderRoad, renderCrevasse, renderBridges, renderHexTerrain, renderMountainsWithElevation, renderForestEdgeTrees, renderRegionLabels, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
   showDetail, closePanel,
   loadData, runSimulation, setupSVG, centerView,
   renderMap, applyTheme, exportSVG,

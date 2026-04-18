@@ -46,8 +46,17 @@ window.MapStyles.thirdage = {
     MapCore.renderRiverLabel(ctx, { color: ctx.colors.INK, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.1, bridgeLen: 14 });
     MapCore.renderRoad(ctx, ctx.colors.INK, 2);
+    MapCore.renderCrevasse(ctx, "#2a1f14", 3);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
+    MapCore.renderRegionLabels(ctx, {
+      color: ctx.colors.REGION_RED,
+      strokeColor: ctx.colors.PARCHMENT,
+      fontSize: 24,
+      letterSpacing: "8px",
+      opacity: 0.6,
+      fontStyle: "normal",
+    });
     this.renderNodes(ctx);
     this.renderRegionLabels(ctx);
     this.renderLabels(ctx);
@@ -201,13 +210,13 @@ window.MapStyles.thirdage = {
 
       switch (link.path_type) {
         case "road":
-          path.attr("stroke-width", 3.0);
+          path.attr("stroke-width", 2.3).attr("opacity", 0.9);
           break;
         case "trail":
-          path.attr("stroke-width", 2.0).attr("stroke-dasharray", "8 4");
+          path.attr("stroke-width", 1.5).attr("stroke-dasharray", "8 4").attr("opacity", 0.8);
           break;
         case "wilderness":
-          path.attr("stroke-width", 1.2).attr("stroke-dasharray", "3 5");
+          path.attr("stroke-width", 1.0).attr("stroke-dasharray", "3 5").attr("opacity", 0.6);
           break;
         default:
           path.attr("stroke-width", 1.5);
@@ -265,6 +274,13 @@ window.MapStyles.thirdage = {
           .attr("d", `M ${gx - gw / 2} ${gy + gh * 0.45} L ${gx - gw / 2} ${gy - gh * 0.15} Q ${gx} ${gy - gh * 0.55} ${gx + gw / 2} ${gy - gh * 0.15} L ${gx + gw / 2} ${gy + gh * 0.45} Z`)
           .attr("fill", INK).attr("opacity", 0.75);
       }
+      // Occasional burial-mound ground line beneath the marker
+      if (rng() > 0.65) {
+        g.append("line")
+          .attr("x1", gx - gw * 0.7).attr("y1", gy + gh * 0.5)
+          .attr("x2", gx + gw * 0.7).attr("y2", gy + gh * 0.5)
+          .attr("stroke", INK).attr("stroke-width", 0.45).attr("opacity", 0.5);
+      }
     }
   },
 
@@ -310,18 +326,44 @@ window.MapStyles.thirdage = {
         }
       } else switch (node.point_type) {
         case "heart": {
-          // Main town — cluster of filled houses
+          // Main town — cluster of filled houses with a tiny spire at center
           const hs = 4;
           const positions = [{x:0, y:0}, {x:-hs*1.3, y:hs*0.2}, {x:hs*1.3, y:hs*0.1}, {x:-hs*0.5, y:-hs*0.8}, {x:hs*0.6, y:-hs*0.7}];
-          positions.forEach(p => {
-            // House body (filled)
+          positions.forEach((p, idx) => {
             ng.append("rect").attr("x", p.x - hs*0.45).attr("y", p.y - hs*0.2).attr("width", hs*0.9).attr("height", hs*0.65)
               .attr("fill", INK).attr("stroke", "none");
-            // Roof (filled)
             ng.append("path")
               .attr("d", `M ${p.x - hs*0.55} ${p.y - hs*0.2} L ${p.x} ${p.y - hs*0.75} L ${p.x + hs*0.55} ${p.y - hs*0.2} Z`)
               .attr("fill", INK).attr("stroke", "none");
+            // Smoke plume on two of the outer houses — inhabited capital
+            if (idx === 1 || idx === 2) {
+              const sx = p.x + hs * 0.18;
+              const sy = p.y - hs * 0.75;
+              ng.append("path")
+                .attr("d", `M ${sx} ${sy} C ${sx - hs * 0.25} ${sy - hs * 0.4}, ${sx + hs * 0.25} ${sy - hs * 0.7}, ${sx - hs * 0.05} ${sy - hs * 1.1}`)
+                .attr("fill", "none").attr("stroke", INK)
+                .attr("stroke-width", 0.55).attr("stroke-linecap", "round")
+                .attr("opacity", 0.55);
+            }
           });
+          // Central spire (cathedral/keep) rising above the cluster
+          ng.append("rect").attr("x", -0.8).attr("y", -hs*1.5).attr("width", 1.6).attr("height", hs*0.75)
+            .attr("fill", INK).attr("stroke", "none");
+          ng.append("path")
+            .attr("d", `M ${-1.3} ${-hs*1.5} L 0 ${-hs*2.05} L 1.3 ${-hs*1.5} Z`)
+            .attr("fill", INK).attr("stroke", "none");
+          // Tiny cross-bar near spire top
+          ng.append("line")
+            .attr("x1", -1).attr("y1", -hs*1.75).attr("x2", 1).attr("y2", -hs*1.75)
+            .attr("stroke", INK).attr("stroke-width", 0.7);
+          // Faint walled-town oval — matches hand-drawn convention for capital
+          ng.append("ellipse")
+            .attr("cx", 0).attr("cy", 0)
+            .attr("rx", hs * 2.4).attr("ry", hs * 1.8)
+            .attr("fill", "none")
+            .attr("stroke", INK)
+            .attr("stroke-width", 0.7)
+            .attr("opacity", 0.35);
           break;
         }
         case "fortress": {
@@ -349,6 +391,18 @@ window.MapStyles.thirdage = {
           ng.append("path")
             .attr("d", `M ${-hs*0.25} ${hs*0.5} L ${-hs*0.25} ${hs*0.1} A ${hs*0.25} ${hs*0.25} 0 0 1 ${hs*0.25} ${hs*0.1} L ${hs*0.25} ${hs*0.5} Z`)
             .attr("fill", PARCHMENT).attr("stroke", "none");
+          // Pennant on a pole atop the right tower
+          const pX = hs, pTop = -hs - hs * 0.55;
+          ng.append("line")
+            .attr("x1", pX).attr("y1", -hs - hs * 0.2).attr("x2", pX).attr("y2", pTop)
+            .attr("stroke", INK).attr("stroke-width", 0.6);
+          ng.append("path")
+            .attr("d", `M ${pX} ${pTop} L ${pX + hs * 0.55} ${pTop + hs * 0.13} L ${pX} ${pTop + hs * 0.26} Z`)
+            .attr("fill", INK).attr("opacity", 0.85);
+          // Ground-shadow beneath the castle walls
+          ng.append("line")
+            .attr("x1", -hs - 1).attr("y1", hs * 0.5 + 2).attr("x2", hs + 1).attr("y2", hs * 0.5 + 2)
+            .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.4);
           break;
         }
         case "tavern": {
@@ -360,65 +414,139 @@ window.MapStyles.thirdage = {
           ng.append("path")
             .attr("d", `M ${-hs*0.8} ${-hs*0.3} L 0 ${-hs*1.1} L ${hs*0.8} ${-hs*0.3} Z`)
             .attr("fill", INK).attr("stroke", "none");
-          // Hanging sign
+          // Arched door cutout against the filled wall
+          ng.append("path")
+            .attr("d", `M ${-hs*0.22} ${hs*0.7} L ${-hs*0.22} ${hs*0.25} Q 0 ${hs*0.02} ${hs*0.22} ${hs*0.25} L ${hs*0.22} ${hs*0.7}`)
+            .attr("fill", "none").attr("stroke", PARCHMENT).attr("stroke-width", 0.5).attr("opacity", 0.85);
+          // Hanging sign — arm + two short chains + filled board
           ng.append("line").attr("x1", hs*0.7).attr("y1", -hs*0.1).attr("x2", hs*1.2).attr("y2", -hs*0.1)
             .attr("stroke", INK).attr("stroke-width", 0.5);
-          ng.append("rect").attr("x", hs*1.0).attr("y", -hs*0.1).attr("width", hs*0.5).attr("height", hs*0.4)
-            .attr("fill", INK).attr("stroke", "none").attr("opacity", 0.6);
+          ng.append("line").attr("x1", hs*1.05).attr("y1", -hs*0.1).attr("x2", hs*1.05).attr("y2", -hs*0.03)
+            .attr("stroke", INK).attr("stroke-width", 0.4);
+          ng.append("line").attr("x1", hs*1.45).attr("y1", -hs*0.1).attr("x2", hs*1.45).attr("y2", -hs*0.03)
+            .attr("stroke", INK).attr("stroke-width", 0.4);
+          ng.append("rect").attr("x", hs*1.0).attr("y", -hs*0.03).attr("width", hs*0.5).attr("height", hs*0.38)
+            .attr("fill", INK).attr("stroke", "none").attr("opacity", 0.65);
           break;
         }
         case "settlement": {
-          // Cluster of 2-3 tiny filled houses
+          // Cluster of 2-3 tiny filled houses with a smoke plume from the central one
           const hs = isLocal ? 2 : 3.5;
           const houseCount = isLocal ? 2 : 3;
+          const smokeFromIdx = Math.floor(houseCount / 2);
           for (let hi = 0; hi < houseCount; hi++) {
             const hx = (hi - (houseCount-1)/2) * hs * 1.4;
             const hy = (hi % 2) * hs * 0.3;
-            // House body (filled)
             ng.append("rect").attr("x", hx - hs*0.6).attr("y", hy - hs*0.3).attr("width", hs*1.2).attr("height", hs*0.9)
               .attr("fill", INK).attr("stroke", "none");
-            // Roof (filled)
             ng.append("path")
               .attr("d", `M ${hx - hs*0.7} ${hy - hs*0.3} L ${hx} ${hy - hs} L ${hx + hs*0.7} ${hy - hs*0.3} Z`)
               .attr("fill", INK).attr("stroke", "none");
+            if (hi === smokeFromIdx) {
+              const sx = hx + hs * 0.2;
+              const sy = hy - hs;
+              ng.append("path")
+                .attr("d", `M ${sx} ${sy} C ${sx - hs*0.3} ${sy - hs*0.45}, ${sx + hs*0.3} ${sy - hs*0.85}, ${sx - hs*0.1} ${sy - hs*1.35}`)
+                .attr("fill", "none").attr("stroke", INK)
+                .attr("stroke-width", 0.6).attr("stroke-linecap", "round")
+                .attr("opacity", 0.6);
+            }
           }
           break;
         }
         case "wilderness":
-          ng.append("circle").attr("r", s).attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.5);
+          // Open circle with a small tree inside — "wild place"
+          ng.append("circle").attr("r", s).attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2);
+          ng.append("path")
+            .attr("d", `M ${-s * 0.45} ${s * 0.15} L 0 ${-s * 0.5} L ${s * 0.45} ${s * 0.15} Z`)
+            .attr("fill", INK);
+          ng.append("line")
+            .attr("x1", 0).attr("y1", s * 0.15).attr("x2", 0).attr("y2", s * 0.5)
+            .attr("stroke", INK).attr("stroke-width", 0.8);
           break;
         case "dungeon": {
+          // Cave mouth — arched black opening (consistent with other styles)
           const dd = s * 1.3;
           ng.append("path")
-            .attr("d", `M 0 ${-dd} L ${dd} 0 L 0 ${dd} L ${-dd} 0 Z`)
+            .attr("d", `M ${-dd} ${dd * 0.4} L ${-dd} 0 Q ${-dd} ${-dd} 0 ${-dd} Q ${dd} ${-dd} ${dd} 0 L ${dd} ${dd * 0.4} Z`)
             .attr("fill", INK).attr("stroke", "none");
           break;
         }
-        case "sanctuary":
-          ng.append("circle").attr("r", s).attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.5);
-          ng.append("circle").attr("r", 2).attr("fill", INK);
+        case "sanctuary": {
+          // Small filled chapel with arched door and cross on top
+          const hs = s * 0.9;
+          ng.append("rect").attr("x", -hs * 0.65).attr("y", -hs * 0.25).attr("width", hs * 1.3).attr("height", hs * 0.95)
+            .attr("fill", INK).attr("stroke", "none");
+          ng.append("path")
+            .attr("d", `M ${-hs * 0.8} ${-hs * 0.25} L 0 ${-hs} L ${hs * 0.8} ${-hs * 0.25} Z`)
+            .attr("fill", INK).attr("stroke", "none");
+          // Arched door cutout (parchment) on the front wall
+          ng.append("path")
+            .attr("d", `M ${-hs * 0.2} ${hs * 0.7} L ${-hs * 0.2} ${hs * 0.25} Q 0 ${hs * 0.02} ${hs * 0.2} ${hs * 0.25} L ${hs * 0.2} ${hs * 0.7}`)
+            .attr("fill", "none").attr("stroke", PARCHMENT).attr("stroke-width", 0.55).attr("opacity", 0.85);
+          // Cross above roof
+          ng.append("line").attr("x1", 0).attr("y1", -hs).attr("x2", 0).attr("y2", -hs * 1.55)
+            .attr("stroke", INK).attr("stroke-width", 0.9);
+          ng.append("line").attr("x1", -hs * 0.3).attr("y1", -hs * 1.3).attr("x2", hs * 0.3).attr("y2", -hs * 1.3)
+            .attr("stroke", INK).attr("stroke-width", 0.9);
+          // Ground-shadow under the chapel
+          ng.append("line")
+            .attr("x1", -hs * 0.8).attr("y1", hs * 0.78).attr("x2", hs * 0.8).attr("y2", hs * 0.78)
+            .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.4);
           break;
+        }
         case "tower":
           ng.append("rect").attr("x", -2).attr("y", -s - 2).attr("width", 4).attr("height", s * 2 + 4)
             .attr("fill", INK).attr("stroke", "none");
+          // Crenellated top (wider rectangle for battlement)
           ng.append("rect").attr("x", -3.5).attr("y", -s - 4).attr("width", 7).attr("height", 2)
             .attr("fill", INK);
+          // Arched door at base (cut out with a parchment-stroke)
+          ng.append("path")
+            .attr("d", `M -1.2 ${s + 2} L -1.2 ${s - 0.3} Q 0 ${s - 1.5} 1.2 ${s - 0.3} L 1.2 ${s + 2}`)
+            .attr("fill", "none").attr("stroke", PARCHMENT).attr("stroke-width", 0.5).attr("opacity", 0.85);
+          // Pennant on a pole atop the tower
+          ng.append("line")
+            .attr("x1", 0).attr("y1", -s - 4).attr("x2", 0).attr("y2", -s - 8.5)
+            .attr("stroke", INK).attr("stroke-width", 0.6);
+          ng.append("path")
+            .attr("d", `M 0 ${-s - 8.5} L 4.5 ${-s - 7.5} L 0 ${-s - 6.5} Z`)
+            .attr("fill", INK);
+          // Ground-shadow under the tower
+          ng.append("line")
+            .attr("x1", -3).attr("y1", s + 3).attr("x2", 3).attr("y2", s + 3)
+            .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.4);
           break;
-        case "ruin":
-          ng.append("rect").attr("x", -s).attr("y", -s).attr("width", s*2).attr("height", s*2)
-            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2)
-            .attr("stroke-dasharray", "2 2");
+        case "ruin": {
+          // Broken wall fragment with crack — matches hexcrawl ruin style
+          const rs = s;
+          ng.append("path")
+            .attr("d", `M ${-rs} ${rs * 0.6} L ${-rs} ${-rs * 0.3} L ${-rs * 0.5} ${-rs * 0.7} L ${-rs * 0.2} ${-rs * 0.1} L ${rs * 0.3} ${-rs * 0.5} L ${rs * 0.7} ${-rs * 0.1} L ${rs} ${rs * 0.6} Z`)
+            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.0);
+          ng.append("line").attr("x1", 0).attr("y1", -rs * 0.2).attr("x2", 0).attr("y2", rs * 0.5)
+            .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.6);
           break;
+        }
         case "waypoint":
-          ng.append("path")
-            .attr("d", `M 0 ${-s} L ${s} ${s} L ${-s} ${s} Z`)
-            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2);
+          // Standing stone / menhir with a ground line
+          ng.append("rect").attr("x", -1.5).attr("y", -s).attr("width", 3).attr("height", s * 1.8)
+            .attr("fill", INK);
+          ng.append("line").attr("x1", -s * 0.8).attr("y1", s * 0.8).attr("x2", s * 0.8).attr("y2", s * 0.8)
+            .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.5);
           break;
-        case "lair":
+        case "lair": {
+          // Fanged cave mouth + scattered bones at the entrance
+          const dd = s * 1.3;
           ng.append("path")
-            .attr("d", `M 0 ${-s} L ${s} ${s} L ${-s} ${s} Z`)
-            .attr("fill", INK).attr("stroke", "none");
+            .attr("d", `M ${-dd} ${dd * 0.5} L ${-dd} 0 Q ${-dd} ${-dd} 0 ${-dd} Q ${dd} ${-dd} ${dd} 0 L ${dd} ${dd * 0.5} L ${dd * 0.5} ${dd * 0.1} L ${dd * 0.2} ${dd * 0.5} L ${-dd * 0.2} ${dd * 0.1} L ${-dd * 0.5} ${dd * 0.5} Z`)
+            .attr("fill", INK);
+          [[-dd * 0.55, dd * 0.85], [dd * 0.15, dd * 0.95], [dd * 0.75, dd * 0.8]].forEach(([bx, by]) => {
+            ng.append("ellipse")
+              .attr("cx", bx).attr("cy", by).attr("rx", 1.3).attr("ry", 0.5)
+              .attr("fill", INK).attr("opacity", 0.75);
+          });
           break;
+        }
         default:
           ng.append("circle").attr("r", 4).attr("fill", INK);
       }
@@ -611,15 +739,23 @@ window.MapStyles.thirdage = {
         .text(i * milesPerInch);
     }
 
-    // "Miles" label
+    // "miles" label — atlas-style lowercase with letter-spacing
     sg.append("text")
       .attr("x", bx + barW / 2).attr("y", by + barH + 24)
       .attr("text-anchor", "middle")
       .attr("font-family", FONT)
-      .attr("font-size", "9px")
+      .attr("font-size", "10px")
       .attr("font-style", "italic")
+      .attr("letter-spacing", "2px")
       .attr("fill", INK)
-      .text("Miles");
+      .text("miles");
+    // Cartographic end-caps
+    sg.append("line")
+      .attr("x1", bx).attr("y1", by - 3).attr("x2", bx).attr("y2", by + barH + 3)
+      .attr("stroke", INK).attr("stroke-width", 0.6);
+    sg.append("line")
+      .attr("x1", bx + barW).attr("y1", by - 3).attr("x2", bx + barW).attr("y2", by + barH + 3)
+      .attr("stroke", INK).attr("stroke-width", 0.6);
   },
 
   // --- Title cartouche (ornate box) ---
@@ -646,10 +782,20 @@ window.MapStyles.thirdage = {
       .attr("stroke", INK)
       .attr("stroke-width", 0.5);
 
+    // Decorative line between title and subtitle, flanked by tiny diamond flourishes
+    const midY = by + 35;
     g.append("line")
-      .attr("x1", bx + 20).attr("y1", by + 35)
-      .attr("x2", bx + boxW - 20).attr("y2", by + 35)
+      .attr("x1", bx + 26).attr("y1", midY)
+      .attr("x2", bx + boxW - 26).attr("y2", midY)
       .attr("stroke", INK).attr("stroke-width", 0.4);
+    // Left flourish
+    g.append("path")
+      .attr("d", `M ${bx + 20} ${midY} L ${bx + 23} ${midY - 3} L ${bx + 26} ${midY} L ${bx + 23} ${midY + 3} Z`)
+      .attr("fill", INK).attr("opacity", 0.7);
+    // Right flourish
+    g.append("path")
+      .attr("d", `M ${bx + boxW - 20} ${midY} L ${bx + boxW - 23} ${midY - 3} L ${bx + boxW - 26} ${midY} L ${bx + boxW - 23} ${midY + 3} Z`)
+      .attr("fill", INK).attr("opacity", 0.7);
 
     g.append("text")
       .attr("x", bx + boxW / 2)
@@ -715,6 +861,22 @@ window.MapStyles.thirdage = {
         .attr("fill", INK)
         .attr("stroke", "none");
 
+      // Fine engraved hatching inside the shadow side (classic atlas look)
+      const hatchCount = 3 + Math.floor(rng() * 2);
+      for (let i = 0; i < hatchCount; i++) {
+        const t = (i + 1) / (hatchCount + 1);
+        const hx = (p.cx - w / 2) + (peakX - (p.cx - w / 2)) * t;
+        const hy = y + (peakY - y) * t;
+        // Short diagonal line toward the base of the peak
+        const endX = hx + w * 0.05;
+        const endY = y;
+        g.append("line")
+          .attr("x1", hx).attr("y1", hy)
+          .attr("x2", endX).attr("y2", endY)
+          .attr("stroke", "#f4e8d1")
+          .attr("stroke-width", 0.35).attr("opacity", 0.35);
+      }
+
       // Light side outline (right half)
       g.append("path")
         .attr("d", `M ${p.cx} ${y} L ${peakX} ${peakY} L ${p.cx + w/2} ${y}`)
@@ -754,6 +916,11 @@ window.MapStyles.thirdage = {
 
   // Small cluster of 2-3 triangular fir trees — Middle Earth tree-chain style
   drawForestHatch(g, x, y, size, rng, INK) {
+    // Faint ink wash beneath the cluster — forest-floor darkening
+    g.append("ellipse")
+      .attr("cx", x).attr("cy", y)
+      .attr("rx", size * 0.6).attr("ry", size * 0.45)
+      .attr("fill", INK).attr("opacity", 0.05);
     const count = 2 + Math.floor(rng() * 2);
     const spread = size * 0.55;
     const trees = [];
@@ -768,9 +935,16 @@ window.MapStyles.thirdage = {
     trees.sort((a, b) => a.ty - b.ty);
     trees.forEach(t => {
       const tw = t.th * 0.55;
-      // Solid triangle (fill)
+      // Tiered fir silhouette — two stacked triangles suggesting branches.
+      // Upper tier (smaller, higher)
       g.append("path")
-        .attr("d", `M ${t.tx - tw/2} ${t.ty + t.th*0.15} L ${t.tx} ${t.ty - t.th*0.5} L ${t.tx + tw/2} ${t.ty + t.th*0.15} Z`)
+        .attr("d", `M ${t.tx - tw*0.35} ${t.ty - t.th*0.05} L ${t.tx} ${t.ty - t.th*0.55} L ${t.tx + tw*0.35} ${t.ty - t.th*0.05} Z`)
+        .attr("fill", INK)
+        .attr("stroke", "none")
+        .attr("opacity", 0.9);
+      // Lower tier (wider, overlapping the upper)
+      g.append("path")
+        .attr("d", `M ${t.tx - tw/2} ${t.ty + t.th*0.15} L ${t.tx} ${t.ty - t.th*0.25} L ${t.tx + tw/2} ${t.ty + t.th*0.15} Z`)
         .attr("fill", INK)
         .attr("stroke", "none")
         .attr("opacity", 0.85);
@@ -781,11 +955,21 @@ window.MapStyles.thirdage = {
         .attr("stroke", INK)
         .attr("stroke-width", 0.6)
         .attr("opacity", 0.8);
+      // Thin shadow stroke under the trunk — grounds the fir
+      g.append("line")
+        .attr("x1", t.tx - tw * 0.45).attr("y1", t.ty + t.th * 0.38)
+        .attr("x2", t.tx + tw * 0.45).attr("y2", t.ty + t.th * 0.38)
+        .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.35);
     });
   },
 
   // Engraving-style swamp: dense horizontal ripples with reed tufts
   drawSwampLines(g, x, y, size, rng, INK) {
+    // Faint ink wash beneath the ripples — suggests a marsh pool
+    g.append("ellipse")
+      .attr("cx", x).attr("cy", y)
+      .attr("rx", size * 0.85).attr("ry", size * 0.5)
+      .attr("fill", INK).attr("opacity", 0.07);
     // Dense ripple lines with varying widths
     const rippleCount = 5 + Math.floor(rng() * 2);
     for (let i = 0; i < rippleCount; i++) {
@@ -892,6 +1076,13 @@ window.MapStyles.thirdage = {
           .attr("x2", hx + w * 0.06).attr("y2", y - h * 0.05)
           .attr("stroke", INK).attr("stroke-width", 0.45).attr("opacity", 0.5);
       }
+      // Rolling-downs crown stroke — suggests another ridge beyond
+      const sx0 = cx - w * 0.28 + (rng() - 0.5);
+      const sy0 = y - h * 0.7;
+      g.append("path")
+        .attr("d", `M ${sx0} ${sy0} Q ${sx0 + w * 0.12} ${sy0 - 2} ${sx0 + w * 0.25} ${sy0 - 1}`)
+        .attr("fill", "none")
+        .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.4);
     });
   },
 
@@ -899,6 +1090,7 @@ window.MapStyles.thirdage = {
     // Engraving-style farm compound: 2-3 buildings with solid dark roofs
     const buildings = 2 + Math.floor(rng() * 2);
     const spacing = size * 0.45;
+    const smokeIdx = Math.floor(buildings / 2);
     for (let b = 0; b < buildings; b++) {
       const bx = x + (b - (buildings - 1) / 2) * spacing + (rng() - 0.5) * 1;
       const by = y + (rng() - 0.5) * size * 0.2;
@@ -909,10 +1101,21 @@ window.MapStyles.thirdage = {
         .attr("width", bw).attr("height", bh)
         .attr("fill", "none").attr("stroke", INK)
         .attr("stroke-width", 0.6).attr("opacity", 0.75);
+      const roofPeakY = by - bh / 2 - bh * 0.8;
       // Solid dark roof triangle (engraving style)
       g.append("path")
-        .attr("d", `M ${bx - bw / 2 - 0.3} ${by - bh / 2} L ${bx} ${by - bh / 2 - bh * 0.8} L ${bx + bw / 2 + 0.3} ${by - bh / 2} Z`)
+        .attr("d", `M ${bx - bw / 2 - 0.3} ${by - bh / 2} L ${bx} ${roofPeakY} L ${bx + bw / 2 + 0.3} ${by - bh / 2} Z`)
         .attr("fill", INK).attr("opacity", 0.7);
+      // Tiny smoke puff from the central farmhouse
+      if (b === smokeIdx) {
+        const sx = bx + bw * 0.15;
+        const sy = roofPeakY;
+        g.append("path")
+          .attr("d", `M ${sx} ${sy} C ${sx - 1.5} ${sy - 2}, ${sx + 1.5} ${sy - 4}, ${sx - 0.5} ${sy - 6}`)
+          .attr("fill", "none").attr("stroke", INK)
+          .attr("stroke-width", 0.4).attr("stroke-linecap", "round")
+          .attr("opacity", 0.5);
+      }
     }
     // Dense furrows fanning out on both sides
     const perSide = 4 + Math.floor(rng() * 2);
