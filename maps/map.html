@@ -121,6 +121,22 @@
   #hex-panel .hex-pois .poi-desc { font-size: 11px; opacity: 0.8; margin-top: 2px; }
   #hex-panel .hex-empty { font-style: italic; opacity: 0.6; font-size: 12px; }
 
+  #coord-readout {
+    position: fixed;
+    pointer-events: none;
+    padding: 2px 6px;
+    font-family: "SF Mono", "Monaco", "Menlo", monospace;
+    font-size: 11px;
+    color: var(--panel-text, #2a1f14);
+    background: rgba(244, 232, 209, 0.95);
+    border: 1px solid var(--panel-border, #2a1f14);
+    opacity: 0;
+    transition: opacity 0.1s;
+    z-index: 20;
+    white-space: nowrap;
+  }
+  #coord-readout.visible { opacity: 1; }
+
   #title-bar {
     position: fixed;
     bottom: 20px;
@@ -192,6 +208,8 @@
   <div class="hex-terrain" id="hex-panel-terrain"></div>
   <div class="hex-pois" id="hex-panel-pois"></div>
 </div>
+
+<div id="coord-readout"></div>
 
 <div id="controls">
   <label>Style

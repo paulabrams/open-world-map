@@ -126,7 +126,8 @@ window.MapStyles.wilderland = {
       .attr("width", w).attr("height", h)
       .attr("fill", "none")
       .attr("stroke", INK)
-      .attr("stroke-width", 1.2);
+      .attr("stroke-width", 0.6)
+      .attr("opacity", 0.45);
 
     // Inner ruled line
     g.append("rect")
@@ -134,23 +135,23 @@ window.MapStyles.wilderland = {
       .attr("width", w - 8).attr("height", h - 8)
       .attr("fill", "none")
       .attr("stroke", INK)
-      .attr("stroke-width", 0.6);
+      .attr("stroke-width", 0.35)
+      .attr("opacity", 0.35);
 
     // Corner decorative marks — small cross/tick at each corner
-    const cm = 8; // corner mark length
+    const cm = 8;
     const corners = [
       [x, y], [x + w, y], [x, y + h], [x + w, y + h]
     ];
     corners.forEach(([cx, cy]) => {
-      // Small diagonal cross marks at each corner
       g.append("line")
         .attr("x1", cx - cm).attr("y1", cy - cm)
         .attr("x2", cx + cm).attr("y2", cy + cm)
-        .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.6);
+        .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.4);
       g.append("line")
         .attr("x1", cx + cm).attr("y1", cy - cm)
         .attr("x2", cx - cm).attr("y2", cy + cm)
-        .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.6);
+        .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.4);
     });
   },
 
@@ -566,15 +567,15 @@ window.MapStyles.wilderland = {
     }
 
     MapCore.renderHexTerrain(ctx, {
-      "forest": drawTreeCanopy,
-      "forested-hills": (tg, x, y, sz, rng) => { drawHill(tg, x, y - 2, sz, rng); drawTreeCanopy(tg, x - 4, y + 3, sz * 0.7, rng); drawTreeCanopy(tg, x + 5, y + 2, sz * 0.6, rng); },
-      "mountains": drawMountain,
+      "forested-hills": (tg, x, y, sz, rng) => drawHill(tg, x, y - 2, sz, rng),
       "hills": drawHill,
       "swamp": drawSwampReeds,
       "farmland": drawFarm,
       "plains": drawGrassTuft,
       "graveyard": drawGraveyard,
     });
+    MapCore.renderMountainsWithElevation(ctx, drawMountain, drawHill);
+    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"]);
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
       color: INK, strokeWidth: 1.0, opacity: 0.5, wobble: 2.2, className: "forest-edges",
     });

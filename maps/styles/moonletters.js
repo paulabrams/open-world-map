@@ -49,6 +49,13 @@ window.MapStyles.moonletters = {
     MapCore.renderRoad(ctx, ctx.colors.BLUE_INK, 2);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
+    MapCore.renderRegionLabels(ctx, {
+      color: ctx.colors.BLUE_INK,
+      strokeColor: ctx.colors.PARCHMENT,
+      fontSize: 22,
+      letterSpacing: "5px",
+      opacity: 0.7,
+    });
     this.renderNodes(ctx);
     this.renderLabels(ctx);
     this.renderDayLabels(ctx);
@@ -364,16 +371,23 @@ window.MapStyles.moonletters = {
 
     // Draw terrain from hex_terrain data
     const style = this;
+    // Moon Letters: sparse, Thror-style — way less per hex, lots of empty parchment
     MapCore.renderHexTerrain(ctx, {
-      "forest": (tg, x, y, sz, rng) => style.drawSparseTree(tg, x, y, sz, rng, colors),
-      "forested-hills": (tg, x, y, sz, rng) => { style.drawHill(tg, x, y, sz, rng, colors); style.drawSparseTree(tg, x - 6, y - 4, sz * 0.8, rng, colors); },
-      "mountains": (tg, x, y, sz, rng) => style.drawMountainSketch(tg, x, y, sz, rng, colors),
+      "forested-hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, colors),
       "hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, colors),
       "swamp": (tg, x, y, sz, rng) => style.drawSwampMark(tg, x, y, sz, rng, colors),
       "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, colors),
       "plains": (tg, x, y, sz, rng) => style.drawDesolationDots(tg, x, y, sz, rng, colors),
       "graveyard": (tg, x, y, sz, rng) => style.drawGraveyard(tg, x, y, sz, rng, colors),
-    });
+    }, { density: 0.3 });
+    MapCore.renderMountainsWithElevation(ctx,
+      (tg, x, y, sz, rng) => style.drawMountainSketch(tg, x, y, sz, rng, colors),
+      (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, colors),
+      { density: 0.35 });
+    MapCore.renderForestEdgeTrees(ctx,
+      (tg, x, y, sz, rng) => style.drawSparseTree(tg, x, y, sz, rng, colors),
+      ["forest", "forested-hills"],
+      { density: 0.5 });
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
       color: colors.BLUE_FAINT, strokeWidth: 0.7, opacity: 0.5, wobble: 2.5, className: "forest-edges",
     });
@@ -1007,8 +1021,8 @@ window.MapStyles.moonletters = {
     const { g, nodes, colors, mulberry32, seedFromString } = ctx;
     const { RED_INK } = colors;
 
-    let beast = nodes.find(n => n.point_type === "lair");
-    if (!beast) beast = nodes.find(n => n.point_type === "dungeon");
+    // Only render the dragon silhouette when a node explicitly declares one.
+    const beast = nodes.find(n => n.has_dragon || n.creature === "dragon");
     if (!beast) return;
 
     const rng = mulberry32(seedFromString(beast.id + "-beast"));
@@ -1077,7 +1091,8 @@ window.MapStyles.moonletters = {
     const { g, nodes, colors, mulberry32, seedFromString } = ctx;
     const { RED_INK } = colors;
 
-    const lairs = nodes.filter(n => n.point_type === "lair");
+    // Only render "great worm" serpent marks when nodes explicitly say so.
+    const lairs = nodes.filter(n => n.has_worm || n.creature === "worm" || n.creature === "serpent");
     if (!lairs.length) return;
 
     lairs.forEach(lair => {

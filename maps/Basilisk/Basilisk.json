@@ -210,7 +210,7 @@
       "description": "Mystical sanctuary ~2-3 days SW of BC. The Kalla'din pocket realm. Home to the Thornbeard Circle, Snezynja, and Stone-Nose Clan forest trolls.",
       "x_hint": -0.75,
       "y_hint": 2.17,
-      "hex": "0912"
+      "hex": "0812"
     },
     {
       "id": "south-road-mountain-watch",
@@ -462,7 +462,17 @@
     "1109": "farmland",
     "1110": "farmland",
     "0911": "forest",
-    "1011": "forest",
+    "1011": "farmland",
+    "1212": "forest",
+    "1910": "forest",
+    "0809": "farmland",
+    "0810": "farmland",
+    "0713": "forest",
+    "1913": "hills",
+    "0814": "forested-hills",
+    "0913": "hills",
+    "1312": "forested-hills",
+    "1413": "forested-hills",
     "0813": "forest",
     "0912": "forest",
     "0914": "mountains",
@@ -547,6 +557,20 @@
     }
   ],
   "river_name": "Blackwater River",
+  "region_labels": [
+    {
+      "text": "The Old Wood",
+      "hexes": ["0704", "0804", "0904", "1004", "0705", "0805", "0905", "1005"],
+      "fontSize": 24,
+      "letterSpacing": "6px"
+    },
+    {
+      "text": "Serpent's Teeth",
+      "hexes": ["1015", "1114", "1214", "1314"],
+      "fontSize": 20,
+      "rotation": 12
+    }
+  ],
   "off_map_arrows": [
     { "direction": "N",  "label": "North to the Belerion wilds" },
     { "direction": "E",  "label": "Eastward to the coast" },

@@ -120,16 +120,16 @@ window.MapStyles.thirdage = {
 
     g.append("rect")
       .attr("x", x).attr("y", y).attr("width", w).attr("height", h)
-      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.4).attr("opacity", 0.85);
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.6).attr("opacity", 0.45);
     g.append("rect")
       .attr("x", x + 5).attr("y", y + 5).attr("width", w - 10).attr("height", h - 10)
-      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.7).attr("opacity", 0.7);
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.35).attr("opacity", 0.35);
 
     // Corner flourishes: small filled diamonds
     [[x + 5, y + 5], [x + w - 5, y + 5], [x + 5, y + h - 5], [x + w - 5, y + h - 5]].forEach(([cx, cy]) => {
       g.append("path")
-        .attr("d", `M ${cx} ${cy - 4} L ${cx + 4} ${cy} L ${cx} ${cy + 4} L ${cx - 4} ${cy} Z`)
-        .attr("fill", INK).attr("opacity", 0.8);
+        .attr("d", `M ${cx} ${cy - 3} L ${cx + 3} ${cy} L ${cx} ${cy + 3} L ${cx - 3} ${cy} Z`)
+        .attr("fill", INK).attr("opacity", 0.45);
     });
   },
 
@@ -225,15 +225,19 @@ window.MapStyles.thirdage = {
     // Draw terrain from hex_terrain data
     const style = this;
     MapCore.renderHexTerrain(ctx, {
-      "forest": (tg, x, y, sz, rng) => style.drawForestHatch(tg, x, y, sz, rng, INK),
-      "forested-hills": (tg, x, y, sz, rng) => { style.drawHill(tg, x, y, sz, rng, INK); style.drawForestHatch(tg, x - 6, y - 4, sz * 0.8, rng, INK); },
-      "mountains": (tg, x, y, sz, rng) => style.drawMountainRange(tg, x, y, sz, rng, INK),
+      "forested-hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK),
       "hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK),
       "swamp": (tg, x, y, sz, rng) => style.drawSwampLines(tg, x, y, sz, rng, INK),
       "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK),
       "plains": (tg, x, y, sz, rng) => style.drawGrassStipple(tg, x, y, sz, rng, INK),
       "graveyard": (tg, x, y, sz, rng) => style.drawGraveyard(tg, x, y, sz, rng, INK),
     });
+    MapCore.renderMountainsWithElevation(ctx,
+      (tg, x, y, sz, rng) => style.drawMountainRange(tg, x, y, sz, rng, INK),
+      (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK));
+    MapCore.renderForestEdgeTrees(ctx,
+      (tg, x, y, sz, rng) => style.drawForestHatch(tg, x, y, sz, rng, INK),
+      ["forest", "forested-hills"]);
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
       color: INK, strokeWidth: 1.1, opacity: 0.6, wobble: 2.0, className: "forest-edges",
     });

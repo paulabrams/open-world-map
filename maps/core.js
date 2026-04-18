@@ -407,7 +407,8 @@ function renderRoad(ctx, roadColor, roadWidth) {
 // --- Hex terrain rendering ---
 // Draws terrain decorations at hex centers based on hex_terrain data.
 // terrainDrawers is an object mapping terrain type to a draw function: (g, x, y, size, rng) => void
-function renderHexTerrain(ctx, terrainDrawers) {
+// options.density scales the scatter point count: 1.0 = full 7 points, 0.3 = center only.
+function renderHexTerrain(ctx, terrainDrawers, options) {
   const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
   if (!hexTerrain || Object.keys(hexTerrain).length === 0) return;
 
@@ -416,6 +417,7 @@ function renderHexTerrain(ctx, terrainDrawers) {
   const colStep = size * 2 * 0.75;
   const rowStep = size * Math.sqrt(3);
 
+  const density = (options && typeof options.density === "number") ? options.density : 1.0;
   const terrainGroup = g.append("g").attr("class", "terrain");
 
   Object.entries(hexTerrain).forEach(([hex, terrain]) => {
@@ -429,16 +431,16 @@ function renderHexTerrain(ctx, terrainDrawers) {
 
     const rng = mulberry32(seedFromString(hex));
 
-    // Flat-top hex: center + 6 ring points at ~0.65 * size covers the whole
-    // hex body reliably, and keeps element counts manageable. Drawers render
-    // their own small clusters around each scatter center.
-    const gridPoints = [
+    // Full layout: center + 6 ring points. Density trims how many we actually emit.
+    const fullGrid = [
       [0, 0],
       ...[0, 60, 120, 180, 240, 300].map(a => {
         const r = size * 0.65;
         return [Math.cos(a * Math.PI / 180) * r, Math.sin(a * Math.PI / 180) * r];
       }),
     ];
+    const targetN = Math.max(1, Math.round(fullGrid.length * density));
+    const gridPoints = fullGrid.slice(0, targetN);
     gridPoints.forEach(([ox, oy]) => {
       const jitterX = (rng() - 0.5) * size * 0.18;
       const jitterY = (rng() - 0.5) * size * 0.18;
@@ -606,6 +608,266 @@ function renderDayLabelsAlongLinks(ctx, style) {
   });
 }
 
+// --- Region labels ---
+// Renders large flowing captions spanning a region of hexes, Thror-style
+// ("The Desolation of Smaug", "Far to the North are the Grey Mountains").
+// Reads graphData.region_labels: [{text, hexes:[], fontSize?, rotation?, color?, letterSpacing?, fontStyle?}]
+function renderRegionLabels(ctx, style) {
+  const { g, HINT_SCALE, WIDTH, HEIGHT } = ctx;
+  const labels = graphData && graphData.region_labels;
+  if (!labels || !labels.length) return;
+
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+
+  const defaults = style || {};
+  const labelGroup = g.append("g").attr("class", "region-labels");
+
+  labels.forEach(entry => {
+    if (!entry.hexes || !entry.hexes.length || !entry.text) return;
+    // Compute centroid of the region's hex centers
+    let sumX = 0, sumY = 0, count = 0;
+    entry.hexes.forEach(h => {
+      if (typeof h !== "string" || h.length < 4) return;
+      const col = parseInt(h.substring(0, 2));
+      const row = parseInt(h.substring(2, 4));
+      if (isNaN(col) || isNaN(row)) return;
+      const hx = (col - bcCol) * colStep + WIDTH / 2;
+      const hy = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
+      sumX += hx; sumY += hy; count++;
+    });
+    if (count === 0) return;
+    const cx = sumX / count, cy = sumY / count;
+
+    const fontSize = entry.fontSize || defaults.fontSize || 20;
+    const rotation = entry.rotation != null ? entry.rotation : (defaults.rotation || 0);
+    const color = entry.color || defaults.color || "#335";
+    const strokeColor = entry.strokeColor || defaults.strokeColor || "#f4e8d1";
+    const letterSpacing = entry.letterSpacing || defaults.letterSpacing || "4px";
+    const fontStyle = entry.fontStyle || defaults.fontStyle || "italic";
+    const opacity = entry.opacity != null ? entry.opacity : (defaults.opacity != null ? defaults.opacity : 0.75);
+
+    labelGroup.append("text")
+      .attr("x", cx).attr("y", cy)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .attr("font-family", FONT)
+      .attr("font-size", fontSize + "px")
+      .attr("font-style", fontStyle)
+      .attr("letter-spacing", letterSpacing)
+      .attr("fill", color)
+      .attr("stroke", strokeColor)
+      .attr("stroke-width", 3.5)
+      .attr("paint-order", "stroke")
+      .attr("opacity", opacity)
+      .attr("transform", rotation ? `rotate(${rotation}, ${cx}, ${cy})` : null)
+      .text(entry.text);
+  });
+}
+
+// --- Elevation-aware mountain rendering ---
+// Scales mountain peak size by the number of mountain neighbors (interior hex
+// = tall peaks; border hex = shorter) and optionally draws hills on the
+// external edges as a transition to adjacent non-mountain terrain.
+function renderMountainsWithElevation(ctx, mountainDrawer, hillDrawer, options) {
+  const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
+  if (!hexTerrain) return;
+  const density = (options && typeof options.density === "number") ? options.density : 1.0;
+
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+
+  const mountainHexes = new Set();
+  Object.entries(hexTerrain).forEach(([hex, terrain]) => {
+    if (terrain === "mountains") mountainHexes.add(hex);
+  });
+  if (mountainHexes.size === 0) return;
+
+  const neighborsA = [[0, -1], [1, -1], [1, 0], [0, 1], [-1, 0], [-1, -1]];
+  const neighborsB = [[0, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
+  const inscribed = size * Math.sqrt(3) / 2;
+  const edgeMids = [
+    [0, -inscribed],
+    [size * 0.75, -inscribed / 2],
+    [size * 0.75, inscribed / 2],
+    [0, inscribed],
+    [-size * 0.75, inscribed / 2],
+    [-size * 0.75, -inscribed / 2],
+  ];
+  const edgeTangents = edgeMids.map(([mx, my]) => {
+    const l = Math.sqrt(mx * mx + my * my) || 1;
+    return [-my / l, mx / l];
+  });
+
+  const terrainGroup = g.append("g").attr("class", "terrain mountains-elev");
+
+  mountainHexes.forEach(hex => {
+    const col = parseInt(hex.substring(0, 2));
+    const row = parseInt(hex.substring(2, 4));
+    const isShifted = (col % 2) !== (bcCol % 2);
+    const hx = (col - bcCol) * colStep + WIDTH / 2;
+    const hy = (row - bcRow) * rowStep + (isShifted ? rowStep / 2 : 0) + HEIGHT / 2;
+    const rng = mulberry32(seedFromString("mountain-" + hex));
+    const neighbors = isShifted ? neighborsB : neighborsA;
+
+    let mountainNeighborCount = 0;
+    const externalEdges = [];
+    neighbors.forEach((offset, i) => {
+      const nKey = String(col + offset[0]).padStart(2, "0") + String(row + offset[1]).padStart(2, "0");
+      if (mountainHexes.has(nKey)) mountainNeighborCount++;
+      else externalEdges.push(i);
+    });
+
+    // Elevation factor: ~0.6 on isolated peak, ~1.35 on fully interior hex
+    const elevation = 0.6 + (mountainNeighborCount / 6) * 0.75;
+
+    // Scatter pattern: center + inner ring, trimmed by density
+    const fullGrid = [
+      [0, 0],
+      ...[0, 60, 120, 180, 240, 300].map(a => {
+        const r = size * 0.65;
+        return [Math.cos(a * Math.PI / 180) * r, Math.sin(a * Math.PI / 180) * r];
+      }),
+    ];
+    const targetN = Math.max(1, Math.round(fullGrid.length * density));
+    const gridPoints = fullGrid.slice(0, targetN);
+    gridPoints.forEach(([ox, oy]) => {
+      const jitterX = (rng() - 0.5) * size * 0.18;
+      const jitterY = (rng() - 0.5) * size * 0.18;
+      const mSize = (8 + rng() * 5) * elevation;
+      mountainDrawer(terrainGroup, hx + ox + jitterX, hy + oy + jitterY, mSize, rng);
+    });
+
+    // Transition hills on the external edges (border hexes only)
+    if (externalEdges.length > 0 && hillDrawer) {
+      externalEdges.forEach(edgeIdx => {
+        const [mx, my] = edgeMids[edgeIdx];
+        const [tx, ty] = edgeTangents[edgeIdx];
+        // Pull slightly outward from the hex center but still inside the hex
+        const hillInset = 0.75;
+        const hillCx = hx + mx * hillInset;
+        const hillCy = hy + my * hillInset;
+        const n = 1 + Math.floor(rng() * 2);
+        for (let i = 0; i < n; i++) {
+          const t = n === 1 ? 0 : (i / (n - 1) - 0.5);
+          const span = t * size * 0.55;
+          const hillSize = 6 + rng() * 3;
+          hillDrawer(terrainGroup, hillCx + tx * span, hillCy + ty * span, hillSize, rng);
+        }
+      });
+    }
+  });
+}
+
+// --- Edge-aware forest tree scattering ---
+// For hexes in `matchTerrains` (e.g. forest, forested-hills), concentrate tree
+// scatter centers along edges that border non-matching neighbors. Interior
+// hexes (all neighbors match) get sparse scatter. This produces the classic
+// "border of trees" look where the forest silhouette reads clearly.
+function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
+  const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
+  if (!hexTerrain || Object.keys(hexTerrain).length === 0) return;
+  const density = (options && typeof options.density === "number") ? options.density : 1.0;
+
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+
+  const matchSet = new Set(matchTerrains);
+  const forestHexes = new Set();
+  Object.entries(hexTerrain).forEach(([hex, terrain]) => {
+    if (matchSet.has(terrain)) forestHexes.add(hex);
+  });
+  if (forestHexes.size === 0) return;
+
+  const neighborsA = [[0, -1], [1, -1], [1, 0], [0, 1], [-1, 0], [-1, -1]];
+  const neighborsB = [[0, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
+  // Flat-top hex edge midpoint offsets in neighbor order [N, NE, SE, S, SW, NW]
+  const inscribed = size * Math.sqrt(3) / 2;
+  const edgeMids = [
+    [0, -inscribed],
+    [size * 0.75, -inscribed / 2],
+    [size * 0.75, inscribed / 2],
+    [0, inscribed],
+    [-size * 0.75, inscribed / 2],
+    [-size * 0.75, -inscribed / 2],
+  ];
+  // Tangent along each edge (90° from midpoint direction)
+  const edgeTangents = edgeMids.map(([mx, my]) => {
+    const l = Math.sqrt(mx * mx + my * my) || 1;
+    return [-my / l, mx / l];
+  });
+
+  const terrainGroup = g.append("g").attr("class", "terrain forest-edge-trees");
+
+  forestHexes.forEach(hex => {
+    const col = parseInt(hex.substring(0, 2));
+    const row = parseInt(hex.substring(2, 4));
+    const isShifted = (col % 2) !== (bcCol % 2);
+    const hx = (col - bcCol) * colStep + WIDTH / 2;
+    const hy = (row - bcRow) * rowStep + (isShifted ? rowStep / 2 : 0) + HEIGHT / 2;
+    const rng = mulberry32(seedFromString("forest-" + hex));
+    const neighbors = isShifted ? neighborsB : neighborsA;
+
+    const externalEdges = [];
+    neighbors.forEach((offset, i) => {
+      const nKey = String(col + offset[0]).padStart(2, "0") + String(row + offset[1]).padStart(2, "0");
+      if (!forestHexes.has(nKey)) externalEdges.push(i);
+    });
+
+    if (externalEdges.length === 0) {
+      // Interior — sparse: scaled 2-3 central trees
+      const baseN = 2 + Math.floor(rng() * 2);
+      const n = Math.max(0, Math.round(baseN * density));
+      for (let i = 0; i < n; i++) {
+        const a = rng() * Math.PI * 2;
+        const r = size * (0.1 + rng() * 0.25);
+        drawer(terrainGroup, hx + Math.cos(a) * r, hy + Math.sin(a) * r, 8 + rng() * 4, rng);
+      }
+      return;
+    }
+
+    // Border hex — concentrate trees along each external edge
+    externalEdges.forEach(edgeIdx => {
+      const [mx, my] = edgeMids[edgeIdx];
+      const [tx, ty] = edgeTangents[edgeIdx];
+      const inset = 0.82;
+      const mxInset = mx * inset;
+      const myInset = my * inset;
+      const baseN = 3 + Math.floor(rng() * 2);
+      const n = Math.max(1, Math.round(baseN * density));
+      for (let i = 0; i < n; i++) {
+        const t = n === 1 ? 0 : (i / (n - 1) - 0.5);
+        const span = t * size * 0.75;
+        const jitterX = (rng() - 0.5) * size * 0.12;
+        const jitterY = (rng() - 0.5) * size * 0.12;
+        const depthJitter = rng() * size * 0.15;
+        const inwardX = -mx / Math.sqrt(mx * mx + my * my) * depthJitter;
+        const inwardY = -my / Math.sqrt(mx * mx + my * my) * depthJitter;
+        const ox = mxInset + tx * span + jitterX + inwardX;
+        const oy = myInset + ty * span + jitterY + inwardY;
+        drawer(terrainGroup, hx + ox, hy + oy, 8 + rng() * 4, rng);
+      }
+    });
+    // A light interior sprinkle so the hex center isn't empty on thick-border
+    // hexes; omit when nearly all sides are external so the edge reads clearly.
+    if (externalEdges.length <= 3) {
+      const baseN = 1 + Math.floor(rng() * 2);
+      const n = Math.max(0, Math.round(baseN * density));
+      for (let i = 0; i < n; i++) {
+        const a = rng() * Math.PI * 2;
+        const r = size * (0.1 + rng() * 0.2);
+        drawer(terrainGroup, hx + Math.cos(a) * r, hy + Math.sin(a) * r, 8 + rng() * 4, rng);
+      }
+    }
+  });
+}
+
 // --- Hex hover info ---
 // Updates the side info panel based on which hex the pointer is over.
 // Uses SVG-level mousemove so node click handlers keep working.
@@ -690,21 +952,51 @@ function renderHexHover(ctx) {
   }
 
   let currentHex = null;
+  // Shift-held coordinate readout (x_hint/y_hint in inches from origin at Blackwater Crossing hex 1010).
+  // Key handlers live on the window but need re-binding per render. Remove prior
+  // handlers so style switches don't leak listeners.
+  const coordEl = document.getElementById("coord-readout");
+  if (window._shiftKeyDownHandler) window.removeEventListener("keydown", window._shiftKeyDownHandler);
+  if (window._shiftKeyUpHandler) window.removeEventListener("keyup", window._shiftKeyUpHandler);
+  const shiftState = { held: false };
+  window._shiftKeyDownHandler = (e) => { if (e.key === "Shift") shiftState.held = true; };
+  window._shiftKeyUpHandler = (e) => {
+    if (e.key === "Shift") {
+      shiftState.held = false;
+      if (coordEl) coordEl.classList.remove("visible");
+    }
+  };
+  window.addEventListener("keydown", window._shiftKeyDownHandler);
+  window.addEventListener("keyup", window._shiftKeyUpHandler);
+
   svgSel.on("mousemove.hex-hover", function (event) {
     const pt = d3.pointer(event, g.node());
     const hex = pixelToHex(pt[0], pt[1]);
-    if (!hex || hex === currentHex) return;
-    currentHex = hex;
-    const [cx, cy] = hexCenter(hex);
-    highlight
-      .attr("transform", `translate(${cx}, ${cy})`)
-      .attr("opacity", 0.5);
-    updatePanel(hex);
+    if (hex && hex !== currentHex) {
+      currentHex = hex;
+      const [cx, cy] = hexCenter(hex);
+      highlight
+        .attr("transform", `translate(${cx}, ${cy})`)
+        .attr("opacity", 0.5);
+      updatePanel(hex);
+    }
+    // Shift-held inch readout
+    if (coordEl && shiftState.held) {
+      const xInches = (pt[0] - WIDTH / 2) / HINT_SCALE;
+      const yInches = (pt[1] - HEIGHT / 2) / HINT_SCALE;
+      coordEl.textContent = `x: ${xInches.toFixed(2)}″   y: ${yInches.toFixed(2)}″`;
+      coordEl.style.left = (event.clientX + 14) + "px";
+      coordEl.style.top = (event.clientY + 14) + "px";
+      coordEl.classList.add("visible");
+    } else if (coordEl) {
+      coordEl.classList.remove("visible");
+    }
   });
   svgSel.on("mouseleave.hex-hover", () => {
     currentHex = null;
     highlight.attr("opacity", 0);
     panel.classList.remove("visible");
+    if (coordEl) coordEl.classList.remove("visible");
   });
 
   function updatePanel(hex) {
@@ -1152,7 +1444,7 @@ function exportSVG() {
 // Expose for global access
 Object.assign(MapCore, {
   HINT_SCALE, DAY_SCALE, FONT, INTERIOR_TERRAINS, SUBHEX_OFFSETS,
-  isOverlandNode, hexToXY, renderRiver, renderRiverLabel, renderRoad, renderBridges, renderHexTerrain, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
+  isOverlandNode, hexToXY, renderRiver, renderRiverLabel, renderRoad, renderBridges, renderHexTerrain, renderMountainsWithElevation, renderForestEdgeTrees, renderRegionLabels, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
   showDetail, closePanel,
   loadData, runSimulation, setupSVG, centerView,
   renderMap, applyTheme, exportSVG,

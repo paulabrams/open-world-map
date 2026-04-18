@@ -153,14 +153,14 @@ window.MapStyles.hexcrawl = {
     const h = bounds.maxY - bounds.minY + pad * 2;
     g.append("rect")
       .attr("x", x).attr("y", y).attr("width", w).attr("height", h)
-      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2).attr("opacity", 0.8);
-    // Short tick marks at corners
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.4);
+    // Short tick marks at corners — just a hint of a frame
     const cm = 10;
     [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]].forEach(([cx, cy, sx, sy]) => {
       g.append("line").attr("x1", cx).attr("y1", cy).attr("x2", cx + cm * sx).attr("y2", cy)
-        .attr("stroke", INK).attr("stroke-width", 1.0);
+        .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.5);
       g.append("line").attr("x1", cx).attr("y1", cy).attr("x2", cx).attr("y2", cy + cm * sy)
-        .attr("stroke", INK).attr("stroke-width", 1.0);
+        .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.5);
     });
   },
 
@@ -258,15 +258,20 @@ window.MapStyles.hexcrawl = {
     // Draw terrain from hex_terrain data
     const style = this;
     MapCore.renderHexTerrain(ctx, {
-      "forest": (tg, x, y, sz, rng) => style.drawTree(tg, x, y, sz, rng, INK),
-      "forested-hills": (tg, x, y, sz, rng) => { style.drawHill(tg, x, y, sz, rng, INK); style.drawTree(tg, x - 6, y - 4, sz * 0.8, rng, INK); },
-      "mountains": (tg, x, y, sz, rng) => style.drawMountain(tg, x, y, sz, rng, INK),
+      // forest trees and mountains rendered by dedicated helpers below
+      "forested-hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK),
       "hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK),
       "swamp": (tg, x, y, sz, rng) => style.drawSwampReeds(tg, x, y, sz, rng, INK),
       "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK),
       "plains": (tg, x, y, sz, rng) => style.drawGrassTuft(tg, x, y, sz, rng, INK),
       "graveyard": (tg, x, y, sz, rng) => style.drawGraveyard(tg, x, y, sz, rng, INK),
     });
+    MapCore.renderMountainsWithElevation(ctx,
+      (tg, x, y, sz, rng) => style.drawMountain(tg, x, y, sz, rng, INK),
+      (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK));
+    MapCore.renderForestEdgeTrees(ctx,
+      (tg, x, y, sz, rng) => style.drawTree(tg, x, y, sz, rng, INK),
+      ["forest", "forested-hills"]);
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
       color: INK, strokeWidth: 1.0, opacity: 0.55, wobble: 2.0, className: "forest-edges",
     });
