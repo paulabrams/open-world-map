@@ -411,7 +411,6 @@ window.MapStyles.moonletters = {
       "forested-hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, colors),
       "hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, colors),
       "swamp": (tg, x, y, sz, rng) => style.drawSwampMark(tg, x, y, sz, rng, colors),
-      "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, colors),
       "plains": (tg, x, y, sz, rng) => style.drawDesolationDots(tg, x, y, sz, rng, colors),
       "graveyard": (tg, x, y, sz, rng) => style.drawGraveyard(tg, x, y, sz, rng, colors),
     }, { density: 0.3 });
@@ -423,6 +422,8 @@ window.MapStyles.moonletters = {
       (tg, x, y, sz, rng) => style.drawSparseTree(tg, x, y, sz, rng, colors),
       ["forest", "forested-hills"],
       { density: 0.5 });
+    MapCore.renderFarmlandBiased(ctx,
+      (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, colors));
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
       color: colors.BLUE_FAINT, strokeWidth: 0.7, opacity: 0.5, wobble: 2.5, className: "forest-edges",
     });

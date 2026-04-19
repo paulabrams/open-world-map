@@ -222,9 +222,9 @@
   </label>
   <label>Overlay
     <select id="grid-select">
-      <option value="none" selected>None</option>
+      <option value="none">None</option>
       <option value="square">Square (1")</option>
-      <option value="hex">Hex</option>
+      <option value="hex" selected>Hex</option>
     </select>
   </label>
 </div>
@@ -245,7 +245,7 @@
   const params = new URLSearchParams(window.location.search);
   const campaign = params.get("map")?.replace(/\.json$/, "") || "Basilisk";
   let style = params.get("style") || "wilderland";
-  let grid = params.get("grid") || "none";
+  let grid = params.get("grid") || "hex";
 
   // Set select values
   document.getElementById("style-select").value = style;
@@ -255,6 +255,7 @@
   await MapCore.loadData(campaign);
 
   // Initial render
+  updateURL();
   MapCore.renderMap(style, grid);
 
   // Style switcher
@@ -264,23 +265,23 @@
       grid = "hex";
       document.getElementById("grid-select").value = "hex";
     }
-    MapCore.renderMap(style, grid);
     updateURL();
+    MapCore.renderMap(style, grid);
   });
 
   // Grid toggler
   document.getElementById("grid-select").addEventListener("change", (e) => {
     grid = e.target.value;
-    MapCore.renderMap(style, grid);
     updateURL();
+    MapCore.renderMap(style, grid);
   });
 
   function updateURL() {
-    const url = new URL(window.location);
+    const url = new URL(window.location.href);
     url.searchParams.set("map", campaign);
     url.searchParams.set("style", style);
     url.searchParams.set("grid", grid);
-    history.replaceState({}, "", url);
+    window.history.replaceState({}, "", url.toString());
   }
 })();
 </script>

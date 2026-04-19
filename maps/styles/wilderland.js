@@ -332,10 +332,11 @@ window.MapStyles.wilderland = {
           const wr = c.cr + (rng() - 0.5) * wobble * 2;
           points.push([c.cx + Math.cos(a) * wr, c.cy + Math.sin(a) * wr]);
         }
-        // Parchment fill to mask overlapping blobs, then ink outline
+        // Parchment fill to mask overlapping blobs, then ink outline.
+        // Use the style's actual PARCHMENT so tree interiors blend with the map.
         tg.append("path")
           .attr("d", lineGen(points))
-          .attr("fill", "#f4e8d1")
+          .attr("fill", ctx.colors.PARCHMENT)
           .attr("stroke", INK)
           .attr("stroke-width", 0.8)
           .attr("opacity", 0.95);
@@ -622,12 +623,12 @@ window.MapStyles.wilderland = {
       "forested-hills": (tg, x, y, sz, rng) => drawHill(tg, x, y - 2, sz, rng),
       "hills": drawHill,
       "swamp": drawSwampReeds,
-      "farmland": drawFarm,
       "plains": drawGrassTuft,
       "graveyard": drawGraveyard,
     });
     MapCore.renderMountainsWithElevation(ctx, drawMountain, drawHill);
     MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"]);
+    MapCore.renderFarmlandBiased(ctx, drawFarm);
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
       color: INK, strokeWidth: 1.0, opacity: 0.5, wobble: 2.2, className: "forest-edges",
     });
@@ -717,6 +718,11 @@ window.MapStyles.wilderland = {
         }
         case "fortress": {
           const hs = 5;
+          // Faint ground halo — suggests built-up area around the castle
+          ng.append("ellipse")
+            .attr("cx", 0).attr("cy", hs * 0.4)
+            .attr("rx", hs * 1.6).attr("ry", hs * 0.45)
+            .attr("fill", INK).attr("opacity", 0.06);
           // Main wall
           ng.append("rect").attr("x", -hs).attr("y", -hs*0.4).attr("width", hs*2).attr("height", hs*0.9)
             .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.9);

@@ -20,8 +20,11 @@ window.MapGrids.hex = {
     const bcCol = 10;
     const bcRow = 10;
 
-    const color = "rgba(120,80,40,0.15)";
-    const labelColor = "rgba(120,80,40,0.45)";
+    // Very soft baseline outline — the darker outline only appears on mouse
+    // over (see renderHexHover in core.js). BC and content hexes are NOT
+    // distinguished by stroke weight here — all hexes read as quiet guides.
+    const color = "rgba(120,80,40,0.08)";
+    const labelColor = "rgba(120,80,40,0.35)";
 
     // Get flat-top hex neighbors for a given col,row
     function getNeighbors(col, row) {
@@ -92,22 +95,25 @@ window.MapGrids.hex = {
         const angle = (Math.PI / 180) * (60 * k);
         points.push((hx + size * Math.cos(angle)) + "," + (hy + size * Math.sin(angle)));
       }
-      const hasContent = contentHexes.has(key);
-      const isBCHex = (col === bcCol && row === bcRow);
       gridGroup.append("polygon")
         .attr("points", points.join(" "))
         .attr("fill", "none")
-        .attr("stroke", isBCHex ? "rgba(180,60,30,0.3)" : hasContent ? "rgba(120,80,40,0.25)" : color)
-        .attr("stroke-width", isBCHex ? 1.5 : hasContent ? 0.8 : 0.4);
+        .attr("stroke", color)
+        .attr("stroke-width", 0.4);
 
-      // Label: CCRR format
+      // Small hex coordinate label tucked at the top of each hex — the
+      // classic tactical-crawl convention. Kept faint so it reads only when
+      // the eye is looking for it.
       const label = String(col).padStart(2, "0") + String(row).padStart(2, "0");
+      const inscribed = size * Math.sqrt(3) / 2;
       gridGroup.append("text")
-        .attr("x", hx).attr("y", hy + 3)
+        .attr("x", hx).attr("y", hy - inscribed * 0.82)
         .attr("text-anchor", "middle")
-        .attr("font-size", hasContent ? "7px" : "6px")
-        .attr("fill", isBCHex ? "rgba(180,60,30,0.5)" : hasContent ? "rgba(120,80,40,0.55)" : labelColor)
-        .attr("font-family", "'Palatino Linotype', Palatino, serif")
+        .attr("dominant-baseline", "hanging")
+        .attr("font-size", "6.5px")
+        .attr("fill", labelColor)
+        .attr("font-family", "'SF Mono', 'Monaco', 'Menlo', monospace")
+        .attr("letter-spacing", "0.5px")
         .text(label);
     });
   }

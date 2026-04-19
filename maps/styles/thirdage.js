@@ -237,7 +237,6 @@ window.MapStyles.thirdage = {
       "forested-hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK),
       "hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK),
       "swamp": (tg, x, y, sz, rng) => style.drawSwampLines(tg, x, y, sz, rng, INK),
-      "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK),
       "plains": (tg, x, y, sz, rng) => style.drawGrassStipple(tg, x, y, sz, rng, INK),
       "graveyard": (tg, x, y, sz, rng) => style.drawGraveyard(tg, x, y, sz, rng, INK),
     });
@@ -247,6 +246,8 @@ window.MapStyles.thirdage = {
     MapCore.renderForestEdgeTrees(ctx,
       (tg, x, y, sz, rng) => style.drawForestHatch(tg, x, y, sz, rng, INK),
       ["forest", "forested-hills"]);
+    MapCore.renderFarmlandBiased(ctx,
+      (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK));
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
       color: INK, strokeWidth: 1.1, opacity: 0.6, wobble: 2.0, className: "forest-edges",
     });

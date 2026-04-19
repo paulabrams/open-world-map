@@ -40,7 +40,6 @@ window.MapStyles.hexcrawl = {
     this.renderBorder(ctx);
     this.renderOriginAxes(ctx);
     this.renderTravelRadii(ctx);
-    this.renderHexCoords(ctx);
     MapCore.renderRiver(ctx, ctx.colors.INK, 3);
     MapCore.renderRiverLabel(ctx, { color: ctx.colors.INK, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderRoad(ctx, ctx.colors.INK, 2);
@@ -349,7 +348,6 @@ window.MapStyles.hexcrawl = {
       "forested-hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK),
       "hills": (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK),
       "swamp": (tg, x, y, sz, rng) => style.drawSwampReeds(tg, x, y, sz, rng, INK),
-      "farmland": (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK),
       "plains": (tg, x, y, sz, rng) => style.drawGrassTuft(tg, x, y, sz, rng, INK),
       "graveyard": (tg, x, y, sz, rng) => style.drawGraveyard(tg, x, y, sz, rng, INK),
     });
@@ -359,6 +357,8 @@ window.MapStyles.hexcrawl = {
     MapCore.renderForestEdgeTrees(ctx,
       (tg, x, y, sz, rng) => style.drawTree(tg, x, y, sz, rng, INK),
       ["forest", "forested-hills"]);
+    MapCore.renderFarmlandBiased(ctx,
+      (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK));
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
       color: INK, strokeWidth: 1.0, opacity: 0.55, wobble: 2.0, className: "forest-edges",
     });
@@ -470,6 +470,11 @@ window.MapStyles.hexcrawl = {
         case "fortress": {
           // Castle: wall with twin towers + arched gate
           const hs = 5;
+          // Faint ground halo — cleared area around the castle
+          ng.append("ellipse")
+            .attr("cx", 0).attr("cy", hs * 0.4)
+            .attr("rx", hs * 1.6).attr("ry", hs * 0.45)
+            .attr("fill", INK).attr("opacity", 0.06);
           ng.append("rect").attr("x", -hs).attr("y", -hs * 0.35).attr("width", hs * 2).attr("height", hs * 0.85)
             .attr("fill", INK);
           // Twin towers

@@ -852,6 +852,245 @@ function renderMountainsWithElevation(ctx, mountainDrawer, hillDrawer, options) 
   });
 }
 
+// --- Neighbor-aware farmland scattering ---
+// Farmland hexes: place farm clusters close to edges that border roads or
+// rivers (food needs water and trade); leave a gap at edges that border
+// forest, mountains, or hills (farms don't push into those).
+function renderFarmlandBiased(ctx, drawer) {
+  const { g, hexTerrain, riverPath, roadPath, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
+  if (!hexTerrain) return;
+
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+
+  // Collect hex sets we'll reference for neighbor bias
+  const farmlandHexes = [];
+  Object.entries(hexTerrain).forEach(([hex, terrain]) => {
+    if (terrain === "farmland") farmlandHexes.push(hex);
+  });
+  if (farmlandHexes.length === 0) return;
+
+  const riverSet = new Set(Array.isArray(riverPath) ? riverPath : []);
+  const roadSet = new Set();
+  if (Array.isArray(roadPath)) {
+    if (typeof roadPath[0] === "string") {
+      roadPath.forEach(h => typeof h === "string" && roadSet.add(h));
+    } else {
+      roadPath.forEach(entry => {
+        const hs = Array.isArray(entry) ? entry : (entry && entry.hexes) || [];
+        hs.forEach(h => typeof h === "string" && roadSet.add(h));
+      });
+    }
+  }
+  const repulsiveTerrains = new Set(["forest", "forested-hills", "mountains", "hills"]);
+
+  const neighborsA = [[0, -1], [1, -1], [1, 0], [0, 1], [-1, 0], [-1, -1]];
+  const neighborsB = [[0, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
+  const inscribed = size * Math.sqrt(3) / 2;
+  const edgeMids = [
+    [0, -inscribed],
+    [size * 0.75, -inscribed / 2],
+    [size * 0.75, inscribed / 2],
+    [0, inscribed],
+    [-size * 0.75, inscribed / 2],
+    [-size * 0.75, -inscribed / 2],
+  ];
+  const edgeTangents = edgeMids.map(([mx, my]) => {
+    const l = Math.sqrt(mx * mx + my * my) || 1;
+    return [-my / l, mx / l];
+  });
+
+  const terrainGroup = g.append("g").attr("class", "terrain farmland-biased");
+
+  // Tile slots inside a hex (2 rows × 3 cols). Fields tile in slots without
+  // overlapping; houses go in slots that face a road (or the most central
+  // slot if there is no road neighbor); repel-facing slots stay empty.
+  const slotCols = 3, slotRows = 2;
+  const slotSpanX = size * 0.5;       // horizontal spacing between slot centers
+  const slotSpanY = rowStep * 0.28;    // vertical spacing
+  const slotW = slotSpanX * 0.85;      // field/house footprint (leaves gaps)
+  const slotH = slotSpanY * 0.95;
+  const slotPositions = [];
+  for (let sr = 0; sr < slotRows; sr++) {
+    for (let sc = 0; sc < slotCols; sc++) {
+      slotPositions.push({
+        dx: (sc - (slotCols - 1) / 2) * slotSpanX,
+        dy: (sr - (slotRows - 1) / 2) * slotSpanY,
+      });
+    }
+  }
+
+  farmlandHexes.forEach(hex => {
+    const col = parseInt(hex.substring(0, 2));
+    const row = parseInt(hex.substring(2, 4));
+    const isShifted = (col % 2) !== (bcCol % 2);
+    const hx = (col - bcCol) * colStep + WIDTH / 2;
+    const hy = (row - bcRow) * rowStep + (isShifted ? rowStep / 2 : 0) + HEIGHT / 2;
+    const rng = mulberry32(seedFromString("farmland-" + hex));
+    const neighbors = isShifted ? neighborsB : neighborsA;
+
+    // Classify each of the six edges
+    const edgeKind = neighbors.map(([dc, dr]) => {
+      const nKey = String(col + dc).padStart(2, "0") + String(row + dr).padStart(2, "0");
+      if (riverSet.has(nKey) || roadSet.has(nKey)) return "road";
+      const nTerrain = hexTerrain[nKey];
+      if (repulsiveTerrains.has(nTerrain)) return "repel";
+      return "neutral";
+    });
+
+    const colors = ctx.colors || {};
+    const accent = colors.INK || colors.BLUE_INK || "#333";
+
+    // For each slot, find the edge it "faces" (highest dot with its direction).
+    const slotRoles = slotPositions.map(({ dx, dy }) => {
+      const sl = Math.sqrt(dx * dx + dy * dy) || 1;
+      let bestI = 0, bestDot = -Infinity;
+      edgeMids.forEach(([mx, my], i) => {
+        const ml = Math.sqrt(mx * mx + my * my) || 1;
+        const dot = (dx / sl) * (mx / ml) + (dy / sl) * (my / ml);
+        if (dot > bestDot) { bestDot = dot; bestI = i; }
+      });
+      const kind = edgeKind[bestI];
+      // Repel only if the slot strongly faces that edge — otherwise field is ok
+      if (kind === "repel" && bestDot > 0.55) return "empty";
+      if (kind === "road") return "house";
+      return "field";
+    });
+
+    // If no slot picked up a "house" role (no road-adjacent hex), convert the
+    // slot closest to the hex center into a house so the farmstead always
+    // has at least one visible dwelling — even if every edge faces repel.
+    if (!slotRoles.includes("house")) {
+      let centerI = 0, centerDist = Infinity;
+      slotPositions.forEach(({ dx, dy }, i) => {
+        const d = dx * dx + dy * dy;
+        if (d < centerDist) { centerDist = d; centerI = i; }
+      });
+      slotRoles[centerI] = "house";
+    }
+
+    // Render each slot in its grid position. Houses can get slight jitter to
+    // avoid looking too regimented; fields stay aligned to the tile grid.
+    slotPositions.forEach(({ dx, dy }, i) => {
+      const role = slotRoles[i];
+      if (role === "empty") return;
+      if (role === "house") {
+        const jx = (rng() - 0.5) * size * 0.06;
+        const jy = (rng() - 0.5) * rowStep * 0.05;
+        // Compact farmstead sized to fit its slot (roughly half the slot
+        // width so the buildings read but don't crowd the fields).
+        drawer(terrainGroup, hx + dx + jx, hy + dy + jy, 9 + rng() * 1.5, rng);
+      } else {
+        // Field — tile aligned. Small jitter within slot so not perfectly on grid.
+        const jx = (rng() - 0.5) * size * 0.03;
+        const jy = (rng() - 0.5) * rowStep * 0.03;
+        drawFieldPatch(terrainGroup, hx + dx + jx, hy + dy + jy, slotW, slotH, rng, accent);
+      }
+    });
+
+    // Occasional tiny animal tucked into one of the field slots.
+    const fieldSlots = slotPositions.filter((_, i) => slotRoles[i] === "field");
+    if (fieldSlots.length > 0 && rng() > 0.5) {
+      const pick = fieldSlots[Math.floor(rng() * fieldSlots.length)];
+      const ax = pick.dx + (rng() - 0.5) * slotW * 0.4;
+      const ay = pick.dy + slotH * 0.15;
+      drawAnimalGlyph(terrainGroup, hx + ax, hy + ay, rng, accent);
+    }
+  });
+}
+
+// Small field patch sized to fit a specific slot. Traditional old-map
+// field texture varied per patch: cross-hatch, parallel furrows, or plain
+// vertical rows. Passing explicit w/h lets callers tile patches next to
+// each other without overlapping; hatch lines are clipped to the rect.
+function drawFieldPatch(g, x, y, w, h, rng, color) {
+  // Small rotation only — the grid should still read as tiled fields.
+  const rot = (rng() - 0.5) * 8;
+  const patchG = g.append("g").attr("transform", `translate(${x}, ${y}) rotate(${rot})`);
+  // Outer rectangle (faint boundary)
+  patchG.append("rect")
+    .attr("x", -w / 2).attr("y", -h / 2).attr("width", w).attr("height", h)
+    .attr("fill", "none").attr("stroke", color)
+    .attr("stroke-width", 0.45).attr("opacity", 0.4);
+  // Clip hatch lines to the rect so diagonals don't bleed past the field
+  const clipId = `fp-clip-${Math.floor(rng() * 1e9).toString(36)}`;
+  patchG.append("clipPath").attr("id", clipId)
+    .append("rect").attr("x", -w / 2).attr("y", -h / 2).attr("width", w).attr("height", h);
+  const hatchG = patchG.append("g").attr("clip-path", `url(#${clipId})`);
+
+  // Pick a style deterministically from rng so neighboring fields differ
+  const pick = rng();
+  const strokeW = 0.3;
+  if (pick < 0.4) {
+    // Cross-hatch — two sets of diagonals
+    const step = 3;
+    const count = Math.max(4, Math.round((w + h) / step));
+    for (let i = 0; i < count; i++) {
+      const tx = -w / 2 + (i / count) * (w + h);
+      hatchG.append("line")
+        .attr("x1", tx).attr("y1", -h / 2)
+        .attr("x2", tx - h).attr("y2", h / 2)
+        .attr("stroke", color).attr("stroke-width", strokeW).attr("opacity", 0.3);
+      hatchG.append("line")
+        .attr("x1", tx - h).attr("y1", -h / 2)
+        .attr("x2", tx).attr("y2", h / 2)
+        .attr("stroke", color).attr("stroke-width", strokeW).attr("opacity", 0.28);
+    }
+  } else if (pick < 0.75) {
+    // Parallel diagonal furrows — more uniform look
+    const step = 2.5;
+    const count = Math.max(4, Math.round((w + h) / step));
+    const dir = rng() > 0.5 ? 1 : -1;
+    for (let i = 0; i < count; i++) {
+      const tx = -w / 2 + (i / count) * (w + h);
+      hatchG.append("line")
+        .attr("x1", tx).attr("y1", -h / 2)
+        .attr("x2", tx - dir * h).attr("y2", h / 2)
+        .attr("stroke", color).attr("stroke-width", strokeW).attr("opacity", 0.35);
+    }
+  } else {
+    // Vertical rows of crop furrows (stubby dashes) — classic plough marks
+    const step = 2.2;
+    const count = Math.max(3, Math.round(w / step));
+    for (let i = 0; i < count; i++) {
+      const fx = -w / 2 + (i + 0.5) * (w / count);
+      hatchG.append("line")
+        .attr("x1", fx).attr("y1", -h / 2 + 1)
+        .attr("x2", fx).attr("y2", h / 2 - 1)
+        .attr("stroke", color).attr("stroke-width", strokeW).attr("opacity", 0.35);
+    }
+  }
+}
+
+// Tiny livestock glyph: oval body + small head + 4 leg ticks.
+// Uses outline strokes only so it reads at tiny scale without becoming a blob.
+function drawAnimalGlyph(g, x, y, rng, color) {
+  const g2 = g.append("g").attr("transform", `translate(${x}, ${y})`);
+  const bodyW = 3;
+  const bodyH = 1.5;
+  // Body oval
+  g2.append("ellipse")
+    .attr("cx", 0).attr("cy", 0).attr("rx", bodyW).attr("ry", bodyH)
+    .attr("fill", "none").attr("stroke", color)
+    .attr("stroke-width", 0.45).attr("opacity", 0.75);
+  // Head on one side
+  const headDir = rng() > 0.5 ? 1 : -1;
+  g2.append("circle")
+    .attr("cx", headDir * (bodyW + 0.3)).attr("cy", -0.4).attr("r", 0.9)
+    .attr("fill", "none").attr("stroke", color)
+    .attr("stroke-width", 0.4).attr("opacity", 0.75);
+  // 4 leg ticks
+  for (let i = 0; i < 4; i++) {
+    const lx = -bodyW * 0.7 + i * (bodyW * 1.4 / 3);
+    g2.append("line")
+      .attr("x1", lx).attr("y1", bodyH * 0.6)
+      .attr("x2", lx).attr("y2", bodyH * 1.9)
+      .attr("stroke", color).attr("stroke-width", 0.35).attr("opacity", 0.7);
+  }
+}
+
 // --- Edge-aware forest tree scattering ---
 // For hexes in `matchTerrains` (e.g. forest, forested-hills), concentrate tree
 // scatter centers along edges that border non-matching neighbors. Interior
@@ -909,15 +1148,20 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
       if (!forestHexes.has(nKey)) externalEdges.push(i);
     });
 
-    if (externalEdges.length === 0) {
-      // Interior — sparse: scaled 2-3 central trees
-      const baseN = 2 + Math.floor(rng() * 2);
-      const n = Math.max(0, Math.round(baseN * density));
-      for (let i = 0; i < n; i++) {
+    // Helper: uniform-area scatter across the hex interior for the "trees live
+    // inside the wood, not only along its edges" effect.
+    function interiorScatter(count, maxR) {
+      for (let i = 0; i < count; i++) {
         const a = rng() * Math.PI * 2;
-        const r = size * (0.1 + rng() * 0.25);
+        const r = Math.sqrt(rng()) * maxR; // sqrt → uniform areal distribution
         drawer(terrainGroup, hx + Math.cos(a) * r, hy + Math.sin(a) * r, 8 + rng() * 4, rng);
       }
+    }
+
+    if (externalEdges.length === 0) {
+      // Fully interior forest hex — scatter trees across the whole body
+      const baseN = 5 + Math.floor(rng() * 3);
+      interiorScatter(Math.max(1, Math.round(baseN * density)), size * 0.7);
       return;
     }
 
@@ -943,17 +1187,11 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
         drawer(terrainGroup, hx + ox, hy + oy, 8 + rng() * 4, rng);
       }
     });
-    // A light interior sprinkle so the hex center isn't empty on thick-border
-    // hexes; omit when nearly all sides are external so the edge reads clearly.
-    if (externalEdges.length <= 3) {
-      const baseN = 1 + Math.floor(rng() * 2);
-      const n = Math.max(0, Math.round(baseN * density));
-      for (let i = 0; i < n; i++) {
-        const a = rng() * Math.PI * 2;
-        const r = size * (0.1 + rng() * 0.2);
-        drawer(terrainGroup, hx + Math.cos(a) * r, hy + Math.sin(a) * r, 8 + rng() * 4, rng);
-      }
-    }
+    // Interior sprinkle — always fill the hex body, scaled by how much edge
+    // coverage we already have. Fewer external edges → more interior trees.
+    const interiorBase = 4 - Math.floor(externalEdges.length / 2); // 4, 3, 2
+    const interiorN = Math.max(1, Math.round((interiorBase + rng() * 2) * density));
+    interiorScatter(interiorN, size * 0.55);
   });
 }
 
@@ -1904,7 +2142,7 @@ function exportSVG() {
 // Expose for global access
 Object.assign(MapCore, {
   HINT_SCALE, DAY_SCALE, FONT, INTERIOR_TERRAINS, SUBHEX_OFFSETS,
-  isOverlandNode, hexToXY, xyToHex, hexNeighbors, renderRiver, renderRiverLabel, renderRoad, renderCrevasse, renderBridges, renderHexTerrain, renderMountainsWithElevation, renderForestEdgeTrees, renderRegionLabels, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
+  isOverlandNode, hexToXY, xyToHex, hexNeighbors, renderRiver, renderRiverLabel, renderRoad, renderCrevasse, renderBridges, renderHexTerrain, renderMountainsWithElevation, renderForestEdgeTrees, renderFarmlandBiased, renderRegionLabels, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
   showDetail, closePanel,
   loadData, runSimulation, setupSVG, centerView,
   renderMap, applyTheme, exportSVG,
