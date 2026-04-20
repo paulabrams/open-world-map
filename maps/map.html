@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light">
 <title>Open World Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Alegreya:ital,wght@0,400;0,700;1,400&family=Alegreya+SC:wght@400;700&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -80,46 +83,38 @@
     border: none;
     font-family: inherit;
   }
-
-  #hex-panel {
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    width: 260px;
-    max-height: calc(100vh - 40px);
-    overflow-y: auto;
-    background: var(--panel-bg, #f4e8d1);
-    border: 1px solid var(--panel-border, #2a1f14);
-    padding: 12px 14px;
-    font-size: 13px;
-    color: var(--panel-text, #2a1f14);
-    box-shadow: 2px 2px 8px rgba(0,0,0,0.15);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.12s ease-in;
-    z-index: 5;
-  }
-  #hex-panel.visible { opacity: 0.95; }
-  #hex-panel .hex-id {
+  #detail-panel .hex-id {
     font-family: "SF Mono", "Monaco", "Menlo", monospace;
     font-size: 12px;
     color: var(--panel-type, #5a4a3a);
     margin-bottom: 4px;
     letter-spacing: 1px;
   }
-  #hex-panel .hex-terrain {
-    font-style: italic;
-    font-size: 14px;
-    color: var(--panel-heading, #8b2500);
-    margin-bottom: 10px;
-    text-transform: capitalize;
+  #detail-panel .hex-pois {
+    font-size: 12px;
+    line-height: 1.45;
+    margin-top: 8px;
   }
-  #hex-panel .hex-pois { font-size: 12px; line-height: 1.45; }
-  #hex-panel .hex-pois .poi { margin-bottom: 6px; }
-  #hex-panel .hex-pois .poi-name { font-weight: bold; }
-  #hex-panel .hex-pois .poi-type { font-style: italic; color: var(--panel-type, #5a4a3a); font-size: 11px; }
-  #hex-panel .hex-pois .poi-desc { font-size: 11px; opacity: 0.8; margin-top: 2px; }
-  #hex-panel .hex-empty { font-style: italic; opacity: 0.6; font-size: 12px; }
+  #detail-panel .hex-pois .poi { margin-bottom: 10px; }
+  #detail-panel .hex-pois .poi-name {
+    font-weight: bold;
+    color: var(--panel-heading, #8b2500);
+  }
+  #detail-panel .hex-pois .poi-type {
+    font-style: italic;
+    color: var(--panel-type, #5a4a3a);
+    font-size: 11px;
+  }
+  #detail-panel .hex-pois .poi-desc {
+    font-size: 11px;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+  #detail-panel .hex-empty {
+    font-style: italic;
+    opacity: 0.6;
+    font-size: 12px;
+  }
 
   #coord-readout {
     position: fixed;
@@ -197,16 +192,12 @@
 
 <div id="detail-panel">
   <button class="close-btn" onclick="MapCore.closePanel()">&times;</button>
+  <div class="hex-id" id="panel-hex-id"></div>
   <h2 id="panel-name"></h2>
   <div class="point-type" id="panel-type"></div>
   <div class="description" id="panel-desc"></div>
+  <div class="hex-pois" id="panel-pois"></div>
   <div class="connections" id="panel-connections"></div>
-</div>
-
-<div id="hex-panel">
-  <div class="hex-id" id="hex-panel-id"></div>
-  <div class="hex-terrain" id="hex-panel-terrain"></div>
-  <div class="hex-pois" id="hex-panel-pois"></div>
 </div>
 
 <div id="coord-readout"></div>

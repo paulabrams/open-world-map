@@ -8,6 +8,10 @@ window.MapStyles = window.MapStyles || {};
 window.MapStyles.moonletters = {
   name: "Moon Letters",
 
+  // Thror's Map in The Hobbit is drawn in a spidery, hand-lettered hand.
+  // IM Fell English (italic-capable) reads as ink-and-quill on vellum.
+  font: "'IM Fell English', 'Palatino Linotype', Palatino, serif",
+
   /* ── CSS custom-property values ─────────────────────────────── */
   css: {
     "--bg-color":      "#3a3428",
@@ -1143,14 +1147,24 @@ window.MapStyles.moonletters = {
     const w = bounds.maxX - bounds.minX + pad * 2;
     const h = bounds.maxY - bounds.minY + pad * 2;
 
-    // Single thin blue border
+    // Double-ruled blue border — matches Thror's Map's prominent blue
+    // ink frame. Outer stroke is heavy, inner stroke is lighter and
+    // sits just inside for the classical double-rule look.
     g.append("rect")
       .attr("x", x).attr("y", y)
       .attr("width", w).attr("height", h)
       .attr("fill", "none")
-      .attr("stroke", BLUE_LIGHT)
-      .attr("stroke-width", 1.2)
-      .attr("opacity", 0.8);
+      .attr("stroke", BLUE_INK)
+      .attr("stroke-width", 2.2)
+      .attr("opacity", 0.9);
+    const innerInset = 5;
+    g.append("rect")
+      .attr("x", x + innerInset).attr("y", y + innerInset)
+      .attr("width", w - innerInset * 2).attr("height", h - innerInset * 2)
+      .attr("fill", "none")
+      .attr("stroke", BLUE_INK)
+      .attr("stroke-width", 0.9)
+      .attr("opacity", 0.7);
 
     // Decorative corner marks
     const cm = 12;

@@ -7,6 +7,11 @@ window.MapStyles = window.MapStyles || {};
 window.MapStyles.wilderland = {
   name: "Wilderland",
 
+  // Tolkien Wilderland uses hand-calligraphic labels. IM Fell English is
+  // a near-facsimile of 1670s English metal type and reads as hand-drawn
+  // on parchment.
+  font: "'IM Fell English', 'Palatino Linotype', Palatino, serif",
+
   /* ── CSS custom-property values ─────────────────────────────── */
   css: {
     "--bg-color":      "#3a3428",
@@ -40,8 +45,11 @@ window.MapStyles.wilderland = {
   render(ctx) {
     this.renderBackground(ctx);
     this.renderBorder(ctx);
-    MapCore.renderRiver(ctx, ctx.colors.BLUE, 4);
-    MapCore.renderRiverLabel(ctx, { color: ctx.colors.BLUE, strokeColor: ctx.colors.PARCHMENT });
+    // Tolkien Wilderland uses single-line black rivers (not banked blue).
+    // Pass singleLine:true so renderRiver draws one spine stroke rather
+    // than two banks with a water fill.
+    MapCore.renderRiver(ctx, ctx.colors.INK, 2, { singleLine: true });
+    MapCore.renderRiverLabel(ctx, { color: ctx.colors.INK, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.0, bridgeLen: 14 });
     MapCore.renderBoats(ctx, { color: ctx.colors.INK, parchment: ctx.colors.PARCHMENT, count: 4 });
     MapCore.renderRoad(ctx, ctx.colors.INK, 2);
@@ -798,9 +806,14 @@ window.MapStyles.wilderland = {
     MapCore.renderMountainsWithElevation(ctx, drawMountain, drawHill);
     MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"]);
     MapCore.renderFarmlandBiased(ctx, drawFarm);
-    // No hard forest-hex outline — the scattered edge trees from
-    // renderForestEdgeTrees already suggest the forest boundary naturally,
-    // matching the wavy tree-line in the hand-drawn source.
+    // Very soft forest-region outline — traces the outer boundary of the
+    // contiguous forest (skips interior hex-to-hex edges) with a wobbly
+    // faint line so the forest reads as a unified ZONE the way Tolkien's
+    // Mirkwood does, without the hard per-hex outline the user rejected.
+    MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
+      color: INK, strokeWidth: 0.55, opacity: 0.2, wobble: 3.2,
+      className: "forest-region",
+    });
   },
 
   // --- Node icon rendering ---
@@ -1619,65 +1632,92 @@ window.MapStyles.wilderland = {
   },
 
   // --- Title cartouche ---
+  // A double-ruled parchment panel in the SE corner, modelled on the
+  // "WILDERLAND" box from Christopher Tolkien's end-paper map: two
+  // concentric rectangles with inked corner flourishes and the title
+  // in small-caps hand-lettering.
   renderCartouche(ctx) {
-    const { g, bounds, meta } = ctx;
+    const { g, bounds, meta, FONT } = ctx;
     const { INK, INK_LIGHT, PARCHMENT } = ctx.colors;
 
-    const boxW = 180;
-    const boxH = 50;
+    const boxW = 210;
+    const boxH = 62;
     const bx = bounds.maxX - boxW + 20;
-    const by = bounds.maxY - boxH + 20;
+    const by = bounds.maxY - boxH + 22;
 
-    // Box background
+    // Outer rule — heavy ink
     g.append("rect")
       .attr("x", bx).attr("y", by)
       .attr("width", boxW).attr("height", boxH)
       .attr("fill", PARCHMENT)
       .attr("stroke", INK)
-      .attr("stroke-width", 2.0);
+      .attr("stroke-width", 1.8);
 
-    // Inner border
+    // Middle rule — thin hairline, 4px inset
     g.append("rect")
-      .attr("x", bx + 3).attr("y", by + 3)
-      .attr("width", boxW - 6).attr("height", boxH - 6)
+      .attr("x", bx + 4).attr("y", by + 4)
+      .attr("width", boxW - 8).attr("height", boxH - 8)
       .attr("fill", "none")
       .attr("stroke", INK)
-      .attr("stroke-width", 0.8);
+      .attr("stroke-width", 0.55);
 
-    // Small corner pointers — classic Tolkien atlas cartouche flourish
-    const cps = 7; // corner-pointer size
-    const pts = [
-      [bx + 3, by + 3, 1, 1],
-      [bx + boxW - 3, by + 3, -1, 1],
-      [bx + 3, by + boxH - 3, 1, -1],
-      [bx + boxW - 3, by + boxH - 3, -1, -1],
-    ];
-    pts.forEach(([cx, cy, sx, sy]) => {
-      g.append("path")
-        .attr("d", `M ${cx + cps * sx} ${cy} L ${cx} ${cy} L ${cx} ${cy + cps * sy}`)
-        .attr("fill", "none")
-        .attr("stroke", INK).attr("stroke-width", 0.7).attr("opacity", 0.7);
+    // Inner rule — faint, 8px inset, gives the Tolkien triple-rule feel
+    g.append("rect")
+      .attr("x", bx + 8).attr("y", by + 8)
+      .attr("width", boxW - 16).attr("height", boxH - 16)
+      .attr("fill", "none")
+      .attr("stroke", INK)
+      .attr("stroke-width", 0.35)
+      .attr("opacity", 0.55);
+
+    // Corner quatrefoils — small ink dots at each inner-corner intersection
+    [[bx + 8, by + 8], [bx + boxW - 8, by + 8],
+     [bx + 8, by + boxH - 8], [bx + boxW - 8, by + boxH - 8]].forEach(([cx, cy]) => {
+      g.append("circle")
+        .attr("cx", cx).attr("cy", cy).attr("r", 1.2)
+        .attr("fill", INK);
     });
 
-    // Title text
+    // Decorative flourish above the title — short ink rule with centre pip
+    const flourishY = by + 18;
+    const flourishL = boxW * 0.45;
+    g.append("line")
+      .attr("x1", bx + (boxW - flourishL) / 2).attr("y1", flourishY)
+      .attr("x2", bx + (boxW + flourishL) / 2).attr("y2", flourishY)
+      .attr("stroke", INK).attr("stroke-width", 0.45).attr("opacity", 0.6);
+    g.append("circle")
+      .attr("cx", bx + boxW / 2).attr("cy", flourishY)
+      .attr("r", 1.3).attr("fill", INK);
+
+    // Title text — large small-caps in the style's hand-lettered font
+    const titleText = meta.region
+      ? meta.region.toUpperCase()
+      : (meta.campaign || "").toUpperCase();
     g.append("text")
       .attr("x", bx + boxW / 2)
-      .attr("y", by + boxH / 2 - 4)
+      .attr("y", by + boxH / 2 + 6)
       .attr("text-anchor", "middle")
-      .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
+      .attr("font-family", FONT)
       .attr("font-size", "18px")
-      .attr("font-weight", "bold")
-      .attr("letter-spacing", "4px")
+      .attr("font-weight", "600")
+      .attr("letter-spacing", "5px")
       .attr("fill", INK)
-      .text(meta.region ? meta.region.toUpperCase() : meta.campaign.toUpperCase());
+      .text(titleText);
 
-    // Subtitle
+    // Matching flourish below the title
+    const flourishY2 = by + boxH - 14;
+    g.append("line")
+      .attr("x1", bx + (boxW - flourishL) / 2).attr("y1", flourishY2)
+      .attr("x2", bx + (boxW + flourishL) / 2).attr("y2", flourishY2)
+      .attr("stroke", INK).attr("stroke-width", 0.45).attr("opacity", 0.6);
+
+    // Subtitle (world / era)
     if (meta.world) {
       g.append("text")
         .attr("x", bx + boxW / 2)
-        .attr("y", by + boxH / 2 + 12)
+        .attr("y", by + boxH - 5)
         .attr("text-anchor", "middle")
-        .attr("font-family", "'Palatino Linotype', 'Book Antiqua', Palatino, serif")
+        .attr("font-family", FONT)
         .attr("font-size", "9px")
         .attr("font-style", "italic")
         .attr("fill", INK_LIGHT)

@@ -167,9 +167,14 @@ function renderBoats(ctx, options = {}) {
 }
 
 // riverColor and riverWidth are style-dependent. Called from style render functions.
-function renderRiver(ctx, riverColor, riverWidth) {
+// riverColor, riverWidth — style-dependent. Accepts an optional third
+// argument { singleLine: true } to draw a single spine stroke instead of
+// the default two banks (used by Tolkien-Wilderland style where rivers
+// are thin black lines, not double-banked blue streams).
+function renderRiver(ctx, riverColor, riverWidth, options = {}) {
   const { g, riverPath, HINT_SCALE, WIDTH, HEIGHT } = ctx;
   if (!riverPath || riverPath.length < 2) return;
+  const singleLine = options.singleLine === true;
 
   const bcCol = 10, bcRow = 10;
   const size = HINT_SCALE / 2;
@@ -290,31 +295,41 @@ function renderRiver(ctx, riverColor, riverWidth) {
   });
 
   const line = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
-
-  // Subtle water body fill between the banks
-  const waterPath = leftBank.concat(rightBank.slice().reverse());
-  riverGroup.append("path")
-    .attr("d", d3.line().curve(d3.curveLinearClosed)(waterPath))
-    .attr("fill", riverColor)
-    .attr("stroke", "none")
-    .attr("opacity", 0.08);
-
-  // Two bank lines — hand-drawn feel, thin ink
   const bankStroke = Math.max(0.9, riverWidth * 0.4);
-  riverGroup.append("path")
-    .attr("d", line(leftBank))
-    .attr("fill", "none")
-    .attr("stroke", riverColor)
-    .attr("stroke-width", bankStroke)
-    .attr("stroke-linecap", "round")
-    .attr("opacity", 0.8);
-  riverGroup.append("path")
-    .attr("d", line(rightBank))
-    .attr("fill", "none")
-    .attr("stroke", riverColor)
-    .attr("stroke-width", bankStroke)
-    .attr("stroke-linecap", "round")
-    .attr("opacity", 0.8);
+
+  if (singleLine) {
+    // Tolkien Wilderland-style river — one thin ink stroke along the
+    // spine, no bank-fill, no second line. Reads as a hand-drawn stream.
+    riverGroup.append("path")
+      .attr("d", line(wigglePoints))
+      .attr("fill", "none").attr("stroke", riverColor)
+      .attr("stroke-width", Math.max(0.9, riverWidth * 0.6))
+      .attr("stroke-linecap", "round");
+  } else {
+    // Subtle water body fill between the banks
+    const waterPath = leftBank.concat(rightBank.slice().reverse());
+    riverGroup.append("path")
+      .attr("d", d3.line().curve(d3.curveLinearClosed)(waterPath))
+      .attr("fill", riverColor)
+      .attr("stroke", "none")
+      .attr("opacity", 0.08);
+
+    // Two bank lines — hand-drawn feel, thin ink
+    riverGroup.append("path")
+      .attr("d", line(leftBank))
+      .attr("fill", "none")
+      .attr("stroke", riverColor)
+      .attr("stroke-width", bankStroke)
+      .attr("stroke-linecap", "round")
+      .attr("opacity", 0.8);
+    riverGroup.append("path")
+      .attr("d", line(rightBank))
+      .attr("fill", "none")
+      .attr("stroke", riverColor)
+      .attr("stroke-width", bankStroke)
+      .attr("stroke-linecap", "round")
+      .attr("opacity", 0.8);
+  }
 
   // Invisible spine path as a textPath anchor for the river name label.
   const spineId = "river-spine-" + Math.random().toString(36).slice(2, 8);
@@ -326,7 +341,9 @@ function renderRiver(ctx, riverColor, riverWidth) {
   // Expose the id so styles can render the river name on it.
   ctx._riverSpineId = spineId;
 
-  // Small islands in wider stretches
+  // Small islands in wider stretches — skipped in singleLine mode since
+  // there are no visible banks to break around.
+  if (singleLine) return;
   for (const p of poolCenters) {
     if (rng() > 0.45) continue;
     const i = p.idx;
@@ -845,10 +862,14 @@ function renderRegionLabels(ctx, style) {
   const defaults = style || {};
   const labelGroup = g.append("g").attr("class", "region-labels");
 
-  labels.forEach(entry => {
+  // Use defs to stash the invisible text-paths so we can reference them
+  let defs = g.select("defs");
+  if (defs.empty()) defs = g.append("defs");
+
+  labels.forEach((entry, entryIdx) => {
     if (!entry.hexes || !entry.hexes.length || !entry.text) return;
-    // Compute centroid of the region's hex centers
-    let sumX = 0, sumY = 0, count = 0;
+    // Compute all hex centers for this region
+    const centers = [];
     entry.hexes.forEach(h => {
       if (typeof h !== "string" || h.length < 4) return;
       const col = parseInt(h.substring(0, 2));
@@ -856,10 +877,12 @@ function renderRegionLabels(ctx, style) {
       if (isNaN(col) || isNaN(row)) return;
       const hx = (col - bcCol) * colStep + WIDTH / 2;
       const hy = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
-      sumX += hx; sumY += hy; count++;
+      centers.push([hx, hy]);
     });
-    if (count === 0) return;
-    const cx = sumX / count, cy = sumY / count;
+    if (centers.length === 0) return;
+    let sumX = 0, sumY = 0;
+    centers.forEach(([x, y]) => { sumX += x; sumY += y; });
+    const cx = sumX / centers.length, cy = sumY / centers.length;
 
     const fontSize = entry.fontSize || defaults.fontSize || 20;
     const rotation = entry.rotation != null ? entry.rotation : (defaults.rotation || 0);
@@ -869,21 +892,69 @@ function renderRegionLabels(ctx, style) {
     const fontStyle = entry.fontStyle || defaults.fontStyle || "italic";
     const opacity = entry.opacity != null ? entry.opacity : (defaults.opacity != null ? defaults.opacity : 0.75);
 
-    labelGroup.append("text")
-      .attr("x", cx).attr("y", cy)
-      .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "middle")
-      .attr("font-family", FONT)
-      .attr("font-size", fontSize + "px")
-      .attr("font-style", fontStyle)
-      .attr("letter-spacing", letterSpacing)
-      .attr("fill", color)
-      .attr("stroke", strokeColor)
-      .attr("stroke-width", 3.5)
-      .attr("paint-order", "stroke")
-      .attr("opacity", opacity)
-      .attr("transform", rotation ? `rotate(${rotation}, ${cx}, ${cy})` : null)
-      .text(entry.text);
+    // Decide whether to render along a curved path. Enabled by default for
+    // regions with 3+ hexes; can be forced on/off via entry.curve or
+    // defaults.curve (true | false | "auto").
+    const curveMode = entry.curve != null ? entry.curve : (defaults.curve != null ? defaults.curve : "auto");
+    const useCurve = curveMode === true || (curveMode === "auto" && centers.length >= 3 && !entry.rotation);
+
+    if (useCurve) {
+      // Compute principal axis via PCA (ellipse-fit direction)
+      let sxx = 0, syy = 0, sxy = 0;
+      centers.forEach(([x, y]) => {
+        const dx = x - cx, dy = y - cy;
+        sxx += dx * dx;
+        syy += dy * dy;
+        sxy += dx * dy;
+      });
+      // 2x2 eigenvector of the covariance matrix — angle of the major axis
+      const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+      const cosT = Math.cos(theta), sinT = Math.sin(theta);
+      // Project each center onto the major axis (parameter along axis)
+      const projected = centers.map(([x, y]) => {
+        const dx = x - cx, dy = y - cy;
+        return { x, y, t: dx * cosT + dy * sinT };
+      });
+      projected.sort((a, b) => a.t - b.t);
+      const ordered = projected.map(p => [p.x, p.y]);
+      // Build a smooth catmull-rom path through the ordered centers.
+      const pathD = d3.line().curve(d3.curveCatmullRom.alpha(0.5))(ordered);
+      const pathId = `region-label-path-${entryIdx}-${Math.floor(Math.random() * 1e6)}`;
+      defs.append("path").attr("id", pathId).attr("d", pathD).attr("fill", "none");
+
+      const textEl = labelGroup.append("text")
+        .attr("font-family", FONT)
+        .attr("font-size", fontSize + "px")
+        .attr("font-style", fontStyle)
+        .attr("letter-spacing", letterSpacing)
+        .attr("fill", color)
+        .attr("stroke", strokeColor)
+        .attr("stroke-width", 3.5)
+        .attr("paint-order", "stroke")
+        .attr("opacity", opacity);
+      textEl.append("textPath")
+        .attr("href", "#" + pathId)
+        .attr("xlink:href", "#" + pathId)
+        .attr("startOffset", "50%")
+        .attr("text-anchor", "middle")
+        .text(entry.text);
+    } else {
+      labelGroup.append("text")
+        .attr("x", cx).attr("y", cy)
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "middle")
+        .attr("font-family", FONT)
+        .attr("font-size", fontSize + "px")
+        .attr("font-style", fontStyle)
+        .attr("letter-spacing", letterSpacing)
+        .attr("fill", color)
+        .attr("stroke", strokeColor)
+        .attr("stroke-width", 3.5)
+        .attr("paint-order", "stroke")
+        .attr("opacity", opacity)
+        .attr("transform", rotation ? `rotate(${rotation}, ${cx}, ${cy})` : null)
+        .text(entry.text);
+    }
   });
 }
 
@@ -955,6 +1026,25 @@ function renderMountainsWithElevation(ctx, mountainDrawer, hillDrawer, options) 
     ];
     const targetN = Math.max(1, Math.round(fullGrid.length * density));
     const gridPoints = fullGrid.slice(0, targetN);
+
+    // Add extra peak draws along any edge that borders another mountain
+    // hex — this stitches adjacent clusters into a continuous ridge across
+    // hex boundaries (Tolkien Wilderland "Grey Mountains" look).
+    neighbors.forEach((offset, i) => {
+      const nKey = String(col + offset[0]).padStart(2, "0") + String(row + offset[1]).padStart(2, "0");
+      if (!mountainHexes.has(nKey)) return;
+      // Inset from the edge midpoint toward the hex center so peaks don't
+      // clip the adjacent hex's hit box
+      const [mx, my] = edgeMids[i];
+      const inset = 0.55;
+      gridPoints.push([mx * inset, my * inset]);
+      // Optionally add one more along the same edge for continuity
+      if (rng() > 0.4) {
+        const [tx, ty] = edgeTangents[i];
+        gridPoints.push([mx * inset + tx * size * 0.2, my * inset + ty * size * 0.2]);
+      }
+    });
+
     gridPoints.forEach(([ox, oy]) => {
       const jitterX = (rng() - 0.5) * size * 0.18;
       const jitterY = (rng() - 0.5) * size * 0.18;
@@ -1371,7 +1461,8 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
 // Uses SVG-level mousemove so node click handlers keep working.
 function renderHexHover(ctx) {
   const { g, HINT_SCALE, WIDTH, HEIGHT, nodes, hexTerrain } = ctx;
-  const panel = document.getElementById("hex-panel");
+  // Unified panel — one overlay drives both node-click and hex-hover.
+  const panel = document.getElementById("detail-panel");
   if (!panel) return;
 
   const bcCol = 10, bcRow = 10;
@@ -1467,7 +1558,8 @@ function renderHexHover(ctx) {
   window.addEventListener("keydown", window._shiftKeyDownHandler);
   window.addEventListener("keyup", window._shiftKeyUpHandler);
 
-  svgSel.on("mousemove.hex-hover", function (event) {
+  // Helper: update panel + highlight for a given pointer position.
+  function syncToPointer(event) {
     const pt = d3.pointer(event, g.node());
     const hex = pixelToHex(pt[0], pt[1]);
     if (hex && hex !== currentHex) {
@@ -1478,6 +1570,11 @@ function renderHexHover(ctx) {
         .attr("opacity", 0.5);
       updatePanel(hex);
     }
+  }
+
+  svgSel.on("mousemove.hex-hover", function (event) {
+    const pt = d3.pointer(event, g.node());
+    syncToPointer(event);
     // Shift-held inch readout
     if (coordEl && shiftState.held) {
       const xInches = (pt[0] - WIDTH / 2) / HINT_SCALE;
@@ -1490,27 +1587,50 @@ function renderHexHover(ctx) {
       coordEl.classList.remove("visible");
     }
   });
+  // Click/tap — mobile support. Opens the panel for whatever hex was
+  // clicked/tapped. Reuses the same hover path so behaviour is uniform.
+  svgSel.on("click.hex-hover", function (event) {
+    syncToPointer(event);
+  });
   svgSel.on("mouseleave.hex-hover", () => {
-    currentHex = null;
+    // Don't clear the panel on mouseleave — leave last-selected hex info
+    // visible. User closes via the X button. Highlight hides though.
     highlight.attr("opacity", 0);
-    panel.classList.remove("visible");
     if (coordEl) coordEl.classList.remove("visible");
   });
 
   function updatePanel(hex) {
     const terrain = (hexTerrain && hexTerrain[hex]) || null;
     const pois = hexNodes[hex] || [];
-    if (!terrain && pois.length === 0) {
-      panel.classList.remove("visible");
-      return;
-    }
-    document.getElementById("hex-panel-id").textContent = "Hex " + hex;
-    document.getElementById("hex-panel-terrain").textContent = terrain ? terrain.replace(/-/g, " ") : "—";
-    const poisEl = document.getElementById("hex-panel-pois");
-    if (pois.length === 0) {
-      poisEl.innerHTML = '<div class="hex-empty">No points of interest</div>';
+    // Always open the panel — every hex gets a card, even empty ones.
+    // Hex id (mono, small-caps at the top)
+    document.getElementById("panel-hex-id").textContent = "HEX " + hex;
+    // Main title — the terrain or the first named POI's name
+    const titleEl = document.getElementById("panel-name");
+    const typeEl = document.getElementById("panel-type");
+    const descEl = document.getElementById("panel-desc");
+    if (pois.length === 1) {
+      // Single POI — use its name as heading, description in main body
+      const n = pois[0];
+      titleEl.textContent = n.name || n.id;
+      typeEl.textContent = (n.point_type ? n.point_type.charAt(0).toUpperCase() + n.point_type.slice(1) : "")
+        + (n.terrain ? " \u2022 " + n.terrain : "")
+        + (terrain && !n.terrain ? " \u2022 " + terrain.replace(/-/g, " ") : "");
+      descEl.textContent = n.description || "";
     } else {
-      poisEl.innerHTML = pois.map(n => {
+      // Terrain-only or multi-POI — use terrain as heading, list POIs below
+      titleEl.textContent = terrain ? terrain.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "Empty hex";
+      typeEl.textContent = "";
+      descEl.textContent = "";
+    }
+    // POI list below (shown for multi-POI hexes, hidden for single-node)
+    const poisEl = document.getElementById("panel-pois");
+    if (pois.length === 0) {
+      poisEl.innerHTML = '<div class="hex-empty">No points of interest in this hex</div>';
+    } else if (pois.length === 1) {
+      poisEl.innerHTML = "";
+    } else {
+      poisEl.innerHTML = '<div class="hex-pois-header" style="font-size:13px;color:var(--panel-heading,#8b2500);margin-bottom:6px;border-top:1px solid var(--panel-type,#5a4a3a);padding-top:8px;">Points of Interest</div>' + pois.map(n => {
         const name = escapeHtml(n.name || n.id);
         const type = escapeHtml((n.point_type || "") + (n.scale === "local" ? " (local)" : ""));
         const desc = n.description ? escapeHtml(n.description) : "";
@@ -1520,7 +1640,35 @@ function renderHexHover(ctx) {
           "</div>";
       }).join("");
     }
-    panel.classList.add("visible");
+    // Combined connections (paths from any POI in this hex)
+    const connEl = document.getElementById("panel-connections");
+    if (pois.length > 0 && graphData && graphData.links) {
+      const seen = new Set();
+      const conns = [];
+      pois.forEach(node => {
+        graphData.links.forEach(l => {
+          const srcId = l.source.id || l.source;
+          const tgtId = l.target.id || l.target;
+          if (srcId === node.id || tgtId === node.id) {
+            const other = srcId === node.id ? l.target : l.source;
+            const otherId = other.id || other;
+            const key = `${node.id}->${otherId}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            const otherName = other.name || other.id || other;
+            const days = l.days ? ` (${l.days} ${l.days === 1 ? "day" : "days"})` : "";
+            const type = l.path_type ? ` \u2014 ${l.path_type}` : "";
+            conns.push(`<li>\u2192 ${escapeHtml(otherName)}${days}${type}</li>`);
+          }
+        });
+      });
+      connEl.innerHTML = conns.length
+        ? `<h3>Paths</h3><ul>${conns.join("")}</ul>`
+        : "";
+    } else {
+      connEl.innerHTML = "";
+    }
+    panel.classList.add("open");
   }
 }
 
@@ -1683,29 +1831,12 @@ function computeBounds(nodes) {
 // --- Detail panel ---
 let graphData = null;
 
+// The unified detail-panel is now driven by hex hover (renderHexHover
+// populates it). Clicking on a node is a no-op — hover already showed
+// that node's info when the pointer crossed its hex. Kept for backward
+// compatibility with style renderers that call it.
 function showDetail(node) {
-  const panel = document.getElementById("detail-panel");
-  document.getElementById("panel-name").textContent = node.name;
-  document.getElementById("panel-type").textContent =
-    node.point_type.charAt(0).toUpperCase() + node.point_type.slice(1) +
-    (node.terrain ? " \u2022 " + node.terrain : "") +
-    (node.hex ? " \u2022 hex " + node.hex : "");
-  document.getElementById("panel-desc").textContent = node.description || "";
-
-  const connections = graphData.links.filter(l =>
-    (l.source.id || l.source) === node.id || (l.target.id || l.target) === node.id
-  );
-  const connHTML = connections.map(l => {
-    const other = (l.source.id || l.source) === node.id ? l.target : l.source;
-    const name = other.name || other.id || other;
-    const days = l.days ? ` (${l.days} ${l.days === 1 ? "day" : "days"})` : "";
-    const type = l.path_type ? ` \u2014 ${l.path_type}` : "";
-    return `<li>\u2192 ${name}${days}${type}</li>`;
-  }).join("");
-  document.getElementById("panel-connections").innerHTML =
-    connections.length ? `<h3>Paths</h3><ul>${connHTML}</ul>` : "";
-
-  panel.classList.add("open");
+  /* no-op — hover-driven panel replaces click-to-open. */
 }
 
 function closePanel() {
@@ -1879,7 +2010,9 @@ function setupSVG() {
     .on("zoom", (event) => g.attr("transform", event.transform));
   // Disable d3's default double-click zoom so our handler owns that gesture.
   svg.call(zoom).on("dblclick.zoom", null);
-  svg.on("click", () => closePanel());
+  // Clicking the SVG background is now a no-op for the detail panel —
+  // the hex-hover handler takes care of click/tap-to-open, and the panel
+  // has its own close X button.
 
   return { svg, defs, g, zoom };
 }
@@ -2214,6 +2347,9 @@ function renderMap(styleName, gridName) {
 
   const { svg, defs, g, zoom } = setupSVG();
 
+  // Use the style's preferred font if it declares one, otherwise fall
+  // back to the shared Palatino stack.
+  const styleFont = style.font || FONT;
   // Build render context
   const ctx = {
     g, defs,
@@ -2223,7 +2359,7 @@ function renderMap(styleName, gridName) {
     meta: sim.meta,
     colors: style.colors,
     WIDTH, HEIGHT, HINT_SCALE, DAY_SCALE,
-    mulberry32, seedFromString, FONT,
+    mulberry32, seedFromString, FONT: styleFont,
     riverPath: graphData.river_path || [],
     roadPath: graphData.road_path || [],
     crevassePath: graphData.crevasse_path || [],

@@ -8,6 +8,11 @@ window.MapStyles = window.MapStyles || {};
 window.MapStyles.thirdage = {
   name: "Third Age",
 
+  // Pauline Baynes' engraved Middle-earth map uses small-caps Roman
+  // letterforms. Alegreya SC evokes the engraving-era style while
+  // remaining readable at map-label size.
+  font: "'Alegreya SC', 'IM Fell English SC', 'Palatino Linotype', Palatino, serif",
+
   /* ── CSS custom-property values ─────────────────────────────── */
   css: {
     "--bg-color":      "#2a1f14",
@@ -249,8 +254,13 @@ window.MapStyles.thirdage = {
       ["forest", "forested-hills"]);
     MapCore.renderFarmlandBiased(ctx,
       (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK));
-    // Forest boundary comes from the scattered edge trees — no hard
-    // hex-outline stroke.
+    // Soft forest-region outline — unifies contiguous forest hexes into a
+    // single zone boundary (skips interior edges) with Pauline Baynes
+    // slightly heavier ink than Wilderland.
+    MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
+      color: INK, strokeWidth: 0.7, opacity: 0.28, wobble: 2.8,
+      className: "forest-region",
+    });
   },
 
   drawGraveyard(g, x, y, size, rng, INK) {

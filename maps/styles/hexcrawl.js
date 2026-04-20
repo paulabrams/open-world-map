@@ -6,6 +6,10 @@ window.MapStyles = window.MapStyles || {};
 window.MapStyles.hexcrawl = {
   name: "Hex Crawl",
 
+  // Hex-crawl reference sheets favour clean Roman book type at table.
+  // Alegreya reads well at every zoom and pairs with the numeric overlay.
+  font: "'Alegreya', Palatino, 'Palatino Linotype', 'Book Antiqua', serif",
+
   /* ── CSS custom-property values ─────────────────────────────── */
   css: {
     "--bg-color":      "#2a1f14",
