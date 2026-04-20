@@ -39,6 +39,133 @@ function seedFromString(s) {
 
 // --- River rendering ---
 // Draws an organic, wiggly river line through a list of hex centers.
+// Small boats/barges scattered along the river — adds life to the waterway.
+// Called by style renderers after renderRiver so the boats sit on top of the
+// water. Each boat is oriented along the river's local direction.
+// Skips hexes that hold a large node icon (heart/fortress) so boats don't
+// appear inside town silhouettes.
+function renderBoats(ctx, options = {}) {
+  const { g, riverPath, riverSpine, nodes, HINT_SCALE, WIDTH, HEIGHT } = ctx;
+  if (!riverPath || riverPath.length < 2) return;
+  const ink = options.color || "#2a1f14";
+  const parch = options.parchment || "#f4e8d1";
+  const count = options.count || 3;
+
+  // Hexes that carry a town-scale icon — skip these so boats don't sit
+  // inside the Blackwater Crossing walls, etc.
+  const blockedHexes = new Set();
+  (nodes || []).forEach(n => {
+    if (n.hex && (n.point_type === "heart" || n.point_type === "fortress")) {
+      blockedHexes.add(n.hex);
+    }
+  });
+
+  // Compute hex centers so we can identify blocked zones on the spine
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+  const hexCenters = riverPath.map(h => {
+    const col = parseInt(h.substring(0, 2));
+    const row = parseInt(h.substring(2, 4));
+    const x = (col - bcCol) * colStep + WIDTH / 2;
+    const y = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
+    return [x, y];
+  });
+  const blockedCenters = riverPath
+    .map((h, i) => blockedHexes.has(h) ? hexCenters[i] : null)
+    .filter(Boolean);
+
+  // If we have the actual river spine (exposed by renderRiver), pick boat
+  // positions along it so the boats sit ON the wavy water, not on the
+  // hex-center line that the water diverges from.
+  const spine = Array.isArray(riverSpine) && riverSpine.length > 1 ? riverSpine : hexCenters;
+  if (spine.length < 3) return;
+
+  const rng = mulberry32(seedFromString("boats-" + riverPath.join("")));
+  const boatGroup = g.append("g").attr("class", "boats");
+
+  // Gather candidate spine indices — skip any point near a blocked hex
+  // center (town/fortress). Also skip the first/last 10% of the spine.
+  const skipBlockDist2 = (size * 1.1) * (size * 1.1);
+  const startCutoff = Math.floor(spine.length * 0.1);
+  const endCutoff = Math.floor(spine.length * 0.9);
+  const candidates = [];
+  for (let i = startCutoff; i < endCutoff; i++) {
+    const [sx, sy] = spine[i];
+    let blocked = false;
+    for (const [bx0, by0] of blockedCenters) {
+      const d2 = (sx - bx0) * (sx - bx0) + (sy - by0) * (sy - by0);
+      if (d2 < skipBlockDist2) { blocked = true; break; }
+    }
+    if (!blocked) candidates.push(i);
+  }
+  if (candidates.length === 0) return;
+
+  // Fisher–Yates shuffle the candidates and take `count`
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+  const chosen = candidates.slice(0, Math.min(count, candidates.length));
+
+  for (const idx of chosen) {
+    const [cx, cy] = spine[idx];
+    // Use adjacent spine points to compute the local flow direction
+    const [px, py] = spine[Math.max(0, idx - 2)];
+    const [nx2, ny2] = spine[Math.min(spine.length - 1, idx + 2)];
+    const dx = nx2 - px, dy = ny2 - py;
+    const bx = cx;
+    const by = cy;
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+    const bg = boatGroup.append("g")
+      .attr("transform", `translate(${bx}, ${by}) rotate(${angle})`);
+
+    // Pick boat style: barge (wide flat) or small rowboat (pointed)
+    const style = rng();
+    if (style < 0.55) {
+      // Small rowboat — oval hull, pointed bow, tiny mast or oarsman
+      const hullW = 5, hullH = 1.8;
+      bg.append("path")
+        .attr("d", `M ${-hullW / 2} 0 Q ${-hullW / 2} ${hullH} 0 ${hullH} Q ${hullW / 2} ${hullH} ${hullW / 2} 0 L ${hullW / 2 + 2} 0 L ${hullW / 2} ${-hullH * 0.4} Z`)
+        .attr("fill", parch).attr("stroke", ink).attr("stroke-width", 0.6);
+      // Small sail or mast
+      if (rng() > 0.5) {
+        bg.append("line").attr("x1", 0).attr("y1", -0.3).attr("x2", 0).attr("y2", -hullW * 0.7)
+          .attr("stroke", ink).attr("stroke-width", 0.55);
+        bg.append("path")
+          .attr("d", `M 0 ${-hullW * 0.7} L ${hullW * 0.35} ${-hullW * 0.45} L 0 ${-hullW * 0.25}`)
+          .attr("fill", parch).attr("stroke", ink).attr("stroke-width", 0.5);
+      } else {
+        // Two short oar strokes
+        bg.append("line").attr("x1", -hullW * 0.2).attr("y1", 0).attr("x2", -hullW * 0.4).attr("y2", -1.5)
+          .attr("stroke", ink).attr("stroke-width", 0.5);
+        bg.append("line").attr("x1", hullW * 0.2).attr("y1", 0).attr("x2", hullW * 0.4).attr("y2", -1.5)
+          .attr("stroke", ink).attr("stroke-width", 0.5);
+      }
+    } else {
+      // Flat barge — rectangular hull, cargo stacks
+      const hullW = 7, hullH = 2.0;
+      bg.append("rect")
+        .attr("x", -hullW / 2).attr("y", 0)
+        .attr("width", hullW).attr("height", hullH)
+        .attr("fill", parch).attr("stroke", ink).attr("stroke-width", 0.6);
+      // Pointed bow on the right end
+      bg.append("path")
+        .attr("d", `M ${hullW / 2} 0 L ${hullW / 2 + 2.2} ${hullH / 2} L ${hullW / 2} ${hullH} Z`)
+        .attr("fill", parch).attr("stroke", ink).attr("stroke-width", 0.6);
+      // Cargo stacks — 2-3 small rectangles on deck
+      for (let c = 0; c < 3; c++) {
+        bg.append("rect")
+          .attr("x", -hullW * 0.35 + c * hullW * 0.22).attr("y", -hullH * 0.6)
+          .attr("width", hullW * 0.15).attr("height", hullH * 0.55)
+          .attr("fill", ink).attr("opacity", 0.75);
+      }
+    }
+  }
+}
+
 // riverColor and riverWidth are style-dependent. Called from style render functions.
 function renderRiver(ctx, riverColor, riverWidth) {
   const { g, riverPath, HINT_SCALE, WIDTH, HEIGHT } = ctx;
@@ -97,6 +224,10 @@ function renderRiver(ctx, riverColor, riverWidth) {
       wigglePoints.push([mx + nx * offset, my + ny * offset]);
     }
   }
+
+  // Expose the spine so downstream renderers (boats, etc) can place props
+  // on the actual wavy water line rather than the straight hex-center path.
+  ctx.riverSpine = wigglePoints;
 
   // Per-point unit perpendicular (averaged tangent of adjacent spine points)
   function perpAt(i) {
@@ -943,8 +1074,44 @@ function renderFarmlandBiased(ctx, drawer) {
     const colors = ctx.colors || {};
     const accent = colors.INK || colors.BLUE_INK || "#333";
 
+    // If this hex is on the road/river itself, the path passes through the
+    // hex interior — slots near that corridor should stay empty so fields
+    // and houses don't sit directly on the line.
+    const hexOnRoad = roadSet.has(hex) || riverSet.has(hex);
+    // Identify the corridor direction through the hex: find the two edges
+    // whose neighbors are ALSO on the same path. The line between their
+    // midpoints is the approximate route through this hex.
+    let corridorMid1 = null, corridorMid2 = null;
+    if (hexOnRoad) {
+      const onPathEdges = [];
+      neighbors.forEach(([dc, dr], i) => {
+        const nKey = String(col + dc).padStart(2, "0") + String(row + dr).padStart(2, "0");
+        if (roadSet.has(nKey) || riverSet.has(nKey)) onPathEdges.push(i);
+      });
+      if (onPathEdges.length >= 2) {
+        corridorMid1 = edgeMids[onPathEdges[0]];
+        corridorMid2 = edgeMids[onPathEdges[onPathEdges.length - 1]];
+      }
+    }
+
+    // Distance from point (dx, dy) to the line segment (p1, p2).
+    function distToSegment(dx, dy, p1, p2) {
+      const ax = p1[0], ay = p1[1], bx = p2[0], by = p2[1];
+      const vx = bx - ax, vy = by - ay;
+      const len2 = vx * vx + vy * vy || 1;
+      const t = Math.max(0, Math.min(1, ((dx - ax) * vx + (dy - ay) * vy) / len2));
+      const qx = ax + t * vx, qy = ay + t * vy;
+      return Math.sqrt((dx - qx) * (dx - qx) + (dy - qy) * (dy - qy));
+    }
+
     // For each slot, find the edge it "faces" (highest dot with its direction).
     const slotRoles = slotPositions.map(({ dx, dy }) => {
+      // Skip slots sitting on the road/river corridor — leave them empty so
+      // the route line has clear space.
+      if (corridorMid1 && corridorMid2) {
+        const d = distToSegment(dx, dy, corridorMid1, corridorMid2);
+        if (d < size * 0.28) return "empty";
+      }
       const sl = Math.sqrt(dx * dx + dy * dy) || 1;
       let bestI = 0, bestDot = -Infinity;
       edgeMids.forEach(([mx, my], i) => {
@@ -953,7 +1120,6 @@ function renderFarmlandBiased(ctx, drawer) {
         if (dot > bestDot) { bestDot = dot; bestI = i; }
       });
       const kind = edgeKind[bestI];
-      // Repel only if the slot strongly faces that edge — otherwise field is ok
       if (kind === "repel" && bestDot > 0.55) return "empty";
       if (kind === "road") return "house";
       return "field";
@@ -1160,26 +1326,30 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
 
     if (externalEdges.length === 0) {
       // Fully interior forest hex — scatter trees across the whole body
-      const baseN = 5 + Math.floor(rng() * 3);
+      // Fully interior forest hex — bumped 20% from 5-7 to 6-9 trees
+      const baseN = 6 + Math.floor(rng() * 4);
       interiorScatter(Math.max(1, Math.round(baseN * density)), size * 0.7);
       return;
     }
 
-    // Border hex — concentrate trees along each external edge
+    // Border hex — concentrate trees along each external edge. Trees are
+    // packed a bit denser here so the forest border reads clearly even
+    // without a hex-outline stroke.
     externalEdges.forEach(edgeIdx => {
       const [mx, my] = edgeMids[edgeIdx];
       const [tx, ty] = edgeTangents[edgeIdx];
       const inset = 0.82;
       const mxInset = mx * inset;
       const myInset = my * inset;
-      const baseN = 3 + Math.floor(rng() * 2);
-      const n = Math.max(1, Math.round(baseN * density));
+      // Bumped 20% on top of previous: 5-7 trees per edge
+      const baseN = 5 + Math.floor(rng() * 3);
+      const n = Math.max(2, Math.round(baseN * density));
       for (let i = 0; i < n; i++) {
         const t = n === 1 ? 0 : (i / (n - 1) - 0.5);
-        const span = t * size * 0.75;
+        const span = t * size * 0.8;
         const jitterX = (rng() - 0.5) * size * 0.12;
         const jitterY = (rng() - 0.5) * size * 0.12;
-        const depthJitter = rng() * size * 0.15;
+        const depthJitter = rng() * size * 0.18;
         const inwardX = -mx / Math.sqrt(mx * mx + my * my) * depthJitter;
         const inwardY = -my / Math.sqrt(mx * mx + my * my) * depthJitter;
         const ox = mxInset + tx * span + jitterX + inwardX;
@@ -1189,7 +1359,8 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
     });
     // Interior sprinkle — always fill the hex body, scaled by how much edge
     // coverage we already have. Fewer external edges → more interior trees.
-    const interiorBase = 4 - Math.floor(externalEdges.length / 2); // 4, 3, 2
+    // Interior sprinkle bumped 20% — was 2-4, now 3-5 depending on edges
+    const interiorBase = 5 - Math.floor(externalEdges.length / 2); // 5, 4, 3
     const interiorN = Math.max(1, Math.round((interiorBase + rng() * 2) * density));
     interiorScatter(interiorN, size * 0.55);
   });
@@ -2139,10 +2310,1346 @@ function exportSVG() {
   URL.revokeObjectURL(url);
 }
 
+// --- Shared special-icon helpers ---
+// Each helper draws into the provided <g> node (`ng`, pre-translated to the
+// node position) and uses the caller's palette colors.
+
+function renderFaeGlade(ng, { ink, parchment }) {
+  const fs = 7;
+  // Faint ground halo
+  ng.append("ellipse")
+    .attr("cx", 0).attr("cy", fs * 0.3)
+    .attr("rx", fs * 1.7).attr("ry", fs * 0.7)
+    .attr("fill", ink).attr("opacity", 0.05);
+  // Ring of 8 tiny silver-bark trees — circled around the glade
+  const treeCount = 8;
+  for (let i = 0; i < treeCount; i++) {
+    const angle = (i / treeCount) * Math.PI * 2 - Math.PI / 2;
+    const rx = Math.cos(angle) * fs * 1.25;
+    const ry = Math.sin(angle) * fs * 0.9;
+    const th = fs * 0.7;
+    const tw = fs * 0.4;
+    ng.append("path")
+      .attr("d", `M ${rx - tw/2} ${ry} L ${rx} ${ry - th} L ${rx + tw/2} ${ry} Z`)
+      .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.65);
+    ng.append("line")
+      .attr("x1", rx).attr("y1", ry).attr("x2", rx).attr("y2", ry + fs * 0.15)
+      .attr("stroke", ink).attr("stroke-width", 0.55);
+    // Hint of a face on two of the outer trees
+    if (i === 0 || i === 4) {
+      ng.append("circle").attr("cx", rx - tw * 0.18).attr("cy", ry - th * 0.45).attr("r", 0.35).attr("fill", ink);
+      ng.append("circle").attr("cx", rx + tw * 0.18).attr("cy", ry - th * 0.45).attr("r", 0.35).attr("fill", ink);
+    }
+  }
+  // Central clearing — dotted circle suggesting a fey ring
+  const ringR = fs * 0.55;
+  const dots = 12;
+  for (let i = 0; i < dots; i++) {
+    const a = (i / dots) * Math.PI * 2;
+    ng.append("circle")
+      .attr("cx", Math.cos(a) * ringR).attr("cy", fs * 0.1 + Math.sin(a) * ringR * 0.7)
+      .attr("r", 0.4).attr("fill", ink).attr("opacity", 0.75);
+  }
+  // Runic spiral at the center — the Garden's pocket-realm marker
+  ng.append("path")
+    .attr("d", `M 0 ${fs * 0.1} m -1.8 0 a 1.8 1.8 0 1 1 3.6 0 a 1.2 1.2 0 1 0 -2.4 0`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.55).attr("opacity", 0.75);
+  // Three light wisps rising — fey magic drifting up
+  [-fs * 0.7, 0, fs * 0.7].forEach(wx => {
+    const wStart = -fs * 0.5;
+    ng.append("path")
+      .attr("d", `M ${wx} ${wStart} C ${wx - 1} ${wStart - 2.5}, ${wx + 1.2} ${wStart - 5}, ${wx - 0.4} ${wStart - 8}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.5)
+      .attr("stroke-linecap", "round").attr("opacity", 0.5);
+  });
+}
+
+// Warding-stone menhir — tall upright stone with three rows of angular
+// runes carved on its face. Use the node id to seed rune layout so each
+// warding stone looks slightly different but is deterministic.
+function renderWardingStone(ng, node, { ink, parchment }) {
+  const ms = 7;
+  const rng = mulberry32(seedFromString("menhir-" + (node.id || "warding")));
+  // Ground line
+  ng.append("line")
+    .attr("x1", -ms * 1.0).attr("y1", ms * 0.9).attr("x2", ms * 1.0).attr("y2", ms * 0.9)
+    .attr("stroke", ink).attr("stroke-width", 0.6).attr("opacity", 0.5);
+  // Menhir body — tall, slightly irregular standing stone
+  const topW = ms * 0.55, botW = ms * 0.75;
+  ng.append("path")
+    .attr("d", `M ${-botW/2} ${ms * 0.9}
+                L ${-topW/2 - 0.3} ${-ms * 0.8}
+                Q 0 ${-ms * 1.15} ${topW/2 + 0.3} ${-ms * 0.8}
+                L ${botW/2} ${ms * 0.9} Z`)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.9);
+  // Subtle vertical grain
+  for (let i = 0; i < 2; i++) {
+    const gx = (rng() - 0.5) * ms * 0.3;
+    ng.append("path")
+      .attr("d", `M ${gx} ${-ms * 0.7} Q ${gx + 0.4} 0 ${gx - 0.2} ${ms * 0.7}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.35).attr("opacity", 0.25);
+  }
+  // Three rows of angular runic glyphs
+  const runeRows = 3;
+  for (let r = 0; r < runeRows; r++) {
+    const ry = -ms * 0.55 + r * ms * 0.48;
+    const glyphCount = 2 + Math.floor(rng() * 2);
+    for (let gi = 0; gi < glyphCount; gi++) {
+      const gx = -ms * 0.18 + gi * ms * 0.2;
+      const shape = Math.floor(rng() * 4);
+      if (shape === 0) {
+        ng.append("path")
+          .attr("d", `M ${gx} ${ry - ms * 0.12} L ${gx} ${ry + ms * 0.12} M ${gx} ${ry} L ${gx + ms * 0.1} ${ry - ms * 0.08}`)
+          .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.55);
+      } else if (shape === 1) {
+        ng.append("path")
+          .attr("d", `M ${gx - ms * 0.08} ${ry - ms * 0.1} L ${gx + ms * 0.08} ${ry + ms * 0.1} M ${gx - ms * 0.08} ${ry + ms * 0.1} L ${gx + ms * 0.08} ${ry - ms * 0.1}`)
+          .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.55);
+      } else if (shape === 2) {
+        ng.append("path")
+          .attr("d", `M ${gx} ${ry - ms * 0.12} L ${gx} ${ry + ms * 0.12} M ${gx - ms * 0.08} ${ry + ms * 0.04} L ${gx} ${ry + ms * 0.12} L ${gx + ms * 0.08} ${ry + ms * 0.04}`)
+          .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.55);
+      } else {
+        ng.append("path")
+          .attr("d", `M ${gx} ${ry - ms * 0.12} L ${gx} ${ry + ms * 0.12} M ${gx} ${ry - ms * 0.04} L ${gx + ms * 0.08} ${ry - ms * 0.12} M ${gx} ${ry + ms * 0.04} L ${gx + ms * 0.08} ${ry + ms * 0.12}`)
+          .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.55);
+      }
+    }
+  }
+}
+
+// Barrow mound — wide dome with a dark tomb entrance, two flanking menhirs,
+// scattered bones at the mouth, a faint skull atop the mound. Use for
+// wight-barrow / cairn points.
+function renderCragCairn(ng, { ink, parchment }) {
+  const cs = 7;
+  // Mound body — a wide dome
+  ng.append("path")
+    .attr("d", `M ${-cs * 1.5} ${cs * 0.9} Q ${-cs * 1.2} ${-cs * 0.6} 0 ${-cs * 0.9} Q ${cs * 1.2} ${-cs * 0.6} ${cs * 1.5} ${cs * 0.9} Z`)
+    .attr("fill", parchment).attr("fill-opacity", 0.8)
+    .attr("stroke", ink).attr("stroke-width", 0.9);
+  // Crown of grass tick marks on the dome
+  for (let i = 0; i < 4; i++) {
+    const t = (i + 1) / 5;
+    const a = (t - 0.5) * Math.PI;
+    const r = cs * 1.15;
+    const hx0 = Math.sin(a) * r * 1.1;
+    const hy0 = -Math.cos(a) * cs * 0.8 - cs * 0.05;
+    ng.append("line")
+      .attr("x1", hx0).attr("y1", hy0).attr("x2", hx0).attr("y2", hy0 - cs * 0.18)
+      .attr("stroke", ink).attr("stroke-width", 0.45).attr("opacity", 0.55);
+  }
+  // Longitudinal curve lines across the mound for volume
+  [-0.4, 0, 0.4].forEach(off => {
+    ng.append("path")
+      .attr("d", `M ${-cs * 1.4} ${cs * 0.9 - cs * 0.2} Q 0 ${-cs * 0.75 + off * cs * 0.3} ${cs * 1.4} ${cs * 0.9 - cs * 0.2}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.25);
+  });
+  // Dark tomb entrance — arched opening at base center
+  ng.append("path")
+    .attr("d", `M ${-cs * 0.3} ${cs * 0.9} L ${-cs * 0.3} ${cs * 0.2} Q 0 ${-cs * 0.15} ${cs * 0.3} ${cs * 0.2} L ${cs * 0.3} ${cs * 0.9} Z`)
+    .attr("fill", ink).attr("opacity", 0.85);
+  // Lintel line above the entrance
+  ng.append("line")
+    .attr("x1", -cs * 0.4).attr("y1", cs * 0.2).attr("x2", cs * 0.4).attr("y2", cs * 0.2)
+    .attr("stroke", ink).attr("stroke-width", 0.7);
+  // Two standing stones flanking the mound
+  [-cs * 1.75, cs * 1.75].forEach(sx => {
+    ng.append("path")
+      .attr("d", `M ${sx - cs * 0.18} ${cs * 0.95} L ${sx - cs * 0.12} ${-cs * 0.5} Q ${sx} ${-cs * 0.75} ${sx + cs * 0.12} ${-cs * 0.5} L ${sx + cs * 0.18} ${cs * 0.95} Z`)
+      .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.8);
+  });
+  // Scattered bones at the tomb mouth
+  [{ bx: -cs * 0.65, by: cs * 1.05 }, { bx: cs * 0.55, by: cs * 1.1 }, { bx: -cs * 0.1, by: cs * 1.15 }].forEach(({ bx, by }) => {
+    ng.append("ellipse").attr("cx", bx).attr("cy", by).attr("rx", cs * 0.18).attr("ry", cs * 0.05)
+      .attr("fill", ink).attr("opacity", 0.7);
+    ng.append("circle").attr("cx", bx - cs * 0.18).attr("cy", by).attr("r", cs * 0.05).attr("fill", ink).attr("opacity", 0.7);
+    ng.append("circle").attr("cx", bx + cs * 0.18).attr("cy", by).attr("r", cs * 0.05).attr("fill", ink).attr("opacity", 0.7);
+  });
+  // Faint skull above the mound top — the wight's throne on bones
+  const skX = 0, skY = -cs * 1.15;
+  ng.append("circle").attr("cx", skX).attr("cy", skY).attr("r", cs * 0.2).attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.55).attr("opacity", 0.85);
+  ng.append("circle").attr("cx", skX - cs * 0.07).attr("cy", skY - cs * 0.02).attr("r", cs * 0.045).attr("fill", ink).attr("opacity", 0.85);
+  ng.append("circle").attr("cx", skX + cs * 0.07).attr("cy", skY - cs * 0.02).attr("r", cs * 0.045).attr("fill", ink).attr("opacity", 0.85);
+  ng.append("line").attr("x1", skX - cs * 0.05).attr("y1", skY + cs * 0.1).attr("x2", skX + cs * 0.05).attr("y2", skY + cs * 0.1)
+    .attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.7);
+}
+
+// Mistwood Glen — pocket-realm clearing with floating rune-stones above,
+// some trees normal and one inverted, plus an upward-flowing waterfall hint
+// (chevrons going up). Distinct from Fae Glade.
+function renderMistwoodGlen(ng, node, { ink, parchment }) {
+  const ms = 7;
+  const rngM = mulberry32(seedFromString("mistwood-" + (node.id || "mistwood")));
+  ng.append("ellipse")
+    .attr("cx", 0).attr("cy", ms * 0.65)
+    .attr("rx", ms * 1.5).attr("ry", ms * 0.35)
+    .attr("fill", ink).attr("opacity", 0.07);
+  const trees = [
+    { x: -ms * 1.1, y: ms * 0.35, inverted: false },
+    { x:  ms * 1.1, y: ms * 0.35, inverted: false },
+    { x: -ms * 0.55, y: -ms * 0.2, inverted: false },
+    { x:  ms * 0.55, y: -ms * 0.8, inverted: true },
+  ];
+  trees.forEach(({ x, y, inverted }) => {
+    const th = ms * 0.75;
+    const tw = ms * 0.42;
+    if (!inverted) {
+      ng.append("path")
+        .attr("d", `M ${x - tw/2} ${y} L ${x} ${y - th} L ${x + tw/2} ${y} Z`)
+        .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.65);
+      ng.append("line")
+        .attr("x1", x).attr("y1", y).attr("x2", x).attr("y2", y + ms * 0.18)
+        .attr("stroke", ink).attr("stroke-width", 0.55);
+    } else {
+      ng.append("path")
+        .attr("d", `M ${x - tw/2} ${y} L ${x} ${y + th} L ${x + tw/2} ${y} Z`)
+        .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.65);
+      ng.append("line")
+        .attr("x1", x).attr("y1", y).attr("x2", x).attr("y2", y - ms * 0.18)
+        .attr("stroke", ink).attr("stroke-width", 0.55).attr("stroke-dasharray", "1 1");
+    }
+  });
+  const stones = [
+    { x: -ms * 0.35, y: -ms * 1.3, w: ms * 0.45, h: ms * 0.3 },
+    { x:  ms * 0.3,  y: -ms * 1.55, w: ms * 0.4,  h: ms * 0.32 },
+    { x: -ms * 0.0,  y: -ms * 0.95, w: ms * 0.38, h: ms * 0.26 },
+  ];
+  stones.forEach(s => {
+    const tilt = (rngM() - 0.5) * 20;
+    const sg = ng.append("g").attr("transform", `translate(${s.x}, ${s.y}) rotate(${tilt})`);
+    sg.append("rect")
+      .attr("x", -s.w / 2).attr("y", -s.h / 2).attr("width", s.w).attr("height", s.h)
+      .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.65);
+    sg.append("line").attr("x1", -s.w * 0.15).attr("y1", -s.h * 0.22).attr("x2", -s.w * 0.15).attr("y2", s.h * 0.22)
+      .attr("stroke", ink).attr("stroke-width", 0.45);
+    sg.append("line").attr("x1", -s.w * 0.15).attr("y1", 0).attr("x2", s.w * 0.05).attr("y2", -s.h * 0.2)
+      .attr("stroke", ink).attr("stroke-width", 0.45);
+    sg.append("line").attr("x1", s.w * 0.2).attr("y1", -s.h * 0.2).attr("x2", s.w * 0.2).attr("y2", s.h * 0.2)
+      .attr("stroke", ink).attr("stroke-width", 0.45);
+    for (let di = 0; di < 2; di++) {
+      sg.append("circle").attr("cx", (di - 0.5) * s.w * 0.3).attr("cy", s.h * 0.6 + di * 1.2)
+        .attr("r", 0.3).attr("fill", ink).attr("opacity", 0.45);
+    }
+  });
+  [0, 1, 2].forEach(i => {
+    const wy = ms * 0.4 - i * ms * 0.35;
+    ng.append("path")
+      .attr("d", `M ${-ms * 0.12} ${wy} L 0 ${wy - ms * 0.12} L ${ms * 0.12} ${wy}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.5).attr("opacity", 0.55);
+  });
+}
+
+// Mud Wallow — steaming sulfur hot spring. Pool shape + ripples + bubbles
+// + steam wisps. Seeded so bubble placement is stable per node.
+function renderMudWallow(ng, node, { ink, parchment }) {
+  const ms = 7;
+  const rng = mulberry32(seedFromString("mudpool-" + (node.id || "pool")));
+  // Wet ground halo
+  ng.append("ellipse")
+    .attr("cx", 0).attr("cy", ms * 0.15)
+    .attr("rx", ms * 1.45).attr("ry", ms * 0.65)
+    .attr("fill", ink).attr("opacity", 0.08);
+  // Pool body
+  ng.append("ellipse")
+    .attr("cx", 0).attr("cy", ms * 0.2)
+    .attr("rx", ms * 1.1).attr("ry", ms * 0.5)
+    .attr("fill", ink).attr("opacity", 0.22)
+    .attr("stroke", ink).attr("stroke-width", 0.6);
+  [-ms * 0.25, ms * 0.05, ms * 0.35].forEach(ry => {
+    ng.append("path")
+      .attr("d", `M ${-ms * 0.75} ${ms * 0.2 + ry * 0.3} q ${ms * 0.3} ${-ms * 0.05} ${ms * 0.5} 0 t ${ms * 0.5} 0 t ${ms * 0.5} 0`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.55);
+  });
+  for (let i = 0; i < 6; i++) {
+    const bx = (rng() - 0.5) * ms * 1.8;
+    const by = ms * 0.05 + rng() * ms * 0.35;
+    const br = 0.35 + rng() * 0.5;
+    ng.append("circle")
+      .attr("cx", bx).attr("cy", by).attr("r", br)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.6);
+  }
+  [-ms * 0.6, 0, ms * 0.6].forEach(sx => {
+    ng.append("path")
+      .attr("d", `M ${sx} ${-ms * 0.1} C ${sx - 1.5} ${-ms * 0.55}, ${sx + 2} ${-ms * 1.0}, ${sx - 0.5} ${-ms * 1.5}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.5)
+      .attr("stroke-linecap", "round").attr("opacity", 0.5);
+  });
+}
+
+// Kobold Crevasse — dark jagged crack in the ground with three tiny trees
+// at the rim (mystic ring) and two little dog-kobold figures at the surface.
+function renderKoboldCrevasse(ng, { ink, parchment }) {
+  const ks = 7;
+  // Ground crack — dark jagged wedge
+  ng.append("path")
+    .attr("d", `M ${-ks * 0.7} ${ks * 0.2} L ${-ks * 0.3} ${-ks * 0.1} L ${-ks * 0.1} ${ks * 0.3} L ${ks * 0.2} ${-ks * 0.15} L ${ks * 0.5} ${ks * 0.25} L ${ks * 0.8} ${-ks * 0.05} L ${ks * 0.6} ${ks * 0.7} L ${-ks * 0.5} ${ks * 0.8} Z`)
+    .attr("fill", ink).attr("opacity", 0.88);
+  // Crack edge ridges
+  ng.append("path")
+    .attr("d", `M ${-ks * 0.8} ${ks * 0.2} L ${-ks * 0.55} ${-ks * 0.05}`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.6).attr("opacity", 0.5);
+  ng.append("path")
+    .attr("d", `M ${ks * 0.85} ${-ks * 0.02} L ${ks * 0.7} ${ks * 0.5}`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.6).attr("opacity", 0.5);
+  // Three trees at the rim
+  [{ x: -ks * 1.1, y: ks * 0.45 }, { x: ks * 1.1, y: ks * 0.2 }, { x: 0, y: -ks * 0.7 }].forEach(({ x, y }) => {
+    ng.append("path")
+      .attr("d", `M ${x - ks * 0.15} ${y} L ${x} ${y - ks * 0.4} L ${x + ks * 0.15} ${y} Z`)
+      .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.55);
+    ng.append("line")
+      .attr("x1", x).attr("y1", y).attr("x2", x).attr("y2", y + ks * 0.1)
+      .attr("stroke", ink).attr("stroke-width", 0.45);
+  });
+  // Two dog-kobolds at the surface
+  [{ x: -ks * 0.85, y: ks * 0.9, face: 1 },
+   { x:  ks * 0.55, y: ks * 1.05, face: -1 }].forEach(({ x, y, face }) => {
+    const kh = ks * 0.35;
+    ng.append("ellipse")
+      .attr("cx", x).attr("cy", y).attr("rx", kh * 0.55).attr("ry", kh * 0.35)
+      .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.55);
+    const headX = x + face * kh * 0.5;
+    const headY = y - kh * 0.2;
+    ng.append("path")
+      .attr("d", `M ${headX - face * kh * 0.2} ${headY}
+                  Q ${headX} ${headY - kh * 0.35} ${headX + face * kh * 0.25} ${headY - kh * 0.1}
+                  L ${headX + face * kh * 0.45} ${headY}
+                  L ${headX + face * kh * 0.25} ${headY + kh * 0.1} Z`)
+      .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.5);
+    ng.append("path")
+      .attr("d", `M ${headX - face * kh * 0.05} ${headY - kh * 0.3} L ${headX + face * kh * 0.05} ${headY - kh * 0.55} L ${headX + face * kh * 0.15} ${headY - kh * 0.28} Z`)
+      .attr("fill", ink).attr("opacity", 0.85);
+    ng.append("circle").attr("cx", headX + face * kh * 0.12).attr("cy", headY - kh * 0.18).attr("r", 0.4).attr("fill", ink);
+    for (let i = 0; i < 4; i++) {
+      const lx = x - kh * 0.4 + i * kh * 0.25;
+      ng.append("line")
+        .attr("x1", lx).attr("y1", y + kh * 0.25).attr("x2", lx).attr("y2", y + kh * 0.55)
+        .attr("stroke", ink).attr("stroke-width", 0.5);
+    }
+    const tailX = x - face * kh * 0.55;
+    ng.append("path")
+      .attr("d", `M ${tailX} ${y - kh * 0.05} q ${-face * kh * 0.2} ${-kh * 0.2} ${-face * kh * 0.05} ${-kh * 0.3}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.5);
+  });
+}
+
+// Pjörk Choppe Hille — simple horseshoe of five rounded hills opening east,
+// with one small cave mouth and a tiny orcish banner in the middle. Simple
+// shorthand for the Caves-of-Chaos valley.
+function renderPorcHills(ng, { ink, parchment }) {
+  const ps = 8;
+  const hills = [
+    { x: -ps * 0.55, y: -ps * 0.9 },
+    { x: -ps * 1.25, y: -ps * 0.55 },
+    { x: -ps * 1.45, y:  ps * 0.0 },
+    { x: -ps * 1.25, y:  ps * 0.55 },
+    { x: -ps * 0.55, y:  ps * 0.9 },
+  ];
+  hills.forEach(({ x, y }, i) => {
+    const hw = ps * (0.8 + (i % 2) * 0.1);
+    const hh = ps * 0.45;
+    ng.append("path")
+      .attr("d", `M ${x - hw / 2} ${y} Q ${x - hw / 4} ${y - hh} ${x} ${y - hh} Q ${x + hw / 4} ${y - hh} ${x + hw / 2} ${y} Z`)
+      .attr("fill", parchment).attr("fill-opacity", 0.6)
+      .attr("stroke", ink).attr("stroke-width", 0.8);
+    for (let r = 0; r < 2; r++) {
+      const t = (r + 1) / 3;
+      ng.append("path")
+        .attr("d", `M ${x - hw * 0.28 + t * hw * 0.12} ${y - hh * (0.5 + t * 0.25)} q ${hw * 0.18} ${-1} ${hw * 0.25} 0`)
+        .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.45).attr("opacity", 0.45);
+    }
+  });
+  // One small cave mouth tucked into the innermost hill
+  const cX = -ps * 0.75, cY = ps * 0.05;
+  ng.append("path")
+    .attr("d", `M ${cX - ps * 0.2} ${cY + ps * 0.12}
+                L ${cX - ps * 0.2} ${cY - ps * 0.06}
+                Q ${cX} ${cY - ps * 0.22} ${cX + ps * 0.2} ${cY - ps * 0.06}
+                L ${cX + ps * 0.2} ${cY + ps * 0.12} Z`)
+    .attr("fill", ink).attr("opacity", 0.85);
+  // Tiny orcish banner inside the horseshoe
+  const bX = -ps * 0.3, bY = ps * 0.25;
+  ng.append("line")
+    .attr("x1", bX).attr("y1", bY).attr("x2", bX).attr("y2", bY - ps * 0.45)
+    .attr("stroke", ink).attr("stroke-width", 0.55);
+  ng.append("path")
+    .attr("d", `M ${bX} ${bY - ps * 0.4} L ${bX + ps * 0.22} ${bY - ps * 0.32} L ${bX + ps * 0.15} ${bY - ps * 0.2} L ${bX} ${bY - ps * 0.24} Z`)
+    .attr("fill", ink).attr("opacity", 0.75);
+}
+
+// Basilisk Spiderwood — a spider's web between three dark bent-over trees,
+// with the basilisk lying coiled at the base. The campaign's namesake lair,
+// so it gets a distinct silhouette rather than the generic cave mouth.
+function renderBasiliskSpiderwood(ng, { ink, parchment }) {
+  const bs = 7;
+  // Three hunched dead-looking trees forming a triangle around the web
+  [{ x: -bs * 1.2, y: -bs * 0.2 }, { x: bs * 1.2, y: -bs * 0.2 }, { x: 0, y: -bs * 1.0 }].forEach(({ x, y }) => {
+    // Leaning trunk
+    const lean = x === 0 ? 0 : (x > 0 ? -0.2 : 0.2);
+    ng.append("line")
+      .attr("x1", x).attr("y1", y).attr("x2", x + lean * bs).attr("y2", y - bs * 0.8)
+      .attr("stroke", ink).attr("stroke-width", 0.9);
+    // A couple of bare bent branches
+    ng.append("line")
+      .attr("x1", x + lean * bs * 0.5).attr("y1", y - bs * 0.4)
+      .attr("x2", x + lean * bs * 0.8 + bs * 0.18).attr("y2", y - bs * 0.55)
+      .attr("stroke", ink).attr("stroke-width", 0.55);
+    ng.append("line")
+      .attr("x1", x + lean * bs * 0.5).attr("y1", y - bs * 0.55)
+      .attr("x2", x + lean * bs * 0.8 - bs * 0.18).attr("y2", y - bs * 0.65)
+      .attr("stroke", ink).attr("stroke-width", 0.55);
+  });
+  // Spider web strung between the three trees — radial lines + concentric arcs
+  const webCx = 0, webCy = -bs * 0.55;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const r = bs * 0.65;
+    ng.append("line")
+      .attr("x1", webCx).attr("y1", webCy)
+      .attr("x2", webCx + Math.cos(a) * r).attr("y2", webCy + Math.sin(a) * r)
+      .attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.7);
+  }
+  for (let ring = 1; ring <= 3; ring++) {
+    const r = bs * 0.2 * ring;
+    ng.append("circle")
+      .attr("cx", webCx).attr("cy", webCy).attr("r", r)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.6);
+  }
+  // Tiny spider on the web
+  ng.append("circle").attr("cx", webCx + bs * 0.15).attr("cy", webCy - bs * 0.08).attr("r", 0.8)
+    .attr("fill", ink);
+  for (let li = 0; li < 4; li++) {
+    const la = (li / 4) * Math.PI * 2 + Math.PI / 4;
+    ng.append("line")
+      .attr("x1", webCx + bs * 0.15).attr("y1", webCy - bs * 0.08)
+      .attr("x2", webCx + bs * 0.15 + Math.cos(la) * 1.5).attr("y2", webCy - bs * 0.08 + Math.sin(la) * 1.5)
+      .attr("stroke", ink).attr("stroke-width", 0.4);
+  }
+  // Basilisk coiled at the base — serpentine S with a head
+  ng.append("path")
+    .attr("d", `M ${-bs * 0.9} ${bs * 0.9}
+                Q ${-bs * 0.3} ${bs * 0.55} 0 ${bs * 0.85}
+                Q ${bs * 0.3} ${bs * 1.15} ${bs * 0.8} ${bs * 0.85}
+                Q ${bs * 1.05} ${bs * 0.7} ${bs * 1.0} ${bs * 0.45}`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 1.0)
+    .attr("stroke-linecap", "round");
+  // Little head with beady eye
+  ng.append("circle").attr("cx", bs * 1.0).attr("cy", bs * 0.45).attr("r", bs * 0.1)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.55);
+  ng.append("circle").attr("cx", bs * 1.02).attr("cy", bs * 0.42).attr("r", 0.6)
+    .attr("fill", ink);
+  // Tiny forked tongue
+  ng.append("line").attr("x1", bs * 1.1).attr("y1", bs * 0.48)
+    .attr("x2", bs * 1.25).attr("y2", bs * 0.42)
+    .attr("stroke", ink).attr("stroke-width", 0.4);
+  ng.append("line").attr("x1", bs * 1.1).attr("y1", bs * 0.48)
+    .attr("x2", bs * 1.25).attr("y2", bs * 0.55)
+    .attr("stroke", ink).attr("stroke-width", 0.4);
+}
+
+// Graveyard — a small field of tombstones with a faint wrought-iron fence
+// line behind, matching the hand-drawn "graves" marker near the Old Wood.
+function renderGraveyard(ng, { ink, parchment }) {
+  const gs = 7;
+  // Faint ground halo
+  ng.append("ellipse")
+    .attr("cx", 0).attr("cy", gs * 0.4)
+    .attr("rx", gs * 1.4).attr("ry", gs * 0.4)
+    .attr("fill", ink).attr("opacity", 0.06);
+  // Six tombstones in two rows — mix of rounded-arch and cross styles
+  const stones = [
+    { x: -gs * 1.0, y: gs * 0.3, style: "arch" },
+    { x: -gs * 0.4, y: gs * 0.25, style: "cross" },
+    { x:  gs * 0.2, y: gs * 0.32, style: "arch" },
+    { x:  gs * 0.85, y: gs * 0.28, style: "cross" },
+    { x: -gs * 0.75, y: -gs * 0.15, style: "cross" },
+    { x:  gs * 0.55, y: -gs * 0.12, style: "arch" },
+  ];
+  stones.forEach(({ x, y, style }) => {
+    if (style === "arch") {
+      // Rounded-top tombstone
+      ng.append("path")
+        .attr("d", `M ${x - gs * 0.22} ${y + gs * 0.3}
+                    L ${x - gs * 0.22} ${y - gs * 0.15}
+                    Q ${x} ${y - gs * 0.38} ${x + gs * 0.22} ${y - gs * 0.15}
+                    L ${x + gs * 0.22} ${y + gs * 0.3} Z`)
+        .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.7);
+      // Small inscription line
+      ng.append("line")
+        .attr("x1", x - gs * 0.12).attr("y1", y + gs * 0.05)
+        .attr("x2", x + gs * 0.12).attr("y2", y + gs * 0.05)
+        .attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.6);
+    } else {
+      // Cross
+      ng.append("line").attr("x1", x).attr("y1", y - gs * 0.32).attr("x2", x).attr("y2", y + gs * 0.3)
+        .attr("stroke", ink).attr("stroke-width", 0.85);
+      ng.append("line").attr("x1", x - gs * 0.16).attr("y1", y - gs * 0.1).attr("x2", x + gs * 0.16).attr("y2", y - gs * 0.1)
+        .attr("stroke", ink).attr("stroke-width", 0.85);
+    }
+    // Small burial-mound indication — short ground line at base
+    ng.append("line")
+      .attr("x1", x - gs * 0.22).attr("y1", y + gs * 0.32)
+      .attr("x2", x + gs * 0.22).attr("y2", y + gs * 0.32)
+      .attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.45);
+  });
+  // Faint iron-fence line behind the stones
+  for (let fi = 0; fi < 10; fi++) {
+    const fx = -gs * 1.4 + fi * gs * 0.3;
+    ng.append("line")
+      .attr("x1", fx).attr("y1", -gs * 0.6).attr("x2", fx).attr("y2", -gs * 0.4)
+      .attr("stroke", ink).attr("stroke-width", 0.35).attr("opacity", 0.45);
+  }
+  ng.append("line")
+    .attr("x1", -gs * 1.4).attr("y1", -gs * 0.58).attr("x2", gs * 1.4).attr("y2", -gs * 0.58)
+    .attr("stroke", ink).attr("stroke-width", 0.35).attr("opacity", 0.45);
+}
+
+// Tower of the Stargazer — tall cylindrical tower with no windows, crowned
+// by a layered metal dome like a globe ringed with spikes, with four ground
+// spikes leaning inward and lightning bolts striking constantly.
+function renderStargazerTower(ng, { ink, parchment }) {
+  const ts = 7;
+  // Faint ground halo (blasted lunar ground)
+  ng.append("ellipse")
+    .attr("cx", 0).attr("cy", ts * 1.0)
+    .attr("rx", ts * 1.6).attr("ry", ts * 0.3)
+    .attr("fill", ink).attr("opacity", 0.1);
+  // Four ground spikes leaning inward
+  [{ x: -ts * 1.3, y: ts * 1.05, tip: { x: -ts * 0.45, y: ts * 0.35 } },
+   { x:  ts * 1.3, y: ts * 1.05, tip: { x:  ts * 0.45, y: ts * 0.35 } },
+   { x: -ts * 1.4, y: ts * 0.6,  tip: { x: -ts * 0.55, y: ts * 0.0 } },
+   { x:  ts * 1.4, y: ts * 0.6,  tip: { x:  ts * 0.55, y: ts * 0.0 } }].forEach(({ x, y, tip }) => {
+    ng.append("path")
+      .attr("d", `M ${x - 0.8} ${y} L ${tip.x} ${tip.y} L ${x + 0.8} ${y} Z`)
+      .attr("fill", ink).attr("opacity", 0.75);
+  });
+  // Tower body — tall narrow cylinder, no windows
+  const tw = ts * 0.55;
+  const th = ts * 2.0;
+  ng.append("rect")
+    .attr("x", -tw / 2).attr("y", -ts * 1.0).attr("width", tw).attr("height", th)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 1.0);
+  // Two vertical grooves on the tower (give it some volume)
+  [-0.15, 0.15].forEach(off => {
+    ng.append("line")
+      .attr("x1", tw * off).attr("y1", -ts * 0.95)
+      .attr("x2", tw * off).attr("y2", ts * 0.95)
+      .attr("stroke", ink).attr("stroke-width", 0.35).attr("opacity", 0.35);
+  });
+  // Layered metal dome atop the tower — a globe
+  const domeY = -ts * 1.0;
+  ng.append("ellipse")
+    .attr("cx", 0).attr("cy", domeY - ts * 0.3)
+    .attr("rx", ts * 0.55).attr("ry", ts * 0.35)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.85);
+  // Layered bands across the dome
+  [-0.1, 0.1].forEach(yo => {
+    ng.append("path")
+      .attr("d", `M ${-ts * 0.5} ${domeY - ts * 0.3 + ts * yo}
+                  Q 0 ${domeY - ts * 0.4 + ts * yo} ${ts * 0.5} ${domeY - ts * 0.3 + ts * yo}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.45).attr("opacity", 0.55);
+  });
+  // Spikes radiating from the dome
+  [-60, -30, 0, 30, 60].forEach(deg => {
+    const rad = deg * Math.PI / 180;
+    const sx1 = Math.sin(rad) * ts * 0.48;
+    const sy1 = -Math.cos(rad) * ts * 0.32 + (domeY - ts * 0.3);
+    const sx2 = Math.sin(rad) * ts * 0.72;
+    const sy2 = -Math.cos(rad) * ts * 0.55 + (domeY - ts * 0.3);
+    ng.append("line")
+      .attr("x1", sx1).attr("y1", sy1).attr("x2", sx2).attr("y2", sy2)
+      .attr("stroke", ink).attr("stroke-width", 0.7);
+  });
+  // Two lightning bolts striking the dome — jagged zigzag
+  [-1, 1].forEach(dir => {
+    const bx0 = dir * ts * 1.0, by0 = -ts * 2.3;
+    const bx1 = dir * ts * 0.75, by1 = -ts * 2.0;
+    const bx2 = dir * ts * 0.85, by2 = -ts * 1.75;
+    const bx3 = dir * ts * 0.55, by3 = -ts * 1.5;
+    const bx4 = dir * ts * 0.3, by4 = -ts * 1.35;
+    ng.append("path")
+      .attr("d", `M ${bx0} ${by0} L ${bx1} ${by1} L ${bx2} ${by2} L ${bx3} ${by3} L ${bx4} ${by4}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.85).attr("opacity", 0.8)
+      .attr("stroke-linecap", "round").attr("stroke-linejoin", "round");
+  });
+  // Tiny arrow-slit door at the base
+  ng.append("rect")
+    .attr("x", -0.8).attr("y", ts * 0.55)
+    .attr("width", 1.6).attr("height", ts * 0.4)
+    .attr("fill", ink);
+}
+
+// Raven's Perch — an abandoned watchtower with a broken top and a raven
+// perched on the crenellations. A silhouette in the Old Forest.
+function renderRavensPerch(ng, { ink, parchment }) {
+  const rs = 7;
+  // Ground line
+  ng.append("line")
+    .attr("x1", -rs * 0.8).attr("y1", rs * 1.0).attr("x2", rs * 0.8).attr("y2", rs * 1.0)
+    .attr("stroke", ink).attr("stroke-width", 0.5).attr("opacity", 0.5);
+  // Tower body with a broken jagged top — parchment-filled outline
+  const tw = rs * 0.7;
+  ng.append("path")
+    .attr("d", `M ${-tw / 2} ${rs * 1.0}
+                L ${-tw / 2} ${-rs * 0.8}
+                L ${-tw / 2 + tw * 0.2} ${-rs * 1.05}
+                L ${-tw / 2 + tw * 0.35} ${-rs * 0.75}
+                L ${-tw / 2 + tw * 0.55} ${-rs * 1.15}
+                L ${-tw / 2 + tw * 0.7} ${-rs * 0.7}
+                L ${tw / 2} ${-rs * 0.9}
+                L ${tw / 2} ${rs * 1.0} Z`)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.85);
+  // Narrow arrow-slit window in the middle of the tower
+  ng.append("rect")
+    .attr("x", -0.3).attr("y", -rs * 0.25).attr("width", 0.6).attr("height", rs * 0.5)
+    .attr("fill", ink).attr("opacity", 0.85);
+  // Doorway at base (solid dark rectangle)
+  ng.append("rect")
+    .attr("x", -rs * 0.15).attr("y", rs * 0.55).attr("width", rs * 0.3).attr("height", rs * 0.45)
+    .attr("fill", ink).attr("opacity", 0.85);
+  // A few climbing-ivy strokes up the tower
+  [rs * 0.2, -rs * 0.1, rs * 0.05].forEach((y, i) => {
+    const dx = (i % 2 === 0 ? -1 : 1) * tw * 0.3;
+    ng.append("path")
+      .attr("d", `M ${dx} ${y} q ${-dx * 0.4} ${-rs * 0.15} ${-dx * 0.2} ${-rs * 0.3}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.35).attr("opacity", 0.55);
+  });
+  // Raven perched on the broken top — tiny silhouette
+  const birdX = -tw / 2 + tw * 0.55;
+  const birdY = -rs * 1.2;
+  // Body
+  ng.append("ellipse")
+    .attr("cx", birdX).attr("cy", birdY).attr("rx", 1.6).attr("ry", 1.0)
+    .attr("fill", ink);
+  // Head
+  ng.append("circle").attr("cx", birdX + 1.4).attr("cy", birdY - 0.6).attr("r", 0.9)
+    .attr("fill", ink);
+  // Beak
+  ng.append("path")
+    .attr("d", `M ${birdX + 2.1} ${birdY - 0.6} L ${birdX + 3.0} ${birdY - 0.3} L ${birdX + 2.1} ${birdY - 0.3} Z`)
+    .attr("fill", ink);
+  // Eye dot (as parchment cutout)
+  ng.append("circle").attr("cx", birdX + 1.55).attr("cy", birdY - 0.7).attr("r", 0.18)
+    .attr("fill", parchment);
+  // Tail feathers
+  ng.append("path")
+    .attr("d", `M ${birdX - 1.6} ${birdY} L ${birdX - 2.4} ${birdY + 0.4} L ${birdX - 1.5} ${birdY + 0.6} Z`)
+    .attr("fill", ink);
+  // A second raven in flight above, smaller
+  const fx = rs * 0.6, fy = -rs * 1.65;
+  ng.append("path")
+    .attr("d", `M ${fx - 1.3} ${fy} q 0.6 -0.7 1.3 0 q 0.7 -0.7 1.3 0`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.55).attr("stroke-linecap", "round");
+}
+
+// Hangman Hill — bandit camp with a visible gallows (hence the name), two
+// tents, and the dark obsidian spire at the quarry's center.
+function renderHangmanHill(ng, { ink, parchment }) {
+  const hs = 7;
+  // Ground line
+  ng.append("line")
+    .attr("x1", -hs * 1.3).attr("y1", hs * 0.95).attr("x2", hs * 1.3).attr("y2", hs * 0.95)
+    .attr("stroke", ink).attr("stroke-width", 0.5).attr("opacity", 0.5);
+  // Dark obsidian spire — tall pointed triangle in the back-center
+  ng.append("path")
+    .attr("d", `M ${-hs * 0.2} ${hs * 0.95}
+                L ${-hs * 0.05} ${-hs * 1.2}
+                L ${hs * 0.2} ${hs * 0.95} Z`)
+    .attr("fill", ink).attr("opacity", 0.82);
+  // Serpent-mark scratch on the spire face
+  ng.append("path")
+    .attr("d", `M ${-hs * 0.02} ${-hs * 0.3} q ${hs * 0.08} ${-hs * 0.15} ${hs * 0.02} ${-hs * 0.3}
+                q ${-hs * 0.1} ${-hs * 0.15} ${hs * 0.02} ${-hs * 0.3}`)
+    .attr("fill", "none").attr("stroke", parchment).attr("stroke-width", 0.4).attr("opacity", 0.85);
+  // Gallows — left of the spire, T-shape with a noose dangling
+  const gX = -hs * 0.9, gBaseY = hs * 0.95;
+  const gTopY = -hs * 0.4;
+  // Vertical post
+  ng.append("line")
+    .attr("x1", gX).attr("y1", gBaseY).attr("x2", gX).attr("y2", gTopY)
+    .attr("stroke", ink).attr("stroke-width", 0.85);
+  // Horizontal arm (projects to the right, away from the post)
+  const armEndX = gX + hs * 0.55;
+  ng.append("line")
+    .attr("x1", gX).attr("y1", gTopY).attr("x2", armEndX).attr("y2", gTopY)
+    .attr("stroke", ink).attr("stroke-width", 0.85);
+  // Brace (diagonal support between post and arm)
+  ng.append("line")
+    .attr("x1", gX).attr("y1", gTopY + hs * 0.18).attr("x2", gX + hs * 0.18).attr("y2", gTopY)
+    .attr("stroke", ink).attr("stroke-width", 0.55);
+  // Rope dropping from the arm end — a thin line terminating in a noose loop
+  const ropeY = gTopY + hs * 0.45;
+  ng.append("line")
+    .attr("x1", armEndX).attr("y1", gTopY).attr("x2", armEndX).attr("y2", ropeY)
+    .attr("stroke", ink).attr("stroke-width", 0.55);
+  // Noose loop (small circle)
+  ng.append("circle")
+    .attr("cx", armEndX).attr("cy", ropeY + hs * 0.08).attr("r", hs * 0.08)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.55);
+  // Two small tent silhouettes on the right
+  [{ x: hs * 0.65, w: hs * 0.45 }, { x: hs * 1.15, w: hs * 0.35 }].forEach(({ x, w }) => {
+    ng.append("path")
+      .attr("d", `M ${x - w / 2} ${hs * 0.95} L ${x} ${hs * 0.35} L ${x + w / 2} ${hs * 0.95} Z`)
+      .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.65);
+    // Vertical center line (tent pole shadow)
+    ng.append("line")
+      .attr("x1", x).attr("y1", hs * 0.35).attr("x2", x).attr("y2", hs * 0.95)
+      .attr("stroke", ink).attr("stroke-width", 0.35).attr("opacity", 0.5);
+    // Tent flap opening
+    ng.append("path")
+      .attr("d", `M ${x - w * 0.15} ${hs * 0.95} L ${x} ${hs * 0.6} L ${x + w * 0.15} ${hs * 0.95}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.45).attr("opacity", 0.7);
+  });
+  // Tiny campfire between the gallows and tents — Y-shaped sticks + flame
+  const cfx = 0, cfy = hs * 0.8;
+  [-hs * 0.08, 0, hs * 0.08].forEach(d => {
+    ng.append("line")
+      .attr("x1", cfx + d).attr("y1", hs * 0.95).attr("x2", cfx + d * 2).attr("y2", cfy)
+      .attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.7);
+  });
+  // Small flame tick above
+  ng.append("path")
+    .attr("d", `M ${cfx - hs * 0.08} ${cfy} q ${hs * 0.04} ${-hs * 0.12} ${hs * 0.08} 0 q ${hs * 0.04} ${-hs * 0.08} ${hs * 0.04} ${-hs * 0.18}`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.55);
+}
+
+// The Swamp — flooded wetlands with reeds, wavy water, a small hermit hut
+// on stilts, and a lizardman snout peeking out. A few tiny strange-light
+// dots echo the "pulsing deep lights" of the lore.
+function renderSwampWetlands(ng, { ink, parchment }) {
+  const ss = 7;
+  // Water pool base — wavy fill
+  ng.append("ellipse")
+    .attr("cx", 0).attr("cy", ss * 0.35)
+    .attr("rx", ss * 1.6).attr("ry", ss * 0.75)
+    .attr("fill", ink).attr("opacity", 0.12);
+  // Wavy water lines across the surface
+  [-ss * 0.2, ss * 0.15, ss * 0.5, ss * 0.8].forEach((wy, i) => {
+    const xoff = (i % 2) * ss * 0.1;
+    ng.append("path")
+      .attr("d", `M ${-ss * 1.3 + xoff} ${wy}
+                  q ${ss * 0.25} ${-ss * 0.08} ${ss * 0.5} 0
+                  t ${ss * 0.5} 0
+                  t ${ss * 0.5} 0`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.5).attr("opacity", 0.65);
+  });
+  // Clusters of reeds/cattails — thin vertical lines with seed heads
+  [-ss * 1.1, -ss * 0.7, ss * 0.85, ss * 1.15].forEach(rx => {
+    // A cluster of 3-4 reeds
+    [-0.1, 0.0, 0.1].forEach((off, i) => {
+      const ry = i === 1 ? -ss * 0.35 : -ss * 0.25;
+      ng.append("line")
+        .attr("x1", rx + off * ss).attr("y1", ss * 0.3)
+        .attr("x2", rx + off * ss).attr("y2", ry)
+        .attr("stroke", ink).attr("stroke-width", 0.55).attr("opacity", 0.85);
+      // Tiny seed-head ellipse at the tip
+      ng.append("ellipse")
+        .attr("cx", rx + off * ss).attr("cy", ry - 0.5).attr("rx", 0.6).attr("ry", 1.3)
+        .attr("fill", ink).attr("opacity", 0.8);
+    });
+  });
+  // Hermit hut on stilts — small square with peaked roof
+  const huX = 0, huY = -ss * 0.1;
+  const huW = ss * 0.55;
+  const huH = ss * 0.4;
+  // Stilts
+  [-huW * 0.3, huW * 0.3].forEach(sx => {
+    ng.append("line")
+      .attr("x1", huX + sx).attr("y1", huY + huH * 0.5)
+      .attr("x2", huX + sx).attr("y2", ss * 0.5)
+      .attr("stroke", ink).attr("stroke-width", 0.55);
+  });
+  // Hut body
+  ng.append("rect")
+    .attr("x", huX - huW / 2).attr("y", huY - huH * 0.2)
+    .attr("width", huW).attr("height", huH)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.75);
+  // Peaked thatched roof
+  ng.append("path")
+    .attr("d", `M ${huX - huW / 2 - 0.5} ${huY - huH * 0.2}
+                L ${huX} ${huY - huH * 0.9}
+                L ${huX + huW / 2 + 0.5} ${huY - huH * 0.2} Z`)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.75);
+  // Small dark doorway
+  ng.append("rect")
+    .attr("x", huX - 0.6).attr("y", huY + huH * 0.05)
+    .attr("width", 1.2).attr("height", huH * 0.25)
+    .attr("fill", ink);
+  // A curl of smoke above the roof
+  ng.append("path")
+    .attr("d", `M ${huX + huW * 0.1} ${huY - huH * 0.9}
+                C ${huX - 1.2} ${huY - huH * 1.3},
+                  ${huX + 1.5} ${huY - huH * 1.7},
+                  ${huX - 0.3} ${huY - huH * 2.2}`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.45)
+    .attr("stroke-linecap", "round").attr("opacity", 0.5);
+  // Lizardman snout peeking out of the water — small triangular ridge with eye
+  const lzX = -ss * 0.45, lzY = ss * 0.55;
+  ng.append("path")
+    .attr("d", `M ${lzX - 1.2} ${lzY} L ${lzX} ${lzY - 0.9} L ${lzX + 1.2} ${lzY} Z`)
+    .attr("fill", ink).attr("opacity", 0.85);
+  // Scales tick behind the snout
+  [0.6, 1.0, 1.4].forEach(dx => {
+    ng.append("path")
+      .attr("d", `M ${lzX - dx} ${lzY - 0.15} q 0.25 -0.25 0.5 0`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.65);
+  });
+  // Tiny eye
+  ng.append("circle").attr("cx", lzX - 0.3).attr("cy", lzY - 0.35).attr("r", 0.25)
+    .attr("fill", parchment);
+  // Three tiny pulsing-light dots in the deep
+  [{ x: ss * 0.55, y: ss * 0.75 }, { x: ss * 0.85, y: ss * 0.55 }, { x: ss * 0.3, y: ss * 0.9 }].forEach(({ x, y }) => {
+    ng.append("circle").attr("cx", x).attr("cy", y).attr("r", 0.55)
+      .attr("fill", ink).attr("opacity", 0.6);
+    ng.append("circle").attr("cx", x).attr("cy", y).attr("r", 1.2)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.3).attr("opacity", 0.35);
+  });
+}
+
+// Vault of First Light — ancient dwarven dungeon with a carved stone
+// archway gate set into mountains, flanked by two angular pillars, runes
+// above the arch, and a candle-flame at the threshold (the eternal candle).
+function renderVaultOfFirstLight(ng, { ink, parchment }) {
+  const vs = 7;
+  // Mountain peaks flanking the vault
+  [-1, 1].forEach(dir => {
+    ng.append("path")
+      .attr("d", `M ${dir * vs * 1.6} ${vs * 0.95}
+                  L ${dir * vs * 1.1} ${-vs * 0.3}
+                  L ${dir * vs * 0.8} ${-vs * 0.05}
+                  L ${dir * vs * 0.5} ${vs * 0.95} Z`)
+      .attr("fill", ink).attr("opacity", 0.18)
+      .attr("stroke", ink).attr("stroke-width", 0.7);
+    // Snow-line stroke near the peak
+    ng.append("path")
+      .attr("d", `M ${dir * vs * 0.85} ${-vs * 0.18} L ${dir * vs * 1.05} ${-vs * 0.3} L ${dir * vs * 1.05} ${-vs * 0.08}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.45).attr("opacity", 0.5);
+  });
+  // Dwarven archway frame
+  const arX = 0, arBaseY = vs * 0.95, arTopY = -vs * 0.6;
+  const arW = vs * 0.95;
+  ng.append("path")
+    .attr("d", `M ${arX - arW} ${arBaseY}
+                L ${arX - arW} ${arTopY - vs * 0.2}
+                L ${arX - arW - vs * 0.12} ${arTopY - vs * 0.2}
+                L ${arX - arW - vs * 0.12} ${arBaseY + vs * 0.1}
+                L ${arX + arW + vs * 0.12} ${arBaseY + vs * 0.1}
+                L ${arX + arW + vs * 0.12} ${arTopY - vs * 0.2}
+                L ${arX + arW} ${arTopY - vs * 0.2}
+                L ${arX + arW} ${arBaseY}
+                Z`)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.9);
+  // Lintel block
+  ng.append("rect")
+    .attr("x", arX - arW - vs * 0.2).attr("y", arTopY - vs * 0.35)
+    .attr("width", (arW + vs * 0.2) * 2).attr("height", vs * 0.25)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.9);
+  // Dwarven trapezoidal cap
+  ng.append("path")
+    .attr("d", `M ${arX - arW - vs * 0.08} ${arTopY - vs * 0.35}
+                L ${arX - arW * 0.7} ${arTopY - vs * 0.58}
+                L ${arX + arW * 0.7} ${arTopY - vs * 0.58}
+                L ${arX + arW + vs * 0.08} ${arTopY - vs * 0.35} Z`)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.9);
+  // Runes along the lintel
+  for (let i = 0; i < 5; i++) {
+    const rx = arX - arW + (i + 0.5) * (arW * 2 / 5);
+    const ry = arTopY - vs * 0.23;
+    ng.append("path")
+      .attr("d", `M ${rx} ${ry - vs * 0.06} L ${rx} ${ry + vs * 0.06} M ${rx} ${ry} L ${rx + vs * 0.05} ${ry - vs * 0.04}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.55);
+  }
+  // Inner dark doorway
+  const doorW = arW * 0.85;
+  const doorTopY = arTopY - vs * 0.15;
+  ng.append("rect")
+    .attr("x", arX - doorW / 2).attr("y", doorTopY)
+    .attr("width", doorW).attr("height", arBaseY - doorTopY - vs * 0.05)
+    .attr("fill", ink).attr("opacity", 0.92);
+  // Eternal candle at the threshold
+  const candleX = arX, candleY = arBaseY - vs * 0.05;
+  ng.append("rect")
+    .attr("x", candleX - 1.2).attr("y", candleY - vs * 0.25)
+    .attr("width", 2.4).attr("height", vs * 0.25)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.55);
+  ng.append("path")
+    .attr("d", `M ${candleX} ${candleY - vs * 0.28}
+                q ${vs * 0.1} ${-vs * 0.12} 0 ${-vs * 0.32}
+                q ${-vs * 0.1} ${vs * 0.12} 0 ${vs * 0.12}`)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.55);
+  ng.append("line")
+    .attr("x1", candleX).attr("y1", candleY - vs * 0.42)
+    .attr("x2", candleX).attr("y2", candleY - vs * 0.34)
+    .attr("stroke", ink).attr("stroke-width", 0.5);
+  // Ground line
+  ng.append("line")
+    .attr("x1", -vs * 1.6).attr("y1", arBaseY + vs * 0.1)
+    .attr("x2",  vs * 1.6).attr("y2", arBaseY + vs * 0.1)
+    .attr("stroke", ink).attr("stroke-width", 0.45).attr("opacity", 0.6);
+}
+
+// Spider Cave — dark cave mouth in a rocky hill with a big spider-web
+// spanning the entrance, a daemon spider descending on a thread. Darker
+// than the regular dungeon cave icon to match the chaos-shrine lore.
+function renderSpiderCave(ng, { ink, parchment }) {
+  const cs = 7;
+  // Rocky hill silhouette around the cave mouth
+  ng.append("path")
+    .attr("d", `M ${-cs * 1.3} ${cs * 0.95}
+                L ${-cs * 1.1} ${-cs * 0.1}
+                L ${-cs * 0.7} ${-cs * 0.4}
+                L ${-cs * 0.3} ${-cs * 0.15}
+                L 0 ${-cs * 0.55}
+                L ${cs * 0.4} ${-cs * 0.2}
+                L ${cs * 0.8} ${-cs * 0.5}
+                L ${cs * 1.15} ${-cs * 0.1}
+                L ${cs * 1.3} ${cs * 0.95} Z`)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.9);
+  // Rocky crosshatch texture on the hill
+  for (let i = 0; i < 8; i++) {
+    const rx = -cs * 1.1 + (i * cs * 0.3);
+    const ry = cs * 0.2 + (i % 2) * cs * 0.15;
+    ng.append("path")
+      .attr("d", `M ${rx} ${ry} l ${cs * 0.1} ${cs * 0.12}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.35).attr("opacity", 0.4);
+  }
+  // Large dark cave mouth — wide arch
+  const cmW = cs * 1.2, cmTopY = -cs * 0.05, cmBaseY = cs * 0.95;
+  ng.append("path")
+    .attr("d", `M ${-cmW / 2} ${cmBaseY}
+                L ${-cmW / 2} ${cmTopY + cs * 0.3}
+                Q 0 ${cmTopY - cs * 0.15} ${cmW / 2} ${cmTopY + cs * 0.3}
+                L ${cmW / 2} ${cmBaseY} Z`)
+    .attr("fill", ink).attr("opacity", 0.9);
+  // Spider web spanning the cave mouth — radial from top-center
+  const webCx = 0, webCy = cmTopY + cs * 0.05;
+  const webR = cs * 0.55;
+  for (let i = 0; i < 6; i++) {
+    const a = Math.PI + (i / 5) * Math.PI;
+    ng.append("line")
+      .attr("x1", webCx).attr("y1", webCy)
+      .attr("x2", webCx + Math.cos(a) * webR).attr("y2", webCy - Math.sin(a) * webR)
+      .attr("stroke", parchment).attr("stroke-width", 0.5).attr("opacity", 0.85);
+  }
+  // Concentric web arcs
+  for (let ring = 1; ring <= 3; ring++) {
+    const r = webR * (ring / 3);
+    ng.append("path")
+      .attr("d", `M ${webCx - r} ${webCy} Q ${webCx} ${webCy - r * 1.2} ${webCx + r} ${webCy}`)
+      .attr("fill", "none").attr("stroke", parchment).attr("stroke-width", 0.4).attr("opacity", 0.8);
+  }
+  // Daemon spider descending on a silk thread from the cave roof
+  const spY = cs * 0.25;
+  ng.append("line")
+    .attr("x1", webCx).attr("y1", webCy)
+    .attr("x2", webCx).attr("y2", spY)
+    .attr("stroke", parchment).attr("stroke-width", 0.45).attr("opacity", 0.85);
+  // Spider body (parchment against dark cave)
+  ng.append("ellipse")
+    .attr("cx", webCx).attr("cy", spY + 0.4).attr("rx", 1.8).attr("ry", 1.3)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.45);
+  // Little dot-head
+  ng.append("circle").attr("cx", webCx).attr("cy", spY - 0.5).attr("r", 0.8)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.35);
+  // Eight spider legs — four per side, bent
+  for (let li = 0; li < 4; li++) {
+    const angle = -20 + li * 25;
+    const rad = angle * Math.PI / 180;
+    [-1, 1].forEach(dir => {
+      const lx0 = webCx + dir * 1.3;
+      const ly0 = spY + 0.4;
+      const lx1 = lx0 + dir * Math.cos(rad) * 2.2;
+      const ly1 = ly0 + Math.sin(rad) * 2.2;
+      const lx2 = lx1 + dir * 0.3;
+      const ly2 = ly1 + 1.2;
+      ng.append("path")
+        .attr("d", `M ${lx0} ${ly0} L ${lx1} ${ly1} L ${lx2} ${ly2}`)
+        .attr("fill", "none").attr("stroke", parchment).attr("stroke-width", 0.4)
+        .attr("stroke-linecap", "round").attr("opacity", 0.85);
+    });
+  }
+  // A small chaos-sigil scratched on the rock above the cave — an eight-pointed star
+  const sX = 0, sY = -cs * 0.6;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    ng.append("line")
+      .attr("x1", sX).attr("y1", sY).attr("x2", sX + Math.cos(a) * 1.8).attr("y2", sY + Math.sin(a) * 1.8)
+      .attr("stroke", ink).attr("stroke-width", 0.45).attr("opacity", 0.75);
+  }
+  ng.append("circle").attr("cx", sX).attr("cy", sY).attr("r", 0.4).attr("fill", ink);
+  // Ground line
+  ng.append("line")
+    .attr("x1", -cs * 1.3).attr("y1", cs * 0.95)
+    .attr("x2",  cs * 1.3).attr("y2", cs * 0.95)
+    .attr("stroke", ink).attr("stroke-width", 0.45).attr("opacity", 0.6);
+}
+
+// Bandit Ambush Hill — Weathertop-style rocky dome with ancient broken
+// stones ringing the crown, a small bandit figure with a raised sword
+// lurking on the crest, and scattered boulders at the base.
+function renderBanditHill(ng, { ink, parchment }) {
+  const bs = 7;
+  // Dome-shaped rocky hill
+  ng.append("path")
+    .attr("d", `M ${-bs * 1.3} ${bs * 0.95}
+                Q ${-bs * 1.0} ${-bs * 0.5} 0 ${-bs * 0.8}
+                Q ${bs * 1.0} ${-bs * 0.5} ${bs * 1.3} ${bs * 0.95} Z`)
+    .attr("fill", parchment).attr("fill-opacity", 0.85)
+    .attr("stroke", ink).attr("stroke-width", 0.85);
+  // A few erosion/shadow lines on the hill
+  [-0.5, -0.2, 0.2, 0.5].forEach(t => {
+    ng.append("path")
+      .attr("d", `M ${bs * t * 1.0} ${bs * 0.9}
+                  Q ${bs * t * 0.7} ${bs * 0.1} ${bs * t * 0.3} ${-bs * 0.5}`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.35).attr("opacity", 0.4);
+  });
+  // Ring of ancient broken stones on the crown — five upright fragments
+  const crown = [
+    { x: -bs * 0.55, y: -bs * 0.55, h: bs * 0.3 },
+    { x: -bs * 0.25, y: -bs * 0.75, h: bs * 0.5 },
+    { x:  bs * 0.05, y: -bs * 0.82, h: bs * 0.4 },
+    { x:  bs * 0.35, y: -bs * 0.7,  h: bs * 0.55 },
+    { x:  bs * 0.65, y: -bs * 0.5,  h: bs * 0.28 },
+  ];
+  crown.forEach(({ x, y, h }) => {
+    ng.append("path")
+      .attr("d", `M ${x - 1.0} ${y}
+                  L ${x - 0.6} ${y - h}
+                  L ${x + 0.7} ${y - h + 0.4}
+                  L ${x + 1.1} ${y} Z`)
+      .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.65);
+  });
+  // One big toppled lintel stone lying across two of the uprights
+  ng.append("path")
+    .attr("d", `M ${-bs * 0.3} ${-bs * 0.95}
+                L ${bs * 0.2} ${-bs * 1.0}
+                L ${bs * 0.25} ${-bs * 0.88}
+                L ${-bs * 0.28} ${-bs * 0.83} Z`)
+    .attr("fill", ink).attr("opacity", 0.85);
+  // Bandit figure on the crest — silhouette with raised sword
+  const bX = bs * 0.5, bY = -bs * 0.58;
+  // Body
+  ng.append("rect").attr("x", bX - 0.6).attr("y", bY - 1.8).attr("width", 1.2).attr("height", 2.2).attr("fill", ink);
+  // Head
+  ng.append("circle").attr("cx", bX).attr("cy", bY - 2.5).attr("r", 0.8).attr("fill", ink);
+  // Legs — two quick ticks
+  ng.append("line").attr("x1", bX - 0.3).attr("y1", bY + 0.3).attr("x2", bX - 0.6).attr("y2", bY + 1.1).attr("stroke", ink).attr("stroke-width", 0.55);
+  ng.append("line").attr("x1", bX + 0.3).attr("y1", bY + 0.3).attr("x2", bX + 0.7).attr("y2", bY + 1.1).attr("stroke", ink).attr("stroke-width", 0.55);
+  // Sword arm raised high
+  ng.append("line").attr("x1", bX).attr("y1", bY - 1.6).attr("x2", bX + 1.2).attr("y2", bY - 3.4).attr("stroke", ink).attr("stroke-width", 0.55);
+  // Sword blade
+  ng.append("line").attr("x1", bX + 1.2).attr("y1", bY - 3.4).attr("x2", bX + 2.8).attr("y2", bY - 5.0).attr("stroke", ink).attr("stroke-width", 0.85);
+  // Crossguard
+  ng.append("line").attr("x1", bX + 0.7).attr("y1", bY - 3.1).attr("x2", bX + 1.5).attr("y2", bY - 3.9).attr("stroke", ink).attr("stroke-width", 0.5);
+  // Scattered boulders at the hill base
+  [{ x: -bs * 1.15, y: bs * 0.88 }, { x: -bs * 0.75, y: bs * 1.02 },
+   { x:  bs * 0.75, y: bs * 1.02 }, { x:  bs * 1.15, y: bs * 0.88 }].forEach(({ x, y }) => {
+    ng.append("ellipse").attr("cx", x).attr("cy", y).attr("rx", bs * 0.14).attr("ry", bs * 0.09)
+      .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.5);
+    ng.append("path")
+      .attr("d", `M ${x - bs * 0.08} ${y - bs * 0.03} q ${bs * 0.08} ${-bs * 0.05} ${bs * 0.16} 0`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.35).attr("opacity", 0.55);
+  });
+  // Ground line
+  ng.append("line")
+    .attr("x1", -bs * 1.3).attr("y1", bs * 0.98)
+    .attr("x2",  bs * 1.3).attr("y2", bs * 0.98)
+    .attr("stroke", ink).attr("stroke-width", 0.45).attr("opacity", 0.55);
+}
+
+// Kalla Cave — cave mouth with a small stream flowing out and a cluster of
+// kalla mushrooms growing near the entrance (the cave is "stocked with a
+// large supply of kalla").
+function renderKallaCave(ng, { ink, parchment }) {
+  const cs = 7;
+  // Hill / cliff silhouette around the cave
+  ng.append("path")
+    .attr("d", `M ${-cs * 1.25} ${cs * 0.95}
+                L ${-cs * 1.1} ${-cs * 0.1}
+                L ${-cs * 0.7} ${-cs * 0.35}
+                L ${-cs * 0.2} ${-cs * 0.1}
+                L ${cs * 0.25} ${-cs * 0.35}
+                L ${cs * 0.75} ${-cs * 0.1}
+                L ${cs * 1.15} ${-cs * 0.25}
+                L ${cs * 1.25} ${cs * 0.95} Z`)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.8);
+  // Short rocky hatching along the hill body
+  for (let i = 0; i < 5; i++) {
+    const hx0 = -cs * 0.9 + i * cs * 0.45;
+    const hy0 = cs * 0.3 + (i % 2) * cs * 0.12;
+    ng.append("line")
+      .attr("x1", hx0).attr("y1", hy0).attr("x2", hx0 + cs * 0.12).attr("y2", hy0 + cs * 0.12)
+      .attr("stroke", ink).attr("stroke-width", 0.35).attr("opacity", 0.4);
+  }
+  // Cave mouth — dark arched opening, slightly off-center
+  const cmX = -cs * 0.2, cmW = cs * 0.8;
+  const cmBaseY = cs * 0.95, cmTopY = cs * 0.0;
+  ng.append("path")
+    .attr("d", `M ${cmX - cmW / 2} ${cmBaseY}
+                L ${cmX - cmW / 2} ${cmTopY + cs * 0.2}
+                Q ${cmX} ${cmTopY - cs * 0.1} ${cmX + cmW / 2} ${cmTopY + cs * 0.2}
+                L ${cmX + cmW / 2} ${cmBaseY} Z`)
+    .attr("fill", ink).attr("opacity", 0.9);
+  // Stream flowing out of the cave — two parallel wavy lines exiting right-down
+  const streamStartX = cmX + cmW / 2 - 1;
+  const streamStartY = cmBaseY - 0.5;
+  ng.append("path")
+    .attr("d", `M ${streamStartX} ${streamStartY}
+                q ${cs * 0.35} ${cs * 0.05} ${cs * 0.6} ${cs * 0.15}
+                t ${cs * 0.4} ${cs * 0.05}`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.6).attr("opacity", 0.75);
+  ng.append("path")
+    .attr("d", `M ${streamStartX - 0.4} ${streamStartY + 1.4}
+                q ${cs * 0.35} ${cs * 0.05} ${cs * 0.6} ${cs * 0.15}
+                t ${cs * 0.4} ${cs * 0.05}`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.6).attr("opacity", 0.75);
+  // Tiny water ripple ticks along the stream
+  [cs * 0.1, cs * 0.55, cs * 0.95].forEach(dx => {
+    ng.append("path")
+      .attr("d", `M ${streamStartX + dx - 1} ${streamStartY + 0.5} q 1 0.3 2 0`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.35).attr("opacity", 0.5);
+  });
+  // Cluster of kalla mushrooms near the cave mouth — left side
+  const mushrooms = [
+    { x: -cs * 0.95, y: cs * 0.8, h: cs * 0.3 },
+    { x: -cs * 0.75, y: cs * 0.85, h: cs * 0.22 },
+    { x: -cs * 0.6,  y: cs * 0.8, h: cs * 0.27 },
+    { x: -cs * 0.45, y: cs * 0.85, h: cs * 0.2 },
+  ];
+  mushrooms.forEach(({ x, y, h }) => {
+    // Stalk
+    ng.append("rect")
+      .attr("x", x - 0.5).attr("y", y - h).attr("width", 1.0).attr("height", h - h * 0.35)
+      .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.45);
+    // Cap (dome)
+    ng.append("path")
+      .attr("d", `M ${x - h * 0.55} ${y - h * 0.65}
+                  Q ${x} ${y - h * 1.2} ${x + h * 0.55} ${y - h * 0.65}
+                  L ${x + h * 0.35} ${y - h * 0.65}
+                  L ${x - h * 0.35} ${y - h * 0.65} Z`)
+      .attr("fill", ink).attr("opacity", 0.85);
+    // Tiny dots on the cap
+    [-h * 0.22, 0, h * 0.22].forEach(dx => {
+      ng.append("circle")
+        .attr("cx", x + dx).attr("cy", y - h * 0.9).attr("r", 0.4)
+        .attr("fill", parchment);
+    });
+  });
+  // A couple of grass tufts at the right of the stream
+  [cs * 0.9, cs * 1.1].forEach(gx => {
+    [-0.3, 0, 0.3].forEach(off => {
+      ng.append("line")
+        .attr("x1", gx + off).attr("y1", cs * 0.97).attr("x2", gx + off * 1.5).attr("y2", cs * 0.75)
+        .attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.7);
+    });
+  });
+  // Ground line
+  ng.append("line")
+    .attr("x1", -cs * 1.25).attr("y1", cs * 0.95)
+    .attr("x2",  cs * 1.25).attr("y2", cs * 0.95)
+    .attr("stroke", ink).attr("stroke-width", 0.45).attr("opacity", 0.55);
+}
+
+// Mountain pass — two flanking peaks with a narrow road/trail threading
+// between them, appropriate for Serpent's Pass and South Pass.
+function renderMountainPass(ng, { ink, parchment }) {
+  const ps = 7;
+  // Left peak — tall jagged triangle with shadow side
+  ng.append("path")
+    .attr("d", `M ${-ps * 1.4} ${ps * 0.95}
+                L ${-ps * 0.6} ${-ps * 1.1}
+                L ${-ps * 0.1} ${ps * 0.95} Z`)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.9);
+  // Shadow side of left peak
+  ng.append("path")
+    .attr("d", `M ${-ps * 0.6} ${-ps * 1.1}
+                L ${-ps * 0.1} ${ps * 0.95}
+                L ${-ps * 0.35} ${ps * 0.2} Z`)
+    .attr("fill", ink).attr("opacity", 0.22);
+  // Snow line on left peak
+  ng.append("path")
+    .attr("d", `M ${-ps * 0.85} ${-ps * 0.35}
+                L ${-ps * 0.75} ${-ps * 0.6}
+                L ${-ps * 0.55} ${-ps * 0.4}
+                L ${-ps * 0.5} ${-ps * 0.6}`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.5).attr("opacity", 0.7);
+  // Right peak — slightly shorter for visual variety
+  ng.append("path")
+    .attr("d", `M ${ps * 0.1} ${ps * 0.95}
+                L ${ps * 0.65} ${-ps * 0.95}
+                L ${ps * 1.5} ${ps * 0.95} Z`)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.9);
+  // Shadow side of right peak
+  ng.append("path")
+    .attr("d", `M ${ps * 0.65} ${-ps * 0.95}
+                L ${ps * 1.5} ${ps * 0.95}
+                L ${ps * 0.95} ${ps * 0.25} Z`)
+    .attr("fill", ink).attr("opacity", 0.22);
+  // Snow line on right peak
+  ng.append("path")
+    .attr("d", `M ${ps * 0.45} ${-ps * 0.25}
+                L ${ps * 0.6} ${-ps * 0.5}
+                L ${ps * 0.78} ${-ps * 0.3}`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.5).attr("opacity", 0.7);
+  // Narrow pass road — a dashed curved line threading between the peaks
+  ng.append("path")
+    .attr("d", `M ${-ps * 1.4} ${ps * 1.15}
+                Q ${-ps * 0.7} ${ps * 0.8} ${0} ${ps * 0.6}
+                Q ${ps * 0.5} ${ps * 0.4} ${ps * 1.4} ${ps * 1.15}`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.85)
+    .attr("stroke-linecap", "round").attr("stroke-dasharray", "3 2").attr("opacity", 0.7);
+  // Ground line
+  ng.append("line")
+    .attr("x1", -ps * 1.5).attr("y1", ps * 1.0)
+    .attr("x2", ps * 1.5).attr("y2", ps * 1.0)
+    .attr("stroke", ink).attr("stroke-width", 0.45).attr("opacity", 0.5);
+}
+
+// Brunhilde's Mountain Watch Camp — a wooden stockade inn surrounded by a
+// moat, with a recruiting banner flying above and a guard silhouette at
+// the gate. Sits in the foothills before Serpent's Pass.
+function renderWatchCamp(ng, { ink, parchment }) {
+  const ws = 7;
+  // Moat — outer ring ellipse (blue-ish under ink)
+  ng.append("ellipse")
+    .attr("cx", 0).attr("cy", ws * 0.1)
+    .attr("rx", ws * 1.25).attr("ry", ws * 0.75)
+    .attr("fill", ink).attr("opacity", 0.18);
+  // Wavy ripples on moat surface
+  [-ws * 0.9, ws * 0.9].forEach(xSign => {
+    ng.append("path")
+      .attr("d", `M ${xSign - ws * 0.15} ${ws * 0.1} q ${ws * 0.1} ${-ws * 0.05} ${ws * 0.2} 0 t ${ws * 0.2} 0`)
+      .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.55);
+  });
+  ng.append("path")
+    .attr("d", `M ${-ws * 0.3} ${-ws * 0.45} q ${ws * 0.12} ${-ws * 0.05} ${ws * 0.2} 0 t ${ws * 0.2} 0`)
+    .attr("fill", "none").attr("stroke", ink).attr("stroke-width", 0.4).attr("opacity", 0.55);
+  // Central island (clear ground inside moat)
+  ng.append("ellipse")
+    .attr("cx", 0).attr("cy", ws * 0.15)
+    .attr("rx", ws * 0.85).attr("ry", ws * 0.5)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.55);
+  // Stockade — palisade ring of sharpened stakes around the building
+  const stakeCount = 9;
+  for (let i = 0; i < stakeCount; i++) {
+    const t = i / (stakeCount - 1);
+    const a = Math.PI * (0.15 + t * 0.7);
+    const rx = Math.cos(a) * ws * 0.7;
+    const ry = Math.sin(a) * ws * 0.35 + ws * 0.3;
+    // Stake — tall triangle
+    ng.append("path")
+      .attr("d", `M ${rx - 0.3} ${ry} L ${rx} ${ry - ws * 0.28} L ${rx + 0.3} ${ry} Z`)
+      .attr("fill", ink).attr("opacity", 0.85);
+  }
+  // Inn building — main log structure
+  const inW = ws * 0.75, inH = ws * 0.45;
+  const inX = 0, inY = -ws * 0.15;
+  ng.append("rect")
+    .attr("x", inX - inW / 2).attr("y", inY - inH * 0.2)
+    .attr("width", inW).attr("height", inH)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.75);
+  // Peaked log roof
+  ng.append("path")
+    .attr("d", `M ${inX - inW / 2 - 0.8} ${inY - inH * 0.2}
+                L ${inX} ${inY - inH * 0.85}
+                L ${inX + inW / 2 + 0.8} ${inY - inH * 0.2} Z`)
+    .attr("fill", parchment).attr("stroke", ink).attr("stroke-width", 0.75);
+  // Horizontal log lines on the building side
+  [0.15, 0.5, 0.85].forEach(ty => {
+    ng.append("line")
+      .attr("x1", inX - inW / 2 + 0.4).attr("y1", inY - inH * 0.2 + inH * ty)
+      .attr("x2", inX + inW / 2 - 0.4).attr("y2", inY - inH * 0.2 + inH * ty)
+      .attr("stroke", ink).attr("stroke-width", 0.35).attr("opacity", 0.45);
+  });
+  // Arched doorway on the front
+  ng.append("path")
+    .attr("d", `M ${inX - inW * 0.12} ${inY + inH * 0.8}
+                L ${inX - inW * 0.12} ${inY + inH * 0.25}
+                Q ${inX} ${inY + inH * 0.05} ${inX + inW * 0.12} ${inY + inH * 0.25}
+                L ${inX + inW * 0.12} ${inY + inH * 0.8} Z`)
+    .attr("fill", ink).attr("opacity", 0.85);
+  // Tall flagpole on the roof with recruiting pennant (swallow-tail)
+  const poleTopY = inY - inH * 0.85 - ws * 0.8;
+  ng.append("line")
+    .attr("x1", inX).attr("y1", inY - inH * 0.85)
+    .attr("x2", inX).attr("y2", poleTopY)
+    .attr("stroke", ink).attr("stroke-width", 0.7);
+  ng.append("path")
+    .attr("d", `M ${inX} ${poleTopY}
+                L ${inX + ws * 0.55} ${poleTopY + ws * 0.08}
+                L ${inX + ws * 0.4} ${poleTopY + ws * 0.18}
+                L ${inX + ws * 0.55} ${poleTopY + ws * 0.28}
+                L ${inX} ${poleTopY + ws * 0.2} Z`)
+    .attr("fill", ink).attr("opacity", 0.9);
+  // Tiny guard silhouette at the gate (pike/spear)
+  const guardX = inX + inW * 0.45, guardY = inY + inH * 0.65;
+  ng.append("rect").attr("x", guardX - 0.4).attr("y", guardY - 1.5).attr("width", 0.8).attr("height", 1.7).attr("fill", ink);
+  ng.append("circle").attr("cx", guardX).attr("cy", guardY - 2.0).attr("r", 0.5).attr("fill", ink);
+  ng.append("line").attr("x1", guardX + 0.4).attr("y1", guardY - 1.4).attr("x2", guardX + 0.4).attr("y2", guardY - 3.5).attr("stroke", ink).attr("stroke-width", 0.5);
+  // Spear tip
+  ng.append("path").attr("d", `M ${guardX + 0.4} ${guardY - 3.5} l -0.35 -0.3 l 0.7 0 Z`).attr("fill", ink);
+}
+
+// Central dispatcher for all id-based special icons. Each entry declares
+// both the renderer and a baseline label offset (in pixels below node
+// center) so a style can use a shared offset-lookup without duplicating
+// per-id offset tables. Styles scale the baseline by their own factor.
+const SPECIAL_ICONS = {
+  "fae-glade":           { draw: (ng, node, opts) => renderFaeGlade(ng, opts),          labelOffset: 20 },
+  "mistwood-glen":       { draw: (ng, node, opts) => renderMistwoodGlen(ng, node, opts), labelOffset: 22 },
+  "crag-cairn":          { draw: (ng, node, opts) => renderCragCairn(ng, opts),          labelOffset: 26 },
+  "mud-wallow":          { draw: (ng, node, opts) => renderMudWallow(ng, node, opts),    labelOffset: 22 },
+  "kobold-crevasse":     { draw: (ng, node, opts) => renderKoboldCrevasse(ng, opts),     labelOffset: 24 },
+  "pjork-choppe-hille":  { draw: (ng, node, opts) => renderPorcHills(ng, opts),          labelOffset: 22 },
+  "basilisk-spiderwood": { draw: (ng, node, opts) => renderBasiliskSpiderwood(ng, opts), labelOffset: 24 },
+  "graveyard":           { draw: (ng, node, opts) => renderGraveyard(ng, opts),          labelOffset: 20 },
+  "tower-of-stargazer":  { draw: (ng, node, opts) => renderStargazerTower(ng, opts),     labelOffset: 22 },
+  "ravens-perch":        { draw: (ng, node, opts) => renderRavensPerch(ng, opts),        labelOffset: 22 },
+  "hangman-hill":        { draw: (ng, node, opts) => renderHangmanHill(ng, opts),        labelOffset: 22 },
+  "the-swamp":           { draw: (ng, node, opts) => renderSwampWetlands(ng, opts),      labelOffset: 22 },
+  "vault-of-first-light":{ draw: (ng, node, opts) => renderVaultOfFirstLight(ng, opts),  labelOffset: 24 },
+  "spider-cave":         { draw: (ng, node, opts) => renderSpiderCave(ng, opts),         labelOffset: 22 },
+  "bandit-camp":         { draw: (ng, node, opts) => renderBanditHill(ng, opts),         labelOffset: 24 },
+  "kalla-cave":          { draw: (ng, node, opts) => renderKallaCave(ng, opts),          labelOffset: 22 },
+  "serpents-pass":       { draw: (ng, node, opts) => renderMountainPass(ng, opts),       labelOffset: 22 },
+  "south-pass":          { draw: (ng, node, opts) => renderMountainPass(ng, opts),       labelOffset: 22 },
+  "south-road-mountain-watch": { draw: (ng, node, opts) => renderWatchCamp(ng, opts),    labelOffset: 24 },
+};
+
+function renderSpecialIcon(ng, node, opts) {
+  // Name-based override: warding stones (two nodes, both match by name)
+  if (node.name && node.name.toLowerCase().includes("warding stone")) {
+    renderWardingStone(ng, node, opts);
+    return true;
+  }
+  const entry = SPECIAL_ICONS[node.id];
+  if (entry) {
+    entry.draw(ng, node, opts);
+    return true;
+  }
+  return false;
+}
+
+// Look up a style-scaled label offset for a node. Returns the baseline
+// offset from SPECIAL_ICONS (if this node has a special icon) or undefined
+// otherwise. Styles multiply by their own scaleFactor (1.0 for most, 0.9
+// for moonletters' tighter label spacing).
+function specialIconLabelOffset(node, scaleFactor = 1.0) {
+  if (node.name && node.name.toLowerCase().includes("warding stone")) {
+    return 18 * scaleFactor;
+  }
+  const entry = SPECIAL_ICONS[node.id];
+  return entry ? entry.labelOffset * scaleFactor : undefined;
+}
+
 // Expose for global access
 Object.assign(MapCore, {
+  renderFaeGlade, renderWardingStone, renderCragCairn, renderMistwoodGlen, renderMudWallow,
+  renderKoboldCrevasse, renderPorcHills, renderBasiliskSpiderwood, renderGraveyard, renderStargazerTower,
+  renderRavensPerch, renderHangmanHill, renderSwampWetlands, renderVaultOfFirstLight, renderSpiderCave,
+  renderBanditHill, renderKallaCave, renderMountainPass, renderWatchCamp, renderSpecialIcon, specialIconLabelOffset,
   HINT_SCALE, DAY_SCALE, FONT, INTERIOR_TERRAINS, SUBHEX_OFFSETS,
-  isOverlandNode, hexToXY, xyToHex, hexNeighbors, renderRiver, renderRiverLabel, renderRoad, renderCrevasse, renderBridges, renderHexTerrain, renderMountainsWithElevation, renderForestEdgeTrees, renderFarmlandBiased, renderRegionLabels, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
+  isOverlandNode, hexToXY, xyToHex, hexNeighbors, renderRiver, renderRiverLabel, renderRoad, renderCrevasse, renderBridges, renderBoats, renderHexTerrain, renderMountainsWithElevation, renderForestEdgeTrees, renderFarmlandBiased, renderRegionLabels, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
   showDetail, closePanel,
   loadData, runSimulation, setupSVG, centerView,
   renderMap, applyTheme, exportSVG,

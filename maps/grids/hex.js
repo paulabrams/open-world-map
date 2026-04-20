@@ -83,9 +83,12 @@ window.MapGrids.hex = {
       }
     }
 
-    // Draw the hexes
+    // Draw the hexes — skip any with negative col/row so we never produce
+    // confusing labels like "19-1" (the CCRR code assumes 0-padded 2-digit
+    // coords in each axis).
     hexesToDraw.forEach(key => {
       const [col, row] = key.split(",").map(Number);
+      if (col < 0 || row < 0 || col > 99 || row > 99) return;
       const hx = originX + (col - bcCol) * colStep;
       const hy = originY + (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0);
 

@@ -45,6 +45,7 @@ window.MapStyles.thirdage = {
     MapCore.renderRiver(ctx, ctx.colors.INK, 3);
     MapCore.renderRiverLabel(ctx, { color: ctx.colors.INK, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.1, bridgeLen: 14 });
+    MapCore.renderBoats(ctx, { color: ctx.colors.INK, parchment: ctx.colors.PARCHMENT, count: 4 });
     MapCore.renderRoad(ctx, ctx.colors.INK, 2);
     MapCore.renderCrevasse(ctx, "#2a1f14", 3);
     this.renderLinks(ctx);
@@ -248,9 +249,8 @@ window.MapStyles.thirdage = {
       ["forest", "forested-hills"]);
     MapCore.renderFarmlandBiased(ctx,
       (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, INK));
-    MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
-      color: INK, strokeWidth: 1.1, opacity: 0.6, wobble: 2.0, className: "forest-edges",
-    });
+    // Forest boundary comes from the scattered edge trees — no hard
+    // hex-outline stroke.
   },
 
   drawGraveyard(g, x, y, size, rng, INK) {
@@ -287,7 +287,7 @@ window.MapStyles.thirdage = {
 
   // --- Node icons ---
   renderNodes(ctx) {
-    const { g, nodes } = ctx;
+    const { g, nodes, mulberry32, seedFromString } = ctx;
     const { INK, PARCHMENT } = ctx.colors;
 
     const nodeGroup = g.append("g").attr("class", "nodes");
@@ -303,8 +303,11 @@ window.MapStyles.thirdage = {
       const isLocal = node.scale === "local";
       const s = isLocal ? 3 : 5;
 
-      // Farm override — cute farmhouse for any farm-named node
-      if (node.name && node.name.toLowerCase().includes("farm")) {
+      // Shared id-based special icons (before point_type switch)
+      if (MapCore.renderSpecialIcon(ng, node, { ink: INK, parchment: PARCHMENT })) return;
+
+      // Farm override — cute farmhouse for any farm-named node (not ruins)
+      if (node.name && node.name.toLowerCase().includes("farm") && node.point_type !== "ruin") {
         // House body
         ng.append("rect").attr("x", -s).attr("y", -s*0.5).attr("width", s*2).attr("height", s*1.5)
           .attr("fill", INK).attr("stroke", "none");
@@ -327,83 +330,275 @@ window.MapStyles.thirdage = {
         }
       } else switch (node.point_type) {
         case "heart": {
-          // Main town — cluster of filled houses with a tiny spire at center
-          const hs = 4;
-          const positions = [{x:0, y:0}, {x:-hs*1.3, y:hs*0.2}, {x:hs*1.3, y:hs*0.1}, {x:-hs*0.5, y:-hs*0.8}, {x:hs*0.6, y:-hs*0.7}];
-          positions.forEach((p, idx) => {
-            ng.append("rect").attr("x", p.x - hs*0.45).attr("y", p.y - hs*0.2).attr("width", hs*0.9).attr("height", hs*0.65)
-              .attr("fill", INK).attr("stroke", "none");
-            ng.append("path")
-              .attr("d", `M ${p.x - hs*0.55} ${p.y - hs*0.2} L ${p.x} ${p.y - hs*0.75} L ${p.x + hs*0.55} ${p.y - hs*0.2} Z`)
-              .attr("fill", INK).attr("stroke", "none");
-            // Smoke plume on two of the outer houses — inhabited capital
-            if (idx === 1 || idx === 2) {
-              const sx = p.x + hs * 0.18;
-              const sy = p.y - hs * 0.75;
-              ng.append("path")
-                .attr("d", `M ${sx} ${sy} C ${sx - hs * 0.25} ${sy - hs * 0.4}, ${sx + hs * 0.25} ${sy - hs * 0.7}, ${sx - hs * 0.05} ${sy - hs * 1.1}`)
-                .attr("fill", "none").attr("stroke", INK)
-                .attr("stroke-width", 0.55).attr("stroke-linecap", "round")
-                .attr("opacity", 0.55);
-            }
-          });
-          // Central spire (cathedral/keep) rising above the cluster
-          ng.append("rect").attr("x", -0.8).attr("y", -hs*1.5).attr("width", 1.6).attr("height", hs*0.75)
-            .attr("fill", INK).attr("stroke", "none");
-          ng.append("path")
-            .attr("d", `M ${-1.3} ${-hs*1.5} L 0 ${-hs*2.05} L 1.3 ${-hs*1.5} Z`)
-            .attr("fill", INK).attr("stroke", "none");
-          // Tiny cross-bar near spire top
-          ng.append("line")
-            .attr("x1", -1).attr("y1", -hs*1.75).attr("x2", 1).attr("y2", -hs*1.75)
-            .attr("stroke", INK).attr("stroke-width", 0.7);
-          // Faint walled-town oval — matches hand-drawn convention for capital
+          // Main town — walled city filling roughly the middle 50% of its
+          // hex. Scattered (not grid-aligned) tower skyline with solid INK
+          // silhouettes, central keep, four corner wall-towers, single
+          // central bridge. Engraving-style (filled) rendering.
+          const hs = 12;
+          const rng = mulberry32(seedFromString("city-" + (node.id || "heart")));
+          const bY = hs * 0.15;
+          // Ground halo
+          ng.append("ellipse")
+            .attr("cx", 0).attr("cy", hs * 0.6)
+            .attr("rx", hs * 2.4).attr("ry", hs * 0.5)
+            .attr("fill", INK).attr("opacity", 0.08);
+          // Walled oval — filled pale parchment so towers pop in solid black
           ng.append("ellipse")
             .attr("cx", 0).attr("cy", 0)
-            .attr("rx", hs * 2.4).attr("ry", hs * 1.8)
-            .attr("fill", "none")
-            .attr("stroke", INK)
-            .attr("stroke-width", 0.7)
-            .attr("opacity", 0.35);
+            .attr("rx", hs * 2.1).attr("ry", hs * 1.55)
+            .attr("fill", PARCHMENT).attr("fill-opacity", 0.9)
+            .attr("stroke", INK).attr("stroke-width", 1.1);
+          // Scattered tall towers via rejection sampling
+          const towers = [];
+          const ovRx = hs * 1.85, ovRy = hs * 1.3;
+          const minDist = hs * 0.22;
+          let attempts = 0;
+          while (towers.length < 22 && attempts < 900) {
+            attempts++;
+            const rx = (rng() - 0.5) * 2 * ovRx;
+            const ry = (rng() - 0.5) * 2 * ovRy - hs * 0.1;
+            if ((rx * rx) / (ovRx * ovRx) + (ry * ry) / (ovRy * ovRy) > 1) continue;
+            if (Math.abs(ry - bY) < hs * 0.45 && Math.abs(rx) < hs * 1.0) continue;
+            if (rx > -hs * 0.55 && rx < hs * 0.15 && ry < hs * 0.4) continue;
+            let ok = true;
+            for (const t of towers) {
+              const dx = t.x - rx, dy = t.y - ry;
+              if (dx * dx + dy * dy < minDist * minDist) { ok = false; break; }
+            }
+            if (ok) towers.push({ x: rx, y: ry });
+          }
+          towers.sort((a, b) => a.y - b.y);
+          towers.forEach(t => {
+            const storyCount = 3 + Math.floor(rng() * 4);
+            const storyH = hs * 0.2;
+            const th = storyCount * storyH;
+            const tw = hs * (0.14 + rng() * 0.06);
+            const yTop = t.y - th;
+            // Tower — solid black engraving
+            ng.append("rect")
+              .attr("x", t.x - tw / 2).attr("y", yTop)
+              .attr("width", tw).attr("height", th)
+              .attr("fill", INK).attr("stroke", "none");
+            // Pointed roof OR crenellation
+            if (rng() > 0.5) {
+              // Crenellation as two tiny merlons on top
+              ng.append("rect").attr("x", t.x - tw / 2 - 0.3).attr("y", yTop - hs * 0.08)
+                .attr("width", tw * 0.35).attr("height", hs * 0.08).attr("fill", INK);
+              ng.append("rect").attr("x", t.x + tw * 0.15).attr("y", yTop - hs * 0.08)
+                .attr("width", tw * 0.35).attr("height", hs * 0.08).attr("fill", INK);
+            } else {
+              // Solid pointed roof
+              ng.append("path")
+                .attr("d", `M ${t.x - tw / 2 - 0.4} ${yTop} L ${t.x} ${yTop - tw * 0.9} L ${t.x + tw / 2 + 0.4} ${yTop} Z`)
+                .attr("fill", INK);
+            }
+            // Window slits as parchment punch-outs
+            for (let si = 0; si < storyCount; si += 2) {
+              ng.append("rect")
+                .attr("x", t.x - 0.2).attr("y", yTop + (si + 0.5) * storyH - 0.5)
+                .attr("width", 0.4).attr("height", 1.0)
+                .attr("fill", PARCHMENT);
+            }
+          });
+          // Two bridge-gate towers — one flanking each side of the bridge
+          const bridgeSpan0 = hs * 1.55;
+          [-1, 1].forEach(side => {
+            const tX = side * (bridgeSpan0 / 2 + hs * 0.32);
+            const tH = hs * 1.7;
+            const tBase = bY + hs * 0.12;
+            const tTop = tBase - tH;
+            const tW = hs * 0.32;
+            ng.append("rect")
+              .attr("x", tX - tW / 2).attr("y", tTop).attr("width", tW).attr("height", tH)
+              .attr("fill", INK);
+            ng.append("rect").attr("x", tX - tW / 2 - 0.4).attr("y", tTop - hs * 0.12).attr("width", tW * 0.3).attr("height", hs * 0.12).attr("fill", INK);
+            ng.append("rect").attr("x", tX + tW * 0.05).attr("y", tTop - hs * 0.12).attr("width", tW * 0.3).attr("height", hs * 0.12).attr("fill", INK);
+            ng.append("line")
+              .attr("x1", tX).attr("y1", tTop - hs * 0.12).attr("x2", tX).attr("y2", tTop - hs * 0.7)
+              .attr("stroke", INK).attr("stroke-width", 0.8);
+            ng.append("path")
+              .attr("d", `M ${tX} ${tTop - hs * 0.7} L ${tX + side * hs * 0.5} ${tTop - hs * 0.58} L ${tX} ${tTop - hs * 0.46} Z`)
+              .attr("fill", INK);
+            ng.append("rect")
+              .attr("x", tX - 0.2).attr("y", tTop + tH * 0.4).attr("width", 0.4).attr("height", tH * 0.15).attr("fill", PARCHMENT);
+          });
+          // Four corner wall-towers
+          [[-hs * 1.95, -hs * 0.4, hs * 0.95], [hs * 1.95, -hs * 0.4, hs * 0.9],
+           [-hs * 1.95, hs * 0.4, hs * 0.85], [hs * 1.95, hs * 0.4, hs * 1.0]].forEach(([tx, ty, th]) => {
+            ng.append("rect")
+              .attr("x", tx - hs * 0.17).attr("y", ty - th * 0.6)
+              .attr("width", hs * 0.34).attr("height", th)
+              .attr("fill", INK);
+          });
+          // Main gate arch — parchment cutout on solid wall
+          ng.append("path")
+            .attr("d", `M ${-hs * 0.3} ${hs * 1.55} L ${-hs * 0.3} ${hs * 0.95} Q 0 ${hs * 0.6} ${hs * 0.3} ${hs * 0.95} L ${hs * 0.3} ${hs * 1.55} Z`)
+            .attr("fill", PARCHMENT).attr("stroke", INK).attr("stroke-width", 0.9);
+          // Single central stone bridge spanning the river
+          const bridgeSpan = hs * 1.55;
+          const deckTop = bY;
+          const deckBot = bY + hs * 0.11;
+          const bridgeG = ng.append("g").attr("class", "bridge");
+          bridgeG.append("rect")
+            .attr("x", -bridgeSpan / 2 - hs * 0.28).attr("y", deckTop - 0.5)
+            .attr("width", bridgeSpan + hs * 0.56).attr("height", hs * 0.12)
+            .attr("fill", INK);
+          [-bridgeSpan * 0.3, bridgeSpan * 0.3].forEach(px => {
+            bridgeG.append("rect")
+              .attr("x", px - 0.6).attr("y", deckBot).attr("width", 1.2).attr("height", hs * 0.4)
+              .attr("fill", INK);
+          });
+          const archW = bridgeSpan * 0.55;
+          bridgeG.append("path")
+            .attr("d", `M ${-archW / 2} ${deckBot + hs * 0.42} Q 0 ${deckBot - hs * 0.05} ${archW / 2} ${deckBot + hs * 0.42}`)
+            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.8);
           break;
         }
         case "fortress": {
-          const hs = 5;
-          // Main wall (filled)
-          ng.append("rect").attr("x", -hs).attr("y", -hs*0.4).attr("width", hs*2).attr("height", hs*0.9)
-            .attr("fill", INK).attr("stroke", "none");
-          // Left tower (filled)
-          ng.append("rect").attr("x", -hs - hs*0.3).attr("y", -hs).attr("width", hs*0.6).attr("height", hs*1.5)
-            .attr("fill", INK).attr("stroke", "none");
-          // Right tower (filled)
-          ng.append("rect").attr("x", hs - hs*0.3).attr("y", -hs).attr("width", hs*0.6).attr("height", hs*1.5)
-            .attr("fill", INK).attr("stroke", "none");
-          // Crenellations on left tower
-          for (let ci = 0; ci < 2; ci++) {
-            ng.append("rect").attr("x", -hs - hs*0.2 + ci * hs*0.3).attr("y", -hs - hs*0.2).attr("width", hs*0.2).attr("height", hs*0.2)
-              .attr("fill", INK).attr("stroke", "none");
-          }
-          // Crenellations on right tower
-          for (let ci = 0; ci < 2; ci++) {
-            ng.append("rect").attr("x", hs - hs*0.2 + ci * hs*0.3).attr("y", -hs - hs*0.2).attr("width", hs*0.2).attr("height", hs*0.2)
-              .attr("fill", INK).attr("stroke", "none");
-          }
-          // Gate arch (cutout on filled wall)
+          // Imposing long-walled keep atop a rocky mesa — Trampier-inspired.
+          // Three slim towers with pointed conical spires, long crenellated
+          // curtain wall with square wall-towers, detached right-side gate
+          // tower. Engraving (solid INK) aesthetic.
+          const hs = 9;
+          const rng = mulberry32(seedFromString("fortress-" + (node.id || "fortress")));
+          // Hill widened so flat crest supports the whole keep (detached
+          // right gate-tower at +hs*2.15). Flat top ±hs*2.6, hill ±hs*4.5.
+          const hillBaseY = hs * 1.9, hillTopY = hs * 0.6, hillW = hs * 4.5;
+          const flatEdge = hs * 2.6;
+          // Hill mound
           ng.append("path")
-            .attr("d", `M ${-hs*0.25} ${hs*0.5} L ${-hs*0.25} ${hs*0.1} A ${hs*0.25} ${hs*0.25} 0 0 1 ${hs*0.25} ${hs*0.1} L ${hs*0.25} ${hs*0.5} Z`)
-            .attr("fill", PARCHMENT).attr("stroke", "none");
-          // Pennant on a pole atop the right tower
-          const pX = hs, pTop = -hs - hs * 0.55;
+            .attr("d", `M ${-hillW} ${hillBaseY}
+                        Q ${-hillW * 0.75} ${hillBaseY - hs * 0.1} ${-flatEdge} ${hillTopY + hs * 0.25}
+                        Q ${-flatEdge * 0.5} ${hillTopY - hs * 0.1} 0 ${hillTopY}
+                        Q ${flatEdge * 0.5} ${hillTopY - hs * 0.1} ${flatEdge} ${hillTopY + hs * 0.25}
+                        Q ${hillW * 0.75} ${hillBaseY - hs * 0.1} ${hillW} ${hillBaseY} Z`)
+            .attr("fill", INK).attr("opacity", 0.18);
+          // Hill crest outline
+          ng.append("path")
+            .attr("d", `M ${-hillW} ${hillBaseY}
+                        Q ${-hillW * 0.75} ${hillBaseY - hs * 0.1} ${-flatEdge} ${hillTopY + hs * 0.25}
+                        Q ${-flatEdge * 0.5} ${hillTopY - hs * 0.1} 0 ${hillTopY}
+                        Q ${flatEdge * 0.5} ${hillTopY - hs * 0.1} ${flatEdge} ${hillTopY + hs * 0.25}
+                        Q ${hillW * 0.75} ${hillBaseY - hs * 0.1} ${hillW} ${hillBaseY}`)
+            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.9).attr("opacity", 0.7);
+          // Rocky strata hatch lines
+          for (let si = 0; si < 10; si++) {
+            const t = 0.08 + si * 0.095;
+            const sx = -hillW + 2 * hillW * t;
+            const syTop = hillTopY + hs * 0.35;
+            const syBot = hillBaseY - hs * 0.08;
+            const midX = sx + (rng() - 0.5) * hs * 0.15;
+            const endX = sx + (rng() - 0.5) * hs * 0.1;
+            ng.append("path")
+              .attr("d", `M ${sx} ${syTop} Q ${midX} ${(syTop + syBot) / 2} ${endX} ${syBot}`)
+              .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.4);
+          }
+          // Boulders on hillside
+          [{ x: -hillW * 0.82, y: hillBaseY - hs * 0.1, r: hs * 0.18 },
+           { x: -hillW * 0.45, y: hillBaseY + hs * 0.05, r: hs * 0.22 },
+           { x:  hillW * 0.5,  y: hillBaseY - hs * 0.05, r: hs * 0.2 },
+           { x:  hillW * 0.82, y: hillBaseY - hs * 0.12, r: hs * 0.17 }].forEach(b => {
+            ng.append("ellipse")
+              .attr("cx", b.x).attr("cy", b.y).attr("rx", b.r).attr("ry", b.r * 0.7)
+              .attr("fill", INK).attr("opacity", 0.85);
+          });
+
+          const baseY = hillTopY;
+          const crenCap = (x, y, w) => {
+            const steps = Math.max(3, Math.floor(w / (hs * 0.1)));
+            const stepW = w / steps;
+            for (let i = 0; i < steps; i++) {
+              if (i % 2 === 0) {
+                ng.append("rect")
+                  .attr("x", x - w / 2 + i * stepW).attr("y", y - hs * 0.14)
+                  .attr("width", stepW).attr("height", hs * 0.14).attr("fill", INK);
+              }
+            }
+          };
+          const slit = (sx, sy1, sy2) => {
+            ng.append("rect").attr("x", sx - 0.2).attr("y", sy1)
+              .attr("width", 0.4).attr("height", sy2 - sy1).attr("fill", PARCHMENT);
+          };
+          const pointedSpire = (x, baseTop, w, spireH) => {
+            ng.append("rect")
+              .attr("x", x - w * 0.58).attr("y", baseTop - hs * 0.06)
+              .attr("width", w * 1.16).attr("height", hs * 0.09).attr("fill", INK);
+            ng.append("path")
+              .attr("d", `M ${x - w * 0.55} ${baseTop - hs * 0.06} L ${x} ${baseTop - spireH} L ${x + w * 0.55} ${baseTop - hs * 0.06} Z`)
+              .attr("fill", INK);
+          };
+
+          const wallLeft = -hs * 1.7, wallRight = hs * 1.7;
+          const wallTop = baseY - hs * 0.9;
+          ng.append("rect")
+            .attr("x", wallLeft).attr("y", wallTop).attr("width", wallRight - wallLeft).attr("height", hs * 0.9)
+            .attr("fill", INK);
+          const merlonCount = 11;
+          const merlonW = hs * 0.18;
+          const merlonGap = ((wallRight - wallLeft) - merlonCount * merlonW) / (merlonCount - 1);
+          for (let i = 0; i < merlonCount; i++) {
+            const mx = wallLeft + i * (merlonW + merlonGap);
+            ng.append("rect").attr("x", mx).attr("y", wallTop - hs * 0.15)
+              .attr("width", merlonW).attr("height", hs * 0.15).attr("fill", INK);
+          }
+          const wallTowers = [
+            { x: -hs * 1.55, h: hs * 1.4, w: hs * 0.34 },
+            { x: -hs * 0.8,  h: hs * 1.2, w: hs * 0.30 },
+            { x:  hs * 0.15, h: hs * 1.25, w: hs * 0.30 },
+            { x:  hs * 0.85, h: hs * 1.3, w: hs * 0.32 },
+            { x:  hs * 1.55, h: hs * 1.45, w: hs * 0.34 },
+          ];
+          wallTowers.forEach(({ x, h, w }) => {
+            const topY = baseY - h;
+            ng.append("rect").attr("x", x - w / 2).attr("y", topY).attr("width", w).attr("height", h).attr("fill", INK);
+            crenCap(x, topY, w + hs * 0.08);
+            slit(x, topY + h * 0.35, topY + h * 0.55);
+          });
+          const spires = [
+            { x: -hs * 1.15, baseH: hs * 2.1, spireH: hs * 0.95, w: hs * 0.22 },
+            { x: -hs * 0.35, baseH: hs * 2.45, spireH: hs * 1.1, w: hs * 0.22 },
+            { x:  hs * 0.45, baseH: hs * 2.1, spireH: hs * 0.95, w: hs * 0.22 },
+          ];
+          spires.forEach(({ x, baseH, spireH, w }) => {
+            const topY = baseY - baseH;
+            ng.append("rect").attr("x", x - w / 2).attr("y", topY).attr("width", w).attr("height", baseH).attr("fill", INK);
+            slit(x, topY + baseH * 0.22, topY + baseH * 0.37);
+            slit(x, topY + baseH * 0.55, topY + baseH * 0.7);
+            pointedSpire(x, topY, w, spireH);
+          });
+          // Detached right gate-tower
+          const detX = hs * 2.15, detH = hs * 1.55, detW = hs * 0.38;
+          const detTop = baseY - detH + hs * 0.15;
+          ng.append("rect").attr("x", detX - detW / 2).attr("y", detTop).attr("width", detW).attr("height", detH).attr("fill", INK);
+          crenCap(detX, detTop, detW + hs * 0.08);
+          slit(detX, detTop + detH * 0.3, detTop + detH * 0.5);
+          slit(detX, detTop + detH * 0.6, detTop + detH * 0.8);
+          // Main gate — parchment cutout arch
+          ng.append("path")
+            .attr("d", `M ${-hs * 0.05} ${baseY} L ${-hs * 0.05} ${baseY - hs * 0.55} Q ${hs * 0.15} ${baseY - hs * 0.82} ${hs * 0.35} ${baseY - hs * 0.55} L ${hs * 0.35} ${baseY} Z`)
+            .attr("fill", PARCHMENT).attr("stroke", INK).attr("stroke-width", 0.75);
+          // Switchback dashed path up the right
+          ng.append("path")
+            .attr("d", `M ${hillW * 0.75} ${hillBaseY - hs * 0.1} Q ${hs * 1.2} ${hillBaseY - hs * 0.55} ${hs * 0.7} ${hillTopY + hs * 0.2} Q ${hs * 0.5} ${hillTopY + hs * 0.05} ${hs * 0.15} ${baseY}`)
+            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.55)
+            .attr("stroke-dasharray", "2 2").attr("opacity", 0.6);
+          // Pennants
+          const flagTop = baseY - spires[1].baseH - spires[1].spireH - hs * 0.35;
           ng.append("line")
-            .attr("x1", pX).attr("y1", -hs - hs * 0.2).attr("x2", pX).attr("y2", pTop)
+            .attr("x1", spires[1].x).attr("y1", baseY - spires[1].baseH - spires[1].spireH)
+            .attr("x2", spires[1].x).attr("y2", flagTop)
             .attr("stroke", INK).attr("stroke-width", 0.6);
           ng.append("path")
-            .attr("d", `M ${pX} ${pTop} L ${pX + hs * 0.55} ${pTop + hs * 0.13} L ${pX} ${pTop + hs * 0.26} Z`)
-            .attr("fill", INK).attr("opacity", 0.85);
-          // Ground-shadow beneath the castle walls
-          ng.append("line")
-            .attr("x1", -hs - 1).attr("y1", hs * 0.5 + 2).attr("x2", hs + 1).attr("y2", hs * 0.5 + 2)
-            .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.4);
+            .attr("d", `M ${spires[1].x} ${flagTop} L ${spires[1].x + hs * 0.7} ${flagTop + hs * 0.18} L ${spires[1].x} ${flagTop + hs * 0.36} Z`)
+            .attr("fill", INK);
+          [spires[0], spires[2]].forEach(s => {
+            const topY = baseY - s.baseH - s.spireH;
+            ng.append("line").attr("x1", s.x).attr("y1", topY).attr("x2", s.x).attr("y2", topY - hs * 0.35)
+              .attr("stroke", INK).attr("stroke-width", 0.5);
+            ng.append("path")
+              .attr("d", `M ${s.x} ${topY - hs * 0.35} L ${s.x + hs * 0.32} ${topY - hs * 0.26} L ${s.x} ${topY - hs * 0.17} Z`)
+              .attr("fill", INK);
+          });
           break;
         }
         case "tavern": {
@@ -567,7 +762,11 @@ window.MapStyles.thirdage = {
       const fontSize = isLocal ? 10 : (isRegion ? 16 : 13);
       const fontWeight = isRegion ? "bold" : "normal";
       const color = isLocal ? INK_LIGHT : LABEL_RED;
-      const yOffset = isLocal ? 14 : 20;
+      // Larger heart icon now extends ~20 below center, so push its label
+      // further down so it doesn't collide with the oval.
+      const typeOffset = { heart: 32, fortress: 30, tower: 24, lair: 22 };
+      const specialOff = MapCore.specialIconLabelOffset(node);
+      const yOffset = isLocal ? 14 : (specialOff || typeOffset[node.point_type] || 20);
 
       const text = labelGroup.append("text")
         .attr("x", node.x)
@@ -840,128 +1039,86 @@ window.MapStyles.thirdage = {
 
   // Dense engraving-style mountain range: 1-3 overlapping sharp peaks
   drawMountainRange(g, x, y, size, rng, INK) {
-    const peakCount = 1 + Math.floor(rng() * 2);
-    const spacing = size * 0.7;
+    // Pauline Baynes-style mountain range — a dense row of small solid-
+    // black triangular peaks, heavily overlapping. Peaks are now spread
+    // across 3 vertical tiers (back/middle/front) so the caterpillar has
+    // depth instead of a flat row. Painted back-to-front for clean stack.
+    const peakCount = 5 + Math.floor(rng() * 4);
+    const spacing = size * 0.24;
+    const rangeW = (peakCount - 1) * spacing;
     const peaks = [];
     for (let i = 0; i < peakCount; i++) {
-      const offsetX = (i - (peakCount - 1) / 2) * spacing + (rng() - 0.5) * size * 0.12;
-      const hMul = 0.75 + rng() * 0.4;
-      peaks.push({ cx: x + offsetX, h: size * (0.85 + rng() * 0.25) * hMul });
+      const tier = Math.floor(rng() * 3);
+      const tierY = y - tier * size * 0.2;
+      peaks.push({
+        px: x - rangeW / 2 + i * spacing + (rng() - 0.5) * size * 0.05,
+        baseY: tierY,
+        h: size * (0.5 + rng() * 0.4),
+        pw: size * (0.3 + rng() * 0.1),
+        tier,
+      });
     }
-    peaks.sort((a, b) => b.h - a.h);
-
+    peaks.sort((a, b) => b.tier - a.tier);
     peaks.forEach(p => {
-      const w = size * (0.85 + rng() * 0.25);
-      const skew = (rng() - 0.5) * w * 0.08;
-      const peakX = p.cx + skew;
-      const peakY = y - p.h;
-
-      // Solid shadow side (left half)
+      const peakY = p.baseY - p.h;
       g.append("path")
-        .attr("d", `M ${p.cx - w/2} ${y} L ${peakX} ${peakY} L ${p.cx} ${y} Z`)
-        .attr("fill", INK)
-        .attr("stroke", "none");
-
-      // Fine engraved hatching inside the shadow side (classic atlas look)
-      const hatchCount = 3 + Math.floor(rng() * 2);
-      for (let i = 0; i < hatchCount; i++) {
-        const t = (i + 1) / (hatchCount + 1);
-        const hx = (p.cx - w / 2) + (peakX - (p.cx - w / 2)) * t;
-        const hy = y + (peakY - y) * t;
-        // Short diagonal line toward the base of the peak
-        const endX = hx + w * 0.05;
-        const endY = y;
-        g.append("line")
-          .attr("x1", hx).attr("y1", hy)
-          .attr("x2", endX).attr("y2", endY)
-          .attr("stroke", "#f4e8d1")
-          .attr("stroke-width", 0.35).attr("opacity", 0.35);
-      }
-
-      // Light side outline (right half)
-      g.append("path")
-        .attr("d", `M ${p.cx} ${y} L ${peakX} ${peakY} L ${p.cx + w/2} ${y}`)
-        .attr("fill", "none")
-        .attr("stroke", INK)
-        .attr("stroke-width", 1.0)
-        .attr("stroke-linejoin", "round");
-
-      // Ridge detail lines on light side
-      const ridgeCount = 2 + Math.floor(rng() * 2);
-      for (let i = 1; i <= ridgeCount; i++) {
-        const t = i / (ridgeCount + 1);
-        const rx = peakX + (p.cx + w/2 - peakX) * t;
-        const ry = peakY + (y - peakY) * t;
-        const lineLen = w * 0.12 * t;
-        g.append("line")
-          .attr("x1", rx - lineLen * 0.5).attr("y1", ry)
-          .attr("x2", rx + lineLen * 0.5).attr("y2", ry + lineLen * 0.4)
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.5)
-          .attr("opacity", 0.6);
-      }
+        .attr("d", `M ${p.px - p.pw / 2} ${p.baseY} L ${p.px} ${peakY} L ${p.px + p.pw / 2} ${p.baseY} Z`)
+        .attr("fill", INK);
     });
-
-    // Scree dots along the whole range base
-    const rangeW = (peakCount) * spacing;
-    const dotCount = 5 + Math.floor(rng() * 5);
-    for (let i = 0; i < dotCount; i++) {
-      g.append("circle")
-        .attr("cx", x + (rng() - 0.5) * rangeW)
-        .attr("cy", y + 1 + rng() * 4)
-        .attr("r", 0.5 + rng() * 0.6)
-        .attr("fill", INK)
-        .attr("opacity", 0.55);
-    }
   },
 
   // Small cluster of 2-3 triangular fir trees — Middle Earth tree-chain style
   drawForestHatch(g, x, y, size, rng, INK) {
-    // Faint ink wash beneath the cluster — forest-floor darkening
-    g.append("ellipse")
-      .attr("cx", x).attr("cy", y)
-      .attr("rx", size * 0.6).attr("ry", size * 0.45)
-      .attr("fill", INK).attr("opacity", 0.05);
-    const count = 2 + Math.floor(rng() * 2);
-    const spread = size * 0.55;
-    const trees = [];
-    for (let i = 0; i < count; i++) {
-      trees.push({
-        tx: x + (rng() - 0.5) * spread * 1.2,
-        ty: y + (rng() - 0.5) * spread * 0.5,
-        th: size * (0.45 + rng() * 0.25),
-      });
+    // Pick one of several engraving-style tree variants for hand-drawn
+    // variety. All solid-ink silhouettes.
+    const variant = rng();
+
+    // Mapeffects old-growth scatter ticks on the forest floor
+    const floorMarks = 1 + Math.floor(rng() * 2);
+    for (let i = 0; i < floorMarks; i++) {
+      const fx = x + (rng() - 0.5) * size * 0.9;
+      const fy = y + size * (0.35 + rng() * 0.25);
+      const len = 1 + rng() * 1.2;
+      g.append("line")
+        .attr("x1", fx).attr("y1", fy)
+        .attr("x2", fx + len).attr("y2", fy + len * 0.45)
+        .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.5);
     }
-    // Back-to-front so nearer trees overlap further ones
-    trees.sort((a, b) => a.ty - b.ty);
-    trees.forEach(t => {
-      const tw = t.th * 0.55;
-      // Tiered fir silhouette — two stacked triangles suggesting branches.
-      // Upper tier (smaller, higher)
+    if (variant < 0.45) {
+      // Two stacked fir tiers (original)
+      const th = size * (0.55 + rng() * 0.2);
+      const tw = th * 0.55;
       g.append("path")
-        .attr("d", `M ${t.tx - tw*0.35} ${t.ty - t.th*0.05} L ${t.tx} ${t.ty - t.th*0.55} L ${t.tx + tw*0.35} ${t.ty - t.th*0.05} Z`)
-        .attr("fill", INK)
-        .attr("stroke", "none")
-        .attr("opacity", 0.9);
-      // Lower tier (wider, overlapping the upper)
+        .attr("d", `M ${x - tw*0.35} ${y - th*0.05} L ${x} ${y - th*0.55} L ${x + tw*0.35} ${y - th*0.05} Z`)
+        .attr("fill", INK).attr("opacity", 0.9);
       g.append("path")
-        .attr("d", `M ${t.tx - tw/2} ${t.ty + t.th*0.15} L ${t.tx} ${t.ty - t.th*0.25} L ${t.tx + tw/2} ${t.ty + t.th*0.15} Z`)
-        .attr("fill", INK)
-        .attr("stroke", "none")
-        .attr("opacity", 0.85);
-      // Tiny trunk
+        .attr("d", `M ${x - tw/2} ${y + th*0.15} L ${x} ${y - th*0.25} L ${x + tw/2} ${y + th*0.15} Z`)
+        .attr("fill", INK).attr("opacity", 0.85);
       g.append("line")
-        .attr("x1", t.tx).attr("y1", t.ty + t.th * 0.15)
-        .attr("x2", t.tx).attr("y2", t.ty + t.th * 0.35)
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.6)
-        .attr("opacity", 0.8);
-      // Thin shadow stroke under the trunk — grounds the fir
+        .attr("x1", x).attr("y1", y + th * 0.15)
+        .attr("x2", x).attr("y2", y + th * 0.3)
+        .attr("stroke", INK).attr("stroke-width", 0.6).attr("opacity", 0.8);
+    } else if (variant < 0.75) {
+      // Three-tier tall fir — Middle-earth tree-chain look
+      const th = size * 0.7;
+      const tw = size * 0.42;
+      for (let i = 0; i < 3; i++) {
+        const tierY = y - th * (i / 3) * 0.85;
+        const tierW = tw * (1 - i * 0.22);
+        g.append("path")
+          .attr("d", `M ${x - tierW / 2} ${tierY} L ${x} ${tierY - th * 0.42} L ${x + tierW / 2} ${tierY} Z`)
+          .attr("fill", INK);
+      }
       g.append("line")
-        .attr("x1", t.tx - tw * 0.45).attr("y1", t.ty + t.th * 0.38)
-        .attr("x2", t.tx + tw * 0.45).attr("y2", t.ty + t.th * 0.38)
-        .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.35);
-    });
+        .attr("x1", x).attr("y1", y).attr("x2", x).attr("y2", y + size * 0.14)
+        .attr("stroke", INK).attr("stroke-width", 0.6);
+    } else {
+      // Rounded deciduous silhouette (filled circle + trunk)
+      const r = size * (0.28 + rng() * 0.1);
+      const cy = y - r * 0.4;
+      g.append("rect").attr("x", x - 0.7).attr("y", cy + r * 0.6).attr("width", 1.4).attr("height", r * 0.8).attr("fill", INK);
+      g.append("circle").attr("cx", x).attr("cy", cy).attr("r", r).attr("fill", INK).attr("opacity", 0.88);
+    }
   },
 
   // Engraving-style swamp: dense horizontal ripples with reed tufts
@@ -1047,44 +1204,46 @@ window.MapStyles.thirdage = {
   },
 
   drawHill(g, x, y, size, rng, INK) {
-    // Cluster of 1-2 humps with engraving-style cross-hatch shading
-    const count = 1 + Math.floor(rng() * 2);
-    const spacing = size * 0.75;
-    const humps = [];
-    for (let i = 0; i < count; i++) {
-      humps.push({
-        cx: x + (i - (count - 1) / 2) * spacing + (rng() - 0.5) * size * 0.15,
-        w: size * (0.85 + rng() * 0.4),
-        h: size * (0.4 + rng() * 0.3),
-      });
-    }
-    humps.sort((a, b) => b.h - a.h);
-    humps.forEach(({ cx, w, h }) => {
-      const peakOff = (rng() - 0.5) * w * 0.15;
-      g.append("path")
-        .attr("d", `M ${cx - w/2} ${y} Q ${cx - w/4 + peakOff} ${y - h} ${cx + peakOff} ${y - h} Q ${cx + w/4 + peakOff} ${y - h} ${cx + w/2} ${y}`)
-        .attr("fill", "none")
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.9)
-        .attr("opacity", 0.65);
-      // Engraving hatch on right side: 2-3 short parallel lines
-      const hatchCount = 2 + Math.floor(rng() * 2);
-      for (let i = 0; i < hatchCount; i++) {
-        const t = 0.3 + i * 0.22;
-        const hx = cx + peakOff + w * 0.1 + i * w * 0.05;
-        g.append("line")
-          .attr("x1", hx).attr("y1", y - h * (0.65 - t * 0.3))
-          .attr("x2", hx + w * 0.06).attr("y2", y - h * 0.05)
-          .attr("stroke", INK).attr("stroke-width", 0.45).attr("opacity", 0.5);
+    // Three hand-drawn hill variants — simple hump, rolling double-hump,
+    // or hump with a small rocky crest.
+    const variant = rng();
+    if (variant < 0.55) {
+      const count = 1 + Math.floor(rng() * 2);
+      const spacing = size * 0.65;
+      for (let i = 0; i < count; i++) {
+        const cx = x + (i - (count - 1) / 2) * spacing + (rng() - 0.5) * size * 0.1;
+        const w = size * (0.75 + rng() * 0.25);
+        const h = size * (0.35 + rng() * 0.2);
+        g.append("path")
+          .attr("d", `M ${cx - w / 2} ${y} Q ${cx} ${y - h * 1.2} ${cx + w / 2} ${y}`)
+          .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.9)
+          .attr("stroke-linecap", "round").attr("opacity", 0.75);
       }
-      // Rolling-downs crown stroke — suggests another ridge beyond
-      const sx0 = cx - w * 0.28 + (rng() - 0.5);
-      const sy0 = y - h * 0.7;
+    } else if (variant < 0.85) {
+      const w = size * (0.95 + rng() * 0.25);
+      const h = size * (0.35 + rng() * 0.18);
+      const mid = x + (rng() - 0.5) * size * 0.08;
+      const midY = y - h * 0.4;
       g.append("path")
-        .attr("d", `M ${sx0} ${sy0} Q ${sx0 + w * 0.12} ${sy0 - 2} ${sx0 + w * 0.25} ${sy0 - 1}`)
-        .attr("fill", "none")
-        .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.4);
-    });
+        .attr("d", `M ${x - w / 2} ${y}
+                    Q ${x - w / 4} ${y - h * 1.2} ${mid} ${midY}
+                    Q ${x + w / 4} ${y - h * 1.3} ${x + w / 2} ${y}`)
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.9)
+        .attr("stroke-linecap", "round").attr("opacity", 0.75);
+    } else {
+      const w = size * (0.7 + rng() * 0.2);
+      const h = size * (0.4 + rng() * 0.15);
+      const cx = x + (rng() - 0.5) * size * 0.08;
+      g.append("path")
+        .attr("d", `M ${cx - w / 2} ${y} Q ${cx} ${y - h * 1.2} ${cx + w / 2} ${y}`)
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.9)
+        .attr("stroke-linecap", "round").attr("opacity", 0.75);
+      const rx = cx + (rng() - 0.5) * w * 0.15;
+      const ry = y - h * 1.05;
+      g.append("ellipse")
+        .attr("cx", rx).attr("cy", ry).attr("rx", size * 0.1).attr("ry", size * 0.065)
+        .attr("fill", INK).attr("opacity", 0.85);
+    }
   },
 
   drawFarm(g, x, y, size, rng, INK) {

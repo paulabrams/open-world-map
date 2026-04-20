@@ -46,6 +46,7 @@ window.MapStyles.moonletters = {
     MapCore.renderRiver(ctx, ctx.colors.BLUE_INK, 3);
     MapCore.renderRiverLabel(ctx, { color: ctx.colors.BLUE_INK, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderBridges(ctx, { color: ctx.colors.BLUE_INK, strokeWidth: 1.0, bridgeLen: 14 });
+    MapCore.renderBoats(ctx, { color: ctx.colors.BLUE_INK, parchment: ctx.colors.PARCHMENT, count: 3 });
     MapCore.renderRoad(ctx, ctx.colors.BLUE_INK, 2);
     MapCore.renderCrevasse(ctx, "#2a1f14", 3);
     this.renderLinks(ctx);
@@ -60,7 +61,9 @@ window.MapStyles.moonletters = {
     this.renderNodes(ctx);
     this.renderLabels(ctx);
     this.renderDayLabels(ctx);
-    this.renderAnnotations(ctx);
+    // Per-node description captions are disabled by user request — only
+    // directional off-map labels (renderOffMapArrows) remain.
+    // this.renderAnnotations(ctx);
     this.renderBeastSymbol(ctx);
     this.renderBeastMark(ctx);
     this.renderCompass(ctx);
@@ -75,13 +78,89 @@ window.MapStyles.moonletters = {
      ──────────────────────────────────────────────────────────── */
 
   drawMountainSketch(g, x, y, size, rng, colors) {
-    const variant = Math.floor(rng() * 4);
-    if (variant === 0) {
-      this.drawPeakTwin(g, x, y, size, rng, colors);
-    } else if (variant === 1) {
-      this.drawPeakStubby(g, x, y, size, rng, colors);
-    } else {
-      this.drawPeakSingle(g, x, y, size, rng, colors);
+    // Thror's Map Lonely Mountain style — a single big lumpy mountain per
+    // draw, with a wavy irregular ridgeline of 3-4 peaks, interior ridge
+    // lines running down from each peak, and vertical hatching on the
+    // shadow side. Replaces the old small-peak variants.
+    // Spread successive draws across 3 y-tiers so multiple Lonely-Mountain
+    // shapes per hex form a ranged silhouette with depth rather than all
+    // sitting at the same hex-center line.
+    const tier = Math.floor(rng() * 3);
+    const tierOffset = tier * size * 0.18;
+    this.drawLonelyMountain(g, x, y - tierOffset, size, rng, colors);
+  },
+
+  drawLonelyMountain(g, x, y, size, rng, colors) {
+    const { BLUE_INK } = colors;
+    const w = size * (1.7 + rng() * 0.3);
+    const h = size * (1.0 + rng() * 0.3);
+    const baseL = x - w / 2;
+    const baseR = x + w / 2;
+    // Build a wavy ridgeline of 3-5 irregular peaks along the top
+    const peakCount = 3 + Math.floor(rng() * 2);
+    const peaks = [];
+    for (let i = 0; i < peakCount; i++) {
+      const t = (i + 0.5) / peakCount;
+      const px = baseL + t * w + (rng() - 0.5) * w * 0.06;
+      const peakH = h * (0.55 + rng() * 0.45); // varied peak heights
+      peaks.push({ x: px, y: y - peakH });
+    }
+    // Sort by x so the path moves left→right along the ridge
+    peaks.sort((a, b) => a.x - b.x);
+    // Construct the outline: from base-left, up through all peaks with
+    // valley dips between them, then down to base-right.
+    let d = `M ${baseL} ${y}`;
+    // Left flank up to first peak — one small shoulder bump partway up
+    const shoulderLX = baseL + (peaks[0].x - baseL) * 0.55 + (rng() - 0.5) * 2;
+    const shoulderLY = y + (peaks[0].y - y) * 0.55 + (rng() - 0.5) * 2;
+    d += ` L ${shoulderLX} ${shoulderLY} L ${peaks[0].x} ${peaks[0].y}`;
+    for (let i = 1; i < peaks.length; i++) {
+      // Valley between peaks — dips ~25-40% down from the lower peak
+      const prev = peaks[i - 1];
+      const curr = peaks[i];
+      const lowerY = Math.max(prev.y, curr.y);
+      const valleyY = lowerY + h * (0.18 + rng() * 0.18);
+      const valleyX = (prev.x + curr.x) / 2 + (rng() - 0.5) * w * 0.04;
+      d += ` L ${valleyX} ${valleyY} L ${curr.x} ${curr.y}`;
+    }
+    // Right flank down with a shoulder bump
+    const shoulderRX = peaks[peaks.length - 1].x + (baseR - peaks[peaks.length - 1].x) * 0.45 + (rng() - 0.5) * 2;
+    const shoulderRY = peaks[peaks.length - 1].y + (y - peaks[peaks.length - 1].y) * 0.45 + (rng() - 0.5) * 2;
+    d += ` L ${shoulderRX} ${shoulderRY} L ${baseR} ${y}`;
+
+    g.append("path")
+      .attr("d", d)
+      .attr("fill", "none").attr("stroke", BLUE_INK)
+      .attr("stroke-width", 1.1)
+      .attr("stroke-linejoin", "round").attr("stroke-linecap", "round")
+      .attr("opacity", 0.9);
+
+    // Interior ridge lines: one from each peak descending toward the base,
+    // giving the crumpled-paper contour effect from Thror's Lonely Mountain.
+    peaks.forEach((p, i) => {
+      // Ridge drops roughly straight down from the peak, veering slightly
+      const endX = p.x + (rng() - 0.5) * w * 0.06;
+      const endY = y - h * (0.1 + rng() * 0.08);
+      // Kink mid-ridge for the crumpled feel
+      const kinkX = p.x + (endX - p.x) * 0.5 + (rng() - 0.5) * 2;
+      const kinkY = p.y + (endY - p.y) * 0.5 + (rng() - 0.5) * 2;
+      g.append("path")
+        .attr("d", `M ${p.x} ${p.y} L ${kinkX} ${kinkY} L ${endX} ${endY}`)
+        .attr("fill", "none").attr("stroke", BLUE_INK)
+        .attr("stroke-width", 0.55).attr("stroke-linecap", "round")
+        .attr("opacity", 0.65);
+    });
+
+    // Vertical hatching on the shadow (left) face — thin parallel strokes
+    const hatchCount = 4 + Math.floor(rng() * 3);
+    for (let i = 0; i < hatchCount; i++) {
+      const t = (i + 1) / (hatchCount + 1);
+      const sx = baseL + w * 0.1 + t * w * 0.25;
+      const sy = y - h * (0.15 + t * 0.4);
+      g.append("line")
+        .attr("x1", sx).attr("y1", sy)
+        .attr("x2", sx + w * 0.02).attr("y2", sy + h * 0.22)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.5);
     }
   },
 
@@ -192,7 +271,24 @@ window.MapStyles.moonletters = {
   },
 
   drawSparseTree(g, x, y, size, rng, colors) {
-    // Small cluster of 1-2 tree glyphs — mixes Y-shape and fir shape for variety
+    // Normal living trees — mix of fir (angular stacked Vs) and round
+    // leafy. Dead Y-shape trees used to be here but they're reserved for
+    // desolation regions (not in this campaign).
+
+    // Mapeffects old-growth scatter ticks — tiny detail marks on the
+    // forest floor (kept very faint for moonletters' sparse aesthetic)
+    const { BLUE_INK } = colors;
+    const floorMarks = Math.floor(rng() * 2);
+    for (let i = 0; i < floorMarks; i++) {
+      const fx = x + (rng() - 0.5) * size * 0.8;
+      const fy = y + size * (0.4 + rng() * 0.2);
+      const len = 1 + rng() * 1.0;
+      g.append("line")
+        .attr("x1", fx).attr("y1", fy)
+        .attr("x2", fx + len).attr("y2", fy + len * 0.45)
+        .attr("stroke", BLUE_INK).attr("stroke-width", 0.35).attr("opacity", 0.4);
+    }
+
     const count = 1 + Math.floor(rng() * 2);
     const trees = [];
     for (let i = 0; i < count; i++) {
@@ -200,14 +296,35 @@ window.MapStyles.moonletters = {
         tx: x + (rng() - 0.5) * size * 0.8,
         ty: y + (rng() - 0.5) * size * 0.5,
         sz: size * (0.45 + rng() * 0.35),
-        style: rng() > 0.4 ? "y" : "fir",
+        style: rng() > 0.45 ? "fir" : "round",
       });
     }
     trees.sort((a, b) => a.ty - b.ty);
     trees.forEach(t => {
-      if (t.style === "y") this.drawTreeGlyphY(g, t.tx, t.ty, t.sz, rng, colors);
-      else this.drawTreeGlyphFir(g, t.tx, t.ty, t.sz, rng, colors);
+      if (t.style === "fir") this.drawTreeGlyphFir(g, t.tx, t.ty, t.sz, rng, colors);
+      else this.drawTreeGlyphRound(g, t.tx, t.ty, t.sz, rng, colors);
     });
+  },
+
+  drawTreeGlyphRound(g, x, y, size, rng, colors) {
+    const { BLUE_INK } = colors;
+    const r = size * (0.3 + rng() * 0.1);
+    const cy = y - r * 0.3;
+    // Trunk
+    g.append("line")
+      .attr("x1", x).attr("y1", cy + r * 0.55).attr("x2", x).attr("y2", cy + r * 1.05)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.6).attr("opacity", 0.78);
+    // Leafy circle outline (not filled — keeps moonletter sparseness)
+    g.append("circle")
+      .attr("cx", x).attr("cy", cy).attr("r", r)
+      .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.65).attr("opacity", 0.78);
+    // Small cross-veins inside (stylized leaves)
+    g.append("line")
+      .attr("x1", x - r * 0.5).attr("y1", cy).attr("x2", x + r * 0.5).attr("y2", cy)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.55);
+    g.append("line")
+      .attr("x1", x).attr("y1", cy - r * 0.5).attr("x2", x).attr("y2", cy + r * 0.5)
+      .attr("stroke", BLUE_INK).attr("stroke-width", 0.4).attr("opacity", 0.55);
   },
 
   drawTreeGlyphY(g, x, y, size, rng, colors) {
@@ -414,19 +531,20 @@ window.MapStyles.moonletters = {
       "plains": (tg, x, y, sz, rng) => style.drawDesolationDots(tg, x, y, sz, rng, colors),
       "graveyard": (tg, x, y, sz, rng) => style.drawGraveyard(tg, x, y, sz, rng, colors),
     }, { density: 0.3 });
+    // Bumped mountain density for Moonletters — the Lonely Mountain style
+    // is distinctive, and the user asked for more per hex.
     MapCore.renderMountainsWithElevation(ctx,
       (tg, x, y, sz, rng) => style.drawMountainSketch(tg, x, y, sz, rng, colors),
       (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, colors),
-      { density: 0.35 });
+      { density: 0.85 });
     MapCore.renderForestEdgeTrees(ctx,
       (tg, x, y, sz, rng) => style.drawSparseTree(tg, x, y, sz, rng, colors),
       ["forest", "forested-hills"],
-      { density: 0.5 });
+      { density: 0.75 });
     MapCore.renderFarmlandBiased(ctx,
       (tg, x, y, sz, rng) => style.drawFarm(tg, x, y, sz, rng, colors));
-    MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
-      color: colors.BLUE_FAINT, strokeWidth: 0.7, opacity: 0.5, wobble: 2.5, className: "forest-edges",
-    });
+    // Forest boundary comes from the scattered edge trees — no hard
+    // hex-outline stroke.
   },
 
   drawGraveyard(g, x, y, size, rng, colors) {
@@ -457,8 +575,8 @@ window.MapStyles.moonletters = {
   },
 
   renderNodes(ctx) {
-    const { g, nodes, colors } = ctx;
-    const { BLUE_INK, RED_INK } = colors;
+    const { g, nodes, colors, mulberry32, seedFromString } = ctx;
+    const { BLUE_INK, RED_INK, PARCHMENT } = colors;
     const nodeGroup = g.append("g").attr("class", "nodes");
 
     nodes.forEach(node => {
@@ -474,8 +592,11 @@ window.MapStyles.moonletters = {
       const isDanger = node.point_type === "lair" || node.point_type === "dungeon";
       const color = isDanger ? RED_INK : BLUE_INK;
 
-      // Farm override
-      if (node.name && node.name.toLowerCase().includes("farm")) {
+      // Shared id-based special icons (before point_type switch)
+      if (MapCore.renderSpecialIcon(ng, node, { ink: BLUE_INK, parchment: PARCHMENT })) return;
+
+      // Farm override (not ruins)
+      if (node.name && node.name.toLowerCase().includes("farm") && node.point_type !== "ruin") {
         ng.append("rect").attr("x", -s).attr("y", -s*0.5).attr("width", s*2).attr("height", s*1.5)
           .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
         ng.append("path")
@@ -491,62 +612,254 @@ window.MapStyles.moonletters = {
         }
       } else switch (node.point_type) {
         case "heart": {
-          const hs = 3.5;
-          const positions = [{x:0, y:0}, {x:-hs*1.2, y:hs*0.2}, {x:hs*1.2, y:hs*0.1}, {x:0, y:-hs*0.9}];
-          positions.forEach(p => {
-            ng.append("rect").attr("x", p.x - hs*0.45).attr("y", p.y - hs*0.2).attr("width", hs*0.9).attr("height", hs*0.65)
-              .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
-            ng.append("path")
-              .attr("d", `M ${p.x - hs*0.55} ${p.y - hs*0.2} L ${p.x} ${p.y - hs*0.75} L ${p.x + hs*0.55} ${p.y - hs*0.2}`)
-              .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
-          });
-          // Slim spire rising from the center — signals capital/heart-of-region
-          ng.append("line")
-            .attr("x1", 0).attr("y1", -hs * 0.75).attr("x2", 0).attr("y2", -hs * 1.7)
-            .attr("stroke", BLUE_INK).attr("stroke-width", 0.7);
-          ng.append("path")
-            .attr("d", `M ${-hs * 0.3} ${-hs * 1.7} L 0 ${-hs * 2.1} L ${hs * 0.3} ${-hs * 1.7}`)
-            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
-          // Small pennant above the spire peak
-          ng.append("line")
-            .attr("x1", 0).attr("y1", -hs * 2.1).attr("x2", 0).attr("y2", -hs * 2.55)
-            .attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
-          ng.append("path")
-            .attr("d", `M 0 ${-hs * 2.55} L ${hs * 0.45} ${-hs * 2.43} L 0 ${-hs * 2.3} Z`)
-            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
-          // Faint walled-town oval — thin Thror-style outline around the capital
+          // Walled capital — fills the middle 50% of its hex in the spare
+          // moonletter angular aesthetic. Thin blue-ink outlines only (no
+          // solid fills), pointed-roof towers (no crenellations), single
+          // central bridge across the river.
+          const hs = 12;
+          const rng = mulberry32(seedFromString("city-" + (node.id || "heart")));
+          const bY = hs * 0.15;
+          // Thin walled oval — main silhouette
           ng.append("ellipse")
             .attr("cx", 0).attr("cy", 0)
-            .attr("rx", hs * 2.3).attr("ry", hs * 1.75)
-            .attr("fill", "none")
-            .attr("stroke", BLUE_INK)
-            .attr("stroke-width", 0.5)
-            .attr("opacity", 0.4);
+            .attr("rx", hs * 2.1).attr("ry", hs * 1.55)
+            .attr("fill", PARCHMENT).attr("fill-opacity", 0.6)
+            .attr("stroke", BLUE_INK).attr("stroke-width", 0.9);
+          // Scattered tower outlines via rejection sampling
+          const towers = [];
+          const ovRx = hs * 1.85, ovRy = hs * 1.3;
+          const minDist = hs * 0.22;
+          let attempts = 0;
+          while (towers.length < 22 && attempts < 900) {
+            attempts++;
+            const rx = (rng() - 0.5) * 2 * ovRx;
+            const ry = (rng() - 0.5) * 2 * ovRy - hs * 0.1;
+            if ((rx * rx) / (ovRx * ovRx) + (ry * ry) / (ovRy * ovRy) > 1) continue;
+            if (Math.abs(ry - bY) < hs * 0.45 && Math.abs(rx) < hs * 1.0) continue;
+            if (rx > -hs * 0.55 && rx < hs * 0.15 && ry < hs * 0.4) continue;
+            let ok = true;
+            for (const t of towers) {
+              const dx = t.x - rx, dy = t.y - ry;
+              if (dx * dx + dy * dy < minDist * minDist) { ok = false; break; }
+            }
+            if (ok) towers.push({ x: rx, y: ry });
+          }
+          towers.sort((a, b) => a.y - b.y);
+          towers.forEach(t => {
+            const storyCount = 3 + Math.floor(rng() * 4);
+            const storyH = hs * 0.2;
+            const th = storyCount * storyH;
+            const tw = hs * (0.14 + rng() * 0.06);
+            const yTop = t.y - th;
+            ng.append("rect")
+              .attr("x", t.x - tw / 2).attr("y", yTop)
+              .attr("width", tw).attr("height", th)
+              .attr("fill", PARCHMENT).attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+            // Angular pointed roof — moonletter convention
+            ng.append("path")
+              .attr("d", `M ${t.x - tw / 2 - 0.4} ${yTop} L ${t.x} ${yTop - tw * 1.0} L ${t.x + tw / 2 + 0.4} ${yTop}`)
+              .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+          });
+          // Two bridge-gate towers — one flanking each side of the bridge
+          const bridgeSpan0 = hs * 1.5;
+          [-1, 1].forEach(side => {
+            const tX = side * (bridgeSpan0 / 2 + hs * 0.32);
+            const tH = hs * 1.7;
+            const tBase = bY + hs * 0.12;
+            const tTop = tBase - tH;
+            const tW = hs * 0.3;
+            ng.append("rect")
+              .attr("x", tX - tW / 2).attr("y", tTop).attr("width", tW).attr("height", tH)
+              .attr("fill", PARCHMENT).attr("stroke", BLUE_INK).attr("stroke-width", 0.8);
+            // Pointed roof
+            ng.append("path")
+              .attr("d", `M ${tX - tW / 2 - 0.5} ${tTop} L ${tX} ${tTop - tW * 1.2} L ${tX + tW / 2 + 0.5} ${tTop}`)
+              .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.7);
+            // Pole and pennant leaning away from bridge
+            ng.append("line")
+              .attr("x1", tX).attr("y1", tTop - tW * 1.2).attr("x2", tX).attr("y2", tTop - hs * 0.65)
+              .attr("stroke", BLUE_INK).attr("stroke-width", 0.55);
+            ng.append("path")
+              .attr("d", `M ${tX} ${tTop - hs * 0.65} L ${tX + side * hs * 0.5} ${tTop - hs * 0.54} L ${tX} ${tTop - hs * 0.43} Z`)
+              .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.55);
+          });
+          // Four corner wall-towers with pointed caps
+          [{ x: -hs * 1.95, y: -hs * 0.4, h: hs * 0.95 },
+           { x:  hs * 1.95, y: -hs * 0.4, h: hs * 0.9 },
+           { x: -hs * 1.95, y:  hs * 0.4, h: hs * 0.85 },
+           { x:  hs * 1.95, y:  hs * 0.4, h: hs * 1.0 }].forEach(({ x, y, h }) => {
+            ng.append("rect")
+              .attr("x", x - hs * 0.15).attr("y", y - h * 0.6)
+              .attr("width", hs * 0.3).attr("height", h)
+              .attr("fill", PARCHMENT).attr("stroke", BLUE_INK).attr("stroke-width", 0.65);
+            ng.append("path")
+              .attr("d", `M ${x - hs * 0.2} ${y - h * 0.6} L ${x} ${y - h * 0.85} L ${x + hs * 0.2} ${y - h * 0.6}`)
+              .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.55);
+          });
+          // Main gate — triangle arch cutout
+          ng.append("path")
+            .attr("d", `M ${-hs * 0.28} ${hs * 1.55} L ${-hs * 0.28} ${hs * 0.9} L 0 ${hs * 0.55} L ${hs * 0.28} ${hs * 0.9} L ${hs * 0.28} ${hs * 1.55}`)
+            .attr("fill", PARCHMENT).attr("stroke", BLUE_INK).attr("stroke-width", 0.7);
+          // Single central bridge — angular (not rounded)
+          const bridgeSpan = hs * 1.5;
+          const bridgeG = ng.append("g").attr("class", "bridge");
+          bridgeG.append("line")
+            .attr("x1", -bridgeSpan / 2 - hs * 0.25).attr("y1", bY)
+            .attr("x2",  bridgeSpan / 2 + hs * 0.25).attr("y2", bY)
+            .attr("stroke", BLUE_INK).attr("stroke-width", 1.0);
+          bridgeG.append("line")
+            .attr("x1", -bridgeSpan / 2).attr("y1", bY + hs * 0.1)
+            .attr("x2",  bridgeSpan / 2).attr("y2", bY + hs * 0.1)
+            .attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+          [-bridgeSpan * 0.3, bridgeSpan * 0.3].forEach(px => {
+            bridgeG.append("line")
+              .attr("x1", px).attr("y1", bY + hs * 0.1).attr("x2", px).attr("y2", bY + hs * 0.42)
+              .attr("stroke", BLUE_INK).attr("stroke-width", 0.7);
+          });
+          // Triangular (angular) arch under the deck — moonletter aesthetic
+          bridgeG.append("path")
+            .attr("d", `M ${-bridgeSpan * 0.22} ${bY + hs * 0.42} L 0 ${bY + hs * 0.15} L ${bridgeSpan * 0.22} ${bY + hs * 0.42}`)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
           break;
         }
         case "fortress": {
-          const hs = 4;
-          ng.append("rect").attr("x", -hs).attr("y", -hs*0.35).attr("width", hs*2).attr("height", hs*0.8)
-            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.7);
-          ng.append("rect").attr("x", -hs*0.3).attr("y", -hs).attr("width", hs*0.6).attr("height", hs*1.45)
-            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.7);
-          for (let ci = 0; ci < 2; ci++) {
-            ng.append("rect").attr("x", -hs*0.2 + ci * hs*0.25).attr("y", -hs - hs*0.18).attr("width", hs*0.15).attr("height", hs*0.18)
-              .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+          // Hilltop keep in the moonletter angular aesthetic — thin blue-ink
+          // outlines, pointed conical spires, no solid fills. Three slim
+          // towers with pointed caps, crenellated curtain wall, detached
+          // gate-tower, rocky hilltop with faint strata lines.
+          const hs = 9;
+          const rng = mulberry32(seedFromString("fortress-" + (node.id || "fortress")));
+          // Hill widened so flat crest fully supports the keep (detached
+          // right gate-tower at +hs*2.15). Flat top ±hs*2.6, hill ±hs*4.5.
+          const hillBaseY = hs * 1.9, hillTopY = hs * 0.6, hillW = hs * 4.5;
+          const flatEdge = hs * 2.6;
+          // Hill outline only (no heavy fill in moonletters)
+          ng.append("path")
+            .attr("d", `M ${-hillW} ${hillBaseY}
+                        Q ${-hillW * 0.75} ${hillBaseY - hs * 0.1} ${-flatEdge} ${hillTopY + hs * 0.25}
+                        Q ${-flatEdge * 0.5} ${hillTopY - hs * 0.1} 0 ${hillTopY}
+                        Q ${flatEdge * 0.5} ${hillTopY - hs * 0.1} ${flatEdge} ${hillTopY + hs * 0.25}
+                        Q ${hillW * 0.75} ${hillBaseY - hs * 0.1} ${hillW} ${hillBaseY}`)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.8);
+          // Strata lines on hillside
+          for (let si = 0; si < 8; si++) {
+            const t = 0.08 + si * 0.12;
+            const sx = -hillW + 2 * hillW * t;
+            const syTop = hillTopY + hs * 0.35;
+            const syBot = hillBaseY - hs * 0.08;
+            const midX = sx + (rng() - 0.5) * hs * 0.15;
+            const endX = sx + (rng() - 0.5) * hs * 0.1;
+            ng.append("path")
+              .attr("d", `M ${sx} ${syTop} Q ${midX} ${(syTop + syBot) / 2} ${endX} ${syBot}`)
+              .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.35).attr("opacity", 0.45);
           }
+          // Angular boulders as tiny diamonds
+          [-hillW * 0.75, -hillW * 0.35, hillW * 0.4, hillW * 0.78].forEach(bx => {
+            const by = hillBaseY - hs * 0.05;
+            ng.append("path")
+              .attr("d", `M ${bx} ${by - hs * 0.15} L ${bx + hs * 0.15} ${by} L ${bx} ${by + hs * 0.1} L ${bx - hs * 0.15} ${by} Z`)
+              .attr("fill", PARCHMENT).attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+          });
+
+          const baseY = hillTopY;
+          const slit = (sx, sy1, sy2) => {
+            ng.append("line").attr("x1", sx).attr("y1", sy1).attr("x2", sx).attr("y2", sy2)
+              .attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+          };
+          const pointedSpire = (x, baseTop, w, spireH) => {
+            // Drum ring
+            ng.append("rect")
+              .attr("x", x - w * 0.58).attr("y", baseTop - hs * 0.06)
+              .attr("width", w * 1.16).attr("height", hs * 0.09)
+              .attr("fill", PARCHMENT).attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+            ng.append("path")
+              .attr("d", `M ${x - w * 0.55} ${baseTop - hs * 0.06} L ${x} ${baseTop - spireH} L ${x + w * 0.55} ${baseTop - hs * 0.06}`)
+              .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+          };
+          const pointedRoof = (x, topY, w) => {
+            ng.append("path")
+              .attr("d", `M ${x - w / 2 - 0.4} ${topY} L ${x} ${topY - w * 0.8} L ${x + w / 2 + 0.4} ${topY}`)
+              .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+          };
+
+          // Curtain wall (outlined) + merlons
+          const wallLeft = -hs * 1.7, wallRight = hs * 1.7;
+          const wallTop = baseY - hs * 0.9;
+          ng.append("rect")
+            .attr("x", wallLeft).attr("y", wallTop).attr("width", wallRight - wallLeft).attr("height", hs * 0.9)
+            .attr("fill", PARCHMENT).attr("stroke", BLUE_INK).attr("stroke-width", 0.8);
+          const merlonCount = 9;
+          const merlonW = hs * 0.2;
+          const merlonGap = ((wallRight - wallLeft) - merlonCount * merlonW) / (merlonCount - 1);
+          for (let i = 0; i < merlonCount; i++) {
+            const mx = wallLeft + i * (merlonW + merlonGap);
+            ng.append("rect").attr("x", mx).attr("y", wallTop - hs * 0.15)
+              .attr("width", merlonW).attr("height", hs * 0.15)
+              .attr("fill", PARCHMENT).attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+          }
+          // Wall-towers (outlined with pointed roofs)
+          const wallTowers = [
+            { x: -hs * 1.55, h: hs * 1.4, w: hs * 0.34 },
+            { x: -hs * 0.8,  h: hs * 1.2, w: hs * 0.30 },
+            { x:  hs * 0.15, h: hs * 1.25, w: hs * 0.30 },
+            { x:  hs * 0.85, h: hs * 1.3, w: hs * 0.32 },
+            { x:  hs * 1.55, h: hs * 1.45, w: hs * 0.34 },
+          ];
+          wallTowers.forEach(({ x, h, w }) => {
+            const topY = baseY - h;
+            ng.append("rect").attr("x", x - w / 2).attr("y", topY).attr("width", w).attr("height", h)
+              .attr("fill", PARCHMENT).attr("stroke", BLUE_INK).attr("stroke-width", 0.65);
+            pointedRoof(x, topY, w + hs * 0.06);
+            slit(x, topY + h * 0.35, topY + h * 0.55);
+          });
+          // Slim pointed-spire towers
+          const spires = [
+            { x: -hs * 1.15, baseH: hs * 2.1, spireH: hs * 0.95, w: hs * 0.22 },
+            { x: -hs * 0.35, baseH: hs * 2.45, spireH: hs * 1.1, w: hs * 0.22 },
+            { x:  hs * 0.45, baseH: hs * 2.1, spireH: hs * 0.95, w: hs * 0.22 },
+          ];
+          spires.forEach(({ x, baseH, spireH, w }) => {
+            const topY = baseY - baseH;
+            ng.append("rect").attr("x", x - w / 2).attr("y", topY).attr("width", w).attr("height", baseH)
+              .attr("fill", PARCHMENT).attr("stroke", BLUE_INK).attr("stroke-width", 0.7);
+            slit(x, topY + baseH * 0.22, topY + baseH * 0.37);
+            slit(x, topY + baseH * 0.55, topY + baseH * 0.7);
+            pointedSpire(x, topY, w, spireH);
+          });
+          // Detached right gate-tower
+          const detX = hs * 2.15, detH = hs * 1.55, detW = hs * 0.38;
+          const detTop = baseY - detH + hs * 0.15;
+          ng.append("rect").attr("x", detX - detW / 2).attr("y", detTop).attr("width", detW).attr("height", detH)
+            .attr("fill", PARCHMENT).attr("stroke", BLUE_INK).attr("stroke-width", 0.7);
+          pointedRoof(detX, detTop, detW + hs * 0.06);
+          slit(detX, detTop + detH * 0.3, detTop + detH * 0.5);
+          slit(detX, detTop + detH * 0.6, detTop + detH * 0.8);
+          // Triangular (angular) gate cut — moonletter convention
           ng.append("path")
-            .attr("d", `M ${-hs*0.2} ${hs*0.45} L ${-hs*0.2} ${hs*0.1} A ${hs*0.2} ${hs*0.2} 0 0 1 ${hs*0.2} ${hs*0.1} L ${hs*0.2} ${hs*0.45}`)
-            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
-          // Small pennant on a pole atop the keep — a Thror's/Tolkien convention
-          const poleX = hs * 0.15;
-          const poleTop = -hs - hs * 0.55;
+            .attr("d", `M ${-hs * 0.05} ${baseY} L ${-hs * 0.05} ${baseY - hs * 0.5} L ${hs * 0.15} ${baseY - hs * 0.8} L ${hs * 0.35} ${baseY - hs * 0.5} L ${hs * 0.35} ${baseY} Z`)
+            .attr("fill", PARCHMENT).attr("stroke", BLUE_INK).attr("stroke-width", 0.6);
+          // Switchback dashed path up the right
+          ng.append("path")
+            .attr("d", `M ${hillW * 0.75} ${hillBaseY - hs * 0.1} Q ${hs * 1.2} ${hillBaseY - hs * 0.55} ${hs * 0.7} ${hillTopY + hs * 0.2} Q ${hs * 0.5} ${hillTopY + hs * 0.05} ${hs * 0.15} ${baseY}`)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.5)
+            .attr("stroke-dasharray", "2 2").attr("opacity", 0.7);
+          // Pennants (angular triangles, outlined only)
+          const flagTop = baseY - spires[1].baseH - spires[1].spireH - hs * 0.35;
           ng.append("line")
-            .attr("x1", poleX).attr("y1", -hs - hs * 0.2)
-            .attr("x2", poleX).attr("y2", poleTop)
-            .attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+            .attr("x1", spires[1].x).attr("y1", baseY - spires[1].baseH - spires[1].spireH)
+            .attr("x2", spires[1].x).attr("y2", flagTop)
+            .attr("stroke", BLUE_INK).attr("stroke-width", 0.55);
           ng.append("path")
-            .attr("d", `M ${poleX} ${poleTop} L ${poleX + hs*0.55} ${poleTop + hs*0.13} L ${poleX} ${poleTop + hs*0.26} Z`)
-            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.5);
+            .attr("d", `M ${spires[1].x} ${flagTop} L ${spires[1].x + hs * 0.6} ${flagTop + hs * 0.15} L ${spires[1].x} ${flagTop + hs * 0.3} Z`)
+            .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.55);
+          [spires[0], spires[2]].forEach(s => {
+            const topY = baseY - s.baseH - s.spireH;
+            ng.append("line").attr("x1", s.x).attr("y1", topY).attr("x2", s.x).attr("y2", topY - hs * 0.3)
+              .attr("stroke", BLUE_INK).attr("stroke-width", 0.45);
+            ng.append("path")
+              .attr("d", `M ${s.x} ${topY - hs * 0.3} L ${s.x + hs * 0.28} ${topY - hs * 0.22} L ${s.x} ${topY - hs * 0.14} Z`)
+              .attr("fill", "none").attr("stroke", BLUE_INK).attr("stroke-width", 0.45);
+          });
           break;
         }
         case "tavern": {
@@ -756,7 +1069,11 @@ window.MapStyles.moonletters = {
       const isImportant = node.point_type === "heart" || node.point_type === "fortress";
       const fontSize = isLocal ? 10 : (isImportant ? 16 : 13);
       const color = isDanger ? RED_INK : (isLocal ? BLUE_LIGHT : BLUE_INK);
-      const yOffset = isLocal ? 12 : 16;
+      // Big icons push their label further below so text doesn't collide
+      const typeOffset = { heart: 30, fortress: 26, tower: 22, lair: 20 };
+      // Moonletters labels sit a bit tighter — scale baseline offsets by 0.9
+      const specialOff = MapCore.specialIconLabelOffset(node, 0.9);
+      const yOffset = isLocal ? 12 : (specialOff || typeOffset[node.point_type] || 16);
 
       const text = labelGroup.append("text")
         .attr("x", node.x)

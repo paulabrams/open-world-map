@@ -342,7 +342,8 @@
       "description": "A large bandit operation an hour north of the Tower of the Stargazer, just inside the forest's southern edge — 120 people in all, 48 bandits and 72 slaves. Krin \"The Cunning\" led a 20-strong strike force; Rath \"Iron-Will\" ran the slave-pit and quarry, waving a dubious writ for \"contract labor\"; Corth \"Whip-Crack\" never spoke. The obsidian quarry is a shale crater around a single dark spire — possibly hollow, possibly deeper than it looks — and digging at its base was forbidden on pain of death. Carved serpent marks on the trees hinted at plans beyond lumber. Lightning from the Tower eventually reduced the camp to ash; captives were freed, and the party earned 4 XP in Session 42.",
       "x_hint": -0.75,
       "y_hint": 2.6,
-      "hex": "0912"
+      "hex": "0912",
+      "subhex": "S"
     }
   ],
   "links": [
@@ -604,10 +605,17 @@
       "hexes": ["1015", "1114", "1214", "1314"],
       "fontSize": 20,
       "rotation": 12
+    },
+    {
+      "text": "Mistwood",
+      "hexes": ["0711", "0811", "0812", "0813", "0911", "0912", "1011", "1012", "1013", "1111"],
+      "fontSize": 22,
+      "letterSpacing": "5px"
     }
   ],
   "off_map_arrows": [
     { "direction": "N",  "label": "North to the Belerion wilds" },
+    { "direction": "NE", "label": "Arcana Academy lies to the north" },
     { "direction": "E",  "label": "Eastward to the coast" },
     { "direction": "S",  "label": "South the road winds on" },
     { "direction": "W",  "label": "West lie the Dragon Isles" }
