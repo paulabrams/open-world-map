@@ -83,12 +83,12 @@ window.MapGrids.hex = {
       }
     }
 
-    // Draw the hexes — skip any with negative col/row so we never produce
-    // confusing labels like "19-1" (the CCRR code assumes 0-padded 2-digit
-    // coords in each axis).
+    // Valid hex range: 0000 top-left → 2020 bottom-right. Any hex outside
+    // that window is treated as off-map and never drawn.
+    const MAX_CR = 20;
     hexesToDraw.forEach(key => {
       const [col, row] = key.split(",").map(Number);
-      if (col < 0 || row < 0 || col > 99 || row > 99) return;
+      if (col < 0 || row < 0 || col > MAX_CR || row > MAX_CR) return;
       const hx = originX + (col - bcCol) * colStep;
       const hy = originY + (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0);
 

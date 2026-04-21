@@ -45,14 +45,15 @@ window.MapStyles.wilderland = {
   render(ctx) {
     this.renderBackground(ctx);
     this.renderBorder(ctx);
-    // Tolkien Wilderland uses single-line black rivers (not banked blue).
-    // Pass singleLine:true so renderRiver draws one spine stroke rather
-    // than two banks with a water fill.
-    MapCore.renderRiver(ctx, ctx.colors.INK, 2, { singleLine: true });
+    // Two black-ink bank lines (river color INK rather than the default
+    // blue). Keeps the hand-drawn twin-bank look from the reference.
+    MapCore.renderRiver(ctx, ctx.colors.INK, 2);
     MapCore.renderRiverLabel(ctx, { color: ctx.colors.INK, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.0, bridgeLen: 14 });
     MapCore.renderBoats(ctx, { color: ctx.colors.INK, parchment: ctx.colors.PARCHMENT, count: 4 });
-    MapCore.renderRoad(ctx, ctx.colors.INK, 2);
+    // Tolkien's Wilderland renders the Old Forest Road in blue ink
+    // (contrast against black-ink rivers).
+    MapCore.renderRoad(ctx, ctx.colors.BLUE, 1.8);
     MapCore.renderCrevasse(ctx, "#2a1f14", 3);
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
@@ -237,21 +238,21 @@ window.MapStyles.wilderland = {
       const path = linkGroup.append("path")
         .attr("d", pathD)
         .attr("fill", "none")
-        .attr("stroke", INK)
         .attr("stroke-linecap", "round");
 
       switch (link.path_type) {
         case "road":
-          path.attr("stroke-width", 1.8).attr("opacity", 0.9);
+          // Blue ink matches the hand-drawn Wilderland road convention.
+          path.attr("stroke", BLUE).attr("stroke-width", 1.8).attr("opacity", 0.9);
           break;
         case "trail":
-          path.attr("stroke-width", 1.1).attr("stroke-dasharray", "6 4").attr("opacity", 0.8);
+          path.attr("stroke", INK).attr("stroke-width", 1.1).attr("stroke-dasharray", "6 4").attr("opacity", 0.8);
           break;
         case "wilderness":
-          path.attr("stroke-width", 0.8).attr("stroke-dasharray", "3 5").attr("opacity", 0.65);
+          path.attr("stroke", INK).attr("stroke-width", 0.8).attr("stroke-dasharray", "3 5").attr("opacity", 0.65);
           break;
         default:
-          path.attr("stroke-width", 1.2);
+          path.attr("stroke", INK).attr("stroke-width", 1.2);
       }
     });
   },

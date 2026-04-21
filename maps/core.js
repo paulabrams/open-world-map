@@ -1505,6 +1505,11 @@ function renderHexHover(ctx) {
     .attr("opacity", 0)
     .style("pointer-events", "none");
 
+  // Valid hex window — must agree with grids/hex.js. Hexes outside this
+  // range don't exist on the map, so we don't highlight or open a panel
+  // for them.
+  const MAX_CR = 20;
+
   // Approximate pixel → hex for flat-top offset layout
   function pixelToHex(px, py) {
     const xRel = px - WIDTH / 2;
@@ -1528,6 +1533,7 @@ function renderHexHover(ctx) {
     }
     if (!best) return null;
     const { col, row } = best;
+    if (col < 0 || row < 0 || col > MAX_CR || row > MAX_CR) return null;
     return `${String(col).padStart(2, "0")}${String(row).padStart(2, "0")}`;
   }
 
@@ -1562,7 +1568,14 @@ function renderHexHover(ctx) {
   function syncToPointer(event) {
     const pt = d3.pointer(event, g.node());
     const hex = pixelToHex(pt[0], pt[1]);
-    if (hex && hex !== currentHex) {
+    if (!hex) {
+      // Pointer is outside the valid hex window — hide the highlight and
+      // forget the last hex so re-entering the map re-triggers an update.
+      highlight.attr("opacity", 0);
+      currentHex = null;
+      return;
+    }
+    if (hex !== currentHex) {
       currentHex = hex;
       const [cx, cy] = hexCenter(hex);
       highlight
