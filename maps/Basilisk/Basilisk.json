@@ -214,7 +214,7 @@
     },
     {
       "id": "south-road-mountain-watch",
-      "name": "Brunhilde's Mountain Watch Camp",
+      "name": "Mountain Watch Inn",
       "point_type": "waypoint",
       "terrain": "plains",
       "visible": true,
@@ -243,7 +243,8 @@
       "description": "A rocky Weathertop-like hill on the west edge of the pass, strewn with stones and natural cover — an ideal camp for a small army. The Hangman Hill bandits used it as an ambush perch over the Trade Road, linked back to their water grotto by an underground streambed. The position was finally broken when lightning from the Tower of the Stargazer destroyed the camp.",
       "x_hint": 0.75,
       "y_hint": 3.03,
-      "hex": "1113"
+      "hex": "1113",
+      "subhex": "NW"
     },
     {
       "id": "tower-of-stargazer",
@@ -380,7 +381,7 @@
       "name": "Overland to Hangman Hill",
       "path_type": "wilderness",
       "terrain_difficulty": "tough",
-      "visible": true
+      "visible": false
     },
     {
       "source": "blackwater-crossing",

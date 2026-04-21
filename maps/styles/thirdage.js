@@ -1055,57 +1055,59 @@ window.MapStyles.thirdage = {
 
   // Dense engraving-style mountain range: 1-3 overlapping sharp peaks
   drawMountainRange(g, x, y, size, rng, INK) {
-    // Pauline Baynes-style range (see style-references/middle-earth.webp):
-    // a row of small outlined triangular peaks with fine diagonal hatching
-    // on the right-hand slope for shading. NOT solid black. Peaks are
-    // staggered across a couple of vertical tiers so the ridge reads as
-    // depth rather than a flat serration.
-    const peakCount = 4 + Math.floor(rng() * 3); // 4-6 peaks per call
-    const spacing = size * 0.28;
-    const rangeW = (peakCount - 1) * spacing;
+    // Pauline Baynes "Middle-earth" range (see
+    // style-references/middle-earth.webp). Each call now draws a WIDE
+    // continuous ridge so that adjacent mountain hexes overlap at their
+    // shared edge and read as one long serpentine chain (Ered Lithui /
+    // Misty Mountains), rather than separate cluster-per-hex lumps.
+    const peakCount = 18 + Math.floor(rng() * 7); // 18-24 peaks per call
+    const spacing = size * 0.16;                  // tight overlap
+    const rangeW = (peakCount - 1) * spacing;     // ~2.7-3.8 × size → overflows hex
+    // A couple of hero peaks standing taller within the ridge
+    const heroIdxs = new Set();
+    const heroCount = 2 + Math.floor(rng() * 2);
+    while (heroIdxs.size < heroCount) {
+      heroIdxs.add(3 + Math.floor(rng() * (peakCount - 6)));
+    }
     const peaks = [];
     for (let i = 0; i < peakCount; i++) {
-      const tier = Math.floor(rng() * 2); // 0 front, 1 back
-      const tierY = y - tier * size * 0.18;
+      const isHero = heroIdxs.has(i);
+      // Lots of height variation — most peaks short; heroes clearly tall.
+      const hBase = isHero ? 0.65 + rng() * 0.22 : 0.18 + Math.pow(rng(), 1.4) * 0.38;
+      const wBase = isHero ? 0.26 + rng() * 0.06 : 0.2 + rng() * 0.06;
       peaks.push({
-        px: x - rangeW / 2 + i * spacing + (rng() - 0.5) * size * 0.06,
-        baseY: tierY,
-        h: size * (0.42 + rng() * 0.3),
-        pw: size * (0.3 + rng() * 0.12),
-        tier,
+        px: x - rangeW / 2 + i * spacing + (rng() - 0.5) * size * 0.03,
+        baseY: y + (rng() - 0.5) * size * 0.025,
+        h: size * hBase,
+        pw: size * wBase,
+        isHero,
       });
     }
-    // Back-to-front so nearer peaks overlap farther ones cleanly.
-    peaks.sort((a, b) => b.tier - a.tier);
+    // Tall peaks last so they overlap the shorter ones in front.
+    peaks.sort((a, b) => a.h - b.h);
     peaks.forEach(p => {
       const peakY = p.baseY - p.h;
-      const lx = p.px - p.pw / 2;
-      const rx = p.px + p.pw / 2;
-      // Parchment-filled triangle so hatching behind it doesn't show through
       g.append("path")
-        .attr("d", `M ${lx} ${p.baseY} L ${p.px} ${peakY} L ${rx} ${p.baseY} Z`)
-        .attr("fill", "#f4e8d1")
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.8)
-        .attr("stroke-linejoin", "miter");
-      // Diagonal hatching on the right slope — classic engraving shadow
-      const hatchLines = 2 + Math.floor(rng() * 2); // 2-3 hatches
-      for (let h = 0; h < hatchLines; h++) {
-        const t = (h + 1) / (hatchLines + 1); // 0..1 along the right slope
-        // Start point on the right slope (from peak to bottom-right)
-        const sx = p.px + (rx - p.px) * t;
-        const sy = peakY + (p.baseY - peakY) * t;
-        // End point: inset horizontally toward the peak axis by ~1/3 width
-        const ex = sx - p.pw * 0.22;
-        const ey = sy + p.pw * 0.12;
-        g.append("line")
-          .attr("x1", sx).attr("y1", sy)
-          .attr("x2", ex).attr("y2", ey)
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.5)
-          .attr("opacity", 0.75);
-      }
+        .attr("d", `M ${p.px - p.pw / 2} ${p.baseY} L ${p.px} ${peakY} L ${p.px + p.pw / 2} ${p.baseY} Z`)
+        .attr("fill", INK)
+        .attr("stroke", "none");
     });
+
+    // Foothill arcs at the base — the "^^^^^" row the reference draws
+    // beneath every Baynes range. Runs the full ridge width.
+    const hillCount = Math.round(peakCount * 0.7);
+    const hillSpacing = rangeW / (hillCount - 1);
+    const hillBaseY = y + size * 0.1;
+    for (let i = 0; i < hillCount; i++) {
+      const cx = x - rangeW / 2 + i * hillSpacing + (rng() - 0.5) * size * 0.02;
+      const r = size * (0.05 + rng() * 0.04);
+      g.append("path")
+        .attr("d", `M ${cx - r} ${hillBaseY} Q ${cx} ${hillBaseY - r * 1.1} ${cx + r} ${hillBaseY}`)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.6)
+        .attr("stroke-linecap", "round");
+    }
   },
 
   // Small cluster of 2-3 triangular fir trees — Middle Earth tree-chain style

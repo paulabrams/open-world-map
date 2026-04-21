@@ -765,7 +765,7 @@ function renderCrevasse(ctx, color, width, options = {}) {
 // terrainDrawers is an object mapping terrain type to a draw function: (g, x, y, size, rng) => void
 // options.density scales the scatter point count: 1.0 = full 7 points, 0.3 = center only.
 function renderHexTerrain(ctx, terrainDrawers, options) {
-  const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
+  const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString, riverPath } = ctx;
   if (!hexTerrain || Object.keys(hexTerrain).length === 0) return;
 
   const bcCol = 10, bcRow = 10;
@@ -775,6 +775,42 @@ function renderHexTerrain(ctx, terrainDrawers, options) {
 
   const density = (options && typeof options.density === "number") ? options.density : 1.0;
   const terrainGroup = g.append("g").attr("class", "terrain");
+
+  const neighborsA = [[0, -1], [1, -1], [1, 0], [0, 1], [-1, 0], [-1, -1]];
+  const neighborsB = [[0, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
+  const inscribed = size * Math.sqrt(3) / 2;
+  const edgeMids = [
+    [0, -inscribed],
+    [size * 0.75, -inscribed / 2],
+    [size * 0.75, inscribed / 2],
+    [0, inscribed],
+    [-size * 0.75, inscribed / 2],
+    [-size * 0.75, -inscribed / 2],
+  ];
+  const riverSet = new Set(Array.isArray(riverPath) ? riverPath : []);
+
+  // Swamp reeds cluster near open water. For every swamp hex, build a
+  // unit-vector bias toward its river-bordering edges; placement points
+  // shift along this vector so reeds concentrate on the waterside of the
+  // hex rather than scatter evenly across it.
+  function computeWaterBias(col, row, terrain) {
+    if (terrain !== "swamp") return null;
+    const isShifted = (col % 2) !== (bcCol % 2);
+    const neighbors = isShifted ? neighborsB : neighborsA;
+    let bx = 0, by = 0, count = 0;
+    neighbors.forEach((off, i) => {
+      const nKey = String(col + off[0]).padStart(2, "0") + String(row + off[1]).padStart(2, "0");
+      const isWater = riverSet.has(nKey) || hexTerrain[nKey] === "swamp";
+      if (isWater) {
+        bx += edgeMids[i][0];
+        by += edgeMids[i][1];
+        count++;
+      }
+    });
+    if (count === 0) return null;
+    const len = Math.sqrt(bx * bx + by * by) || 1;
+    return [bx / len, by / len];
+  }
 
   Object.entries(hexTerrain).forEach(([hex, terrain]) => {
     const drawer = terrainDrawers[terrain];
@@ -796,8 +832,25 @@ function renderHexTerrain(ctx, terrainDrawers, options) {
       }),
     ];
     const targetN = Math.max(1, Math.round(fullGrid.length * density));
-    const gridPoints = fullGrid.slice(0, targetN);
-    gridPoints.forEach(([ox, oy]) => {
+    // For swamps, bias points toward water neighbours so reeds cluster on
+    // the waterside rather than sprinkling evenly across the hex.
+    const waterBias = computeWaterBias(col, row, terrain);
+    const biasedGrid = fullGrid.slice(0, targetN).map(([ox, oy]) => {
+      if (!waterBias) return [ox, oy];
+      // Shift each grid point strongly along the bias vector, and drop
+      // off ring points that lie on the far side of the hex.
+      const [bx, by] = waterBias;
+      // Scale: move centre toward water by ~0.35*size, ring by up to 0.5*size
+      const shiftMag = size * 0.35;
+      return [ox + bx * shiftMag, oy + by * shiftMag];
+    });
+    // For biased swamps, drop any point whose projection onto the bias
+    // is strongly negative (far side of the hex from the water).
+    const grid = waterBias
+      ? biasedGrid.filter(([ox, oy]) => (ox * waterBias[0] + oy * waterBias[1]) > -size * 0.35)
+      : biasedGrid;
+
+    grid.forEach(([ox, oy]) => {
       const jitterX = (rng() - 0.5) * size * 0.18;
       const jitterY = (rng() - 0.5) * size * 0.18;
       const dx = hx + ox + jitterX;
@@ -1147,9 +1200,11 @@ function renderMountainsWithElevation(ctx, mountainDrawer, hillDrawer, options) 
       return mountainHexes.has(nKey);
     });
 
-    // Peak count: 1 on isolated / edge hex, 2 on well-interior hex. Few
-    // large shapes rather than many small ones packed tightly.
-    const peakCount = mountainNeighborCount >= 4 ? 2 : 1;
+    // One cluster per hex. The drawer itself renders a wide ridge of
+    // sub-peaks that overlaps into neighbouring mountain hexes — two
+    // clusters per hex would produce a double-stacked row (clearly wrong
+    // against the Pauline Baynes reference).
+    const peakCount = 1;
 
     // Anchor bias — each non-mountain neighbour pulls the placement anchor
     // AWAY from that edge (inward), so a hex on the border of the range
