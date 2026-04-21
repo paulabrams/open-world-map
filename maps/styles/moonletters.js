@@ -52,7 +52,9 @@ window.MapStyles.moonletters = {
     MapCore.renderBridges(ctx, { color: ctx.colors.BLUE_INK, strokeWidth: 1.0, bridgeLen: 14 });
     MapCore.renderBoats(ctx, { color: ctx.colors.BLUE_INK, parchment: ctx.colors.PARCHMENT, count: 3 });
     MapCore.renderRoad(ctx, ctx.colors.BLUE_INK, 2);
-    MapCore.renderCrevasse(ctx, "#2a1f14", 3);
+    // Thror's-Map "Running River" styling — blue ink, twin wiggly banks
+    // with short cross-ticks between them.
+    MapCore.renderCrevasse(ctx, ctx.colors.BLUE_INK, 6, { style: "twinbank" });
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
     MapCore.renderRegionLabels(ctx, {

@@ -1055,31 +1055,56 @@ window.MapStyles.thirdage = {
 
   // Dense engraving-style mountain range: 1-3 overlapping sharp peaks
   drawMountainRange(g, x, y, size, rng, INK) {
-    // Pauline Baynes-style mountain range — a dense row of small solid-
-    // black triangular peaks, heavily overlapping. Peaks are now spread
-    // across 3 vertical tiers (back/middle/front) so the caterpillar has
-    // depth instead of a flat row. Painted back-to-front for clean stack.
-    const peakCount = 5 + Math.floor(rng() * 4);
-    const spacing = size * 0.24;
+    // Pauline Baynes-style range (see style-references/middle-earth.webp):
+    // a row of small outlined triangular peaks with fine diagonal hatching
+    // on the right-hand slope for shading. NOT solid black. Peaks are
+    // staggered across a couple of vertical tiers so the ridge reads as
+    // depth rather than a flat serration.
+    const peakCount = 4 + Math.floor(rng() * 3); // 4-6 peaks per call
+    const spacing = size * 0.28;
     const rangeW = (peakCount - 1) * spacing;
     const peaks = [];
     for (let i = 0; i < peakCount; i++) {
-      const tier = Math.floor(rng() * 3);
-      const tierY = y - tier * size * 0.2;
+      const tier = Math.floor(rng() * 2); // 0 front, 1 back
+      const tierY = y - tier * size * 0.18;
       peaks.push({
-        px: x - rangeW / 2 + i * spacing + (rng() - 0.5) * size * 0.05,
+        px: x - rangeW / 2 + i * spacing + (rng() - 0.5) * size * 0.06,
         baseY: tierY,
-        h: size * (0.5 + rng() * 0.4),
-        pw: size * (0.3 + rng() * 0.1),
+        h: size * (0.42 + rng() * 0.3),
+        pw: size * (0.3 + rng() * 0.12),
         tier,
       });
     }
+    // Back-to-front so nearer peaks overlap farther ones cleanly.
     peaks.sort((a, b) => b.tier - a.tier);
     peaks.forEach(p => {
       const peakY = p.baseY - p.h;
+      const lx = p.px - p.pw / 2;
+      const rx = p.px + p.pw / 2;
+      // Parchment-filled triangle so hatching behind it doesn't show through
       g.append("path")
-        .attr("d", `M ${p.px - p.pw / 2} ${p.baseY} L ${p.px} ${peakY} L ${p.px + p.pw / 2} ${p.baseY} Z`)
-        .attr("fill", INK);
+        .attr("d", `M ${lx} ${p.baseY} L ${p.px} ${peakY} L ${rx} ${p.baseY} Z`)
+        .attr("fill", "#f4e8d1")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.8)
+        .attr("stroke-linejoin", "miter");
+      // Diagonal hatching on the right slope — classic engraving shadow
+      const hatchLines = 2 + Math.floor(rng() * 2); // 2-3 hatches
+      for (let h = 0; h < hatchLines; h++) {
+        const t = (h + 1) / (hatchLines + 1); // 0..1 along the right slope
+        // Start point on the right slope (from peak to bottom-right)
+        const sx = p.px + (rx - p.px) * t;
+        const sy = peakY + (p.baseY - peakY) * t;
+        // End point: inset horizontally toward the peak axis by ~1/3 width
+        const ex = sx - p.pw * 0.22;
+        const ey = sy + p.pw * 0.12;
+        g.append("line")
+          .attr("x1", sx).attr("y1", sy)
+          .attr("x2", ex).attr("y2", ey)
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.5)
+          .attr("opacity", 0.75);
+      }
     });
   },
 

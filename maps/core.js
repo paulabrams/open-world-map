@@ -583,9 +583,12 @@ function renderRoad(ctx, roadColor, roadWidth) {
 }
 
 // --- Crevasse rendering ---
-// Jagged zig-zag canyon through hex centers plus perpendicular shadow hatches.
+// Default: jagged zig-zag canyon through hex centers plus perpendicular
+// shadow hatches. Pass `options.style = "twinbank"` for a Thror's-Map
+// "Running River" look — two parallel wavy lines with short cross-ticks
+// between them, suggesting a current-filled channel.
 // crevassePath entries look like { hexes: [...], name? }.
-function renderCrevasse(ctx, color, width) {
+function renderCrevasse(ctx, color, width, options = {}) {
   const { g, crevassePath, HINT_SCALE, WIDTH, HEIGHT } = ctx;
   if (!crevassePath || crevassePath.length === 0) return;
 
@@ -596,6 +599,7 @@ function renderCrevasse(ctx, color, width) {
 
   const crevasseColor = color || "#2a1f14";
   const w = width || 3;
+  const style = options.style || "jagged";
   const group = g.append("g").attr("class", "crevasse");
 
   crevassePath.forEach((entry, pathIdx) => {
@@ -615,8 +619,100 @@ function renderCrevasse(ctx, color, width) {
 
     const rng = mulberry32(seedFromString("crevasse-" + pathIdx));
 
-    // Build zig-zag spine: each segment between centers is broken into jagged
-    // sub-segments with alternating perpendicular offsets.
+    if (style === "twinbank") {
+      // Crack-in-the-ground gorge — two wiggly banks that meet at the tips
+      // and bulge irregularly through the middle, so the width varies like
+      // a natural fissure rather than a lens with constant edges.
+      const spine = [];
+      const tangents = [];
+      const tapers = []; // 0 at the tips, up to ~1.3 at wide spots
+      // Pre-generate a low-frequency noise curve (sum of two sines) that
+      // modulates the overall gorge width along its length. Combined with
+      // the end-taper, this makes the middle wider in some places and
+      // slightly pinched in others.
+      const widthPhase1 = rng() * Math.PI * 2;
+      const widthPhase2 = rng() * Math.PI * 2;
+      const widthMod = u => 0.85 + 0.35 * Math.sin(u * Math.PI * 2 + widthPhase1)
+                                 + 0.15 * Math.sin(u * Math.PI * 5 + widthPhase2);
+      for (let i = 0; i < centers.length - 1; i++) {
+        const [x1, y1] = centers[i];
+        const [x2, y2] = centers[i + 1];
+        const dx = x2 - x1, dy = y2 - y1;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const tx = dx / len, ty = dy / len;
+        const nx = -ty, ny = tx;
+        const segs = 12 + Math.floor(rng() * 4);
+        for (let s = 0; s < segs; s++) {
+          const segT = s / segs;
+          const u = (i + segT) / (centers.length - 1);
+          // End-taper (sharp points at the tips) × mid-section width mod
+          const endTaper = Math.sin(u * Math.PI);
+          const taper = endTaper * Math.max(0, widthMod(u));
+          const amp = size * 0.16 * endTaper * (0.7 + rng() * 0.6);
+          const phase = rng() * 0.4;
+          const wig = Math.sin(segT * Math.PI * 3 + phase) * amp;
+          spine.push([x1 + dx * segT + nx * wig, y1 + dy * segT + ny * wig]);
+          tangents.push([tx, ty]);
+          tapers.push(taper);
+        }
+      }
+      spine.push(centers[centers.length - 1]);
+      tangents.push(tangents[tangents.length - 1] || [1, 0]);
+      tapers.push(0); // tip — banks converge here
+
+      const halfW = w * 0.9; // half the channel width at the widest point
+      const line = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
+
+      // Two banks offset perpendicular to the spine. The offset is scaled
+      // by `taper` so both banks collapse to the spine at the tips.
+      const bankA = spine.map((p, i) => {
+        const [tx, ty] = tangents[i];
+        const off = halfW * tapers[i];
+        return [p[0] + (-ty) * off, p[1] + tx * off];
+      });
+      const bankB = spine.map((p, i) => {
+        const [tx, ty] = tangents[i];
+        const off = halfW * tapers[i];
+        return [p[0] - (-ty) * off, p[1] - tx * off];
+      });
+
+      // Single closed outline around the crack so the tips are explicitly
+      // joined (no small gap from two separate paths).
+      const outline = bankA.concat(bankB.slice().reverse());
+      group.append("path")
+        .attr("d", line(outline) + " Z")
+        .attr("fill", "none")
+        .attr("stroke", crevasseColor)
+        .attr("stroke-width", Math.max(0.8, w * 0.45))
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round")
+        .attr("opacity", 0.9);
+
+      // Cross-ticks between the banks — short perpendicular hatches every
+      // few spine points, suggesting depth / water / current. Skip the
+      // tapered ends where the banks are nearly touching.
+      const tickStride = 3;
+      for (let i = 1; i < spine.length - 1; i += tickStride) {
+        if (tapers[i] < 0.35) continue;
+        const a = bankA[i];
+        const b = bankB[i];
+        const ax = a[0] + (b[0] - a[0]) * 0.2;
+        const ay = a[1] + (b[1] - a[1]) * 0.2;
+        const bx = a[0] + (b[0] - a[0]) * 0.8;
+        const by = a[1] + (b[1] - a[1]) * 0.8;
+        group.append("line")
+          .attr("x1", ax).attr("y1", ay)
+          .attr("x2", bx).attr("y2", by)
+          .attr("stroke", crevasseColor)
+          .attr("stroke-width", Math.max(0.4, w * 0.22))
+          .attr("stroke-linecap", "round")
+          .attr("opacity", 0.65);
+      }
+      return;
+    }
+
+    // Default "jagged" style — zig-zag canyon spine with one-sided shadow
+    // hatches.
     const spine = [centers[0]];
     for (let i = 0; i < centers.length - 1; i++) {
       const [x1, y1] = centers[i];
@@ -635,11 +731,9 @@ function renderCrevasse(ctx, color, width) {
       }
     }
 
-    // Main jagged line — no curve, just linear between points
     const line = d3.line();
-    const d = line(spine);
     group.append("path")
-      .attr("d", d)
+      .attr("d", line(spine))
       .attr("fill", "none")
       .attr("stroke", crevasseColor)
       .attr("stroke-width", w)
@@ -647,7 +741,6 @@ function renderCrevasse(ctx, color, width) {
       .attr("stroke-linejoin", "miter")
       .attr("opacity", 0.9);
 
-    // Perpendicular cross-hatches every couple of spine points to suggest depth
     for (let i = 1; i < spine.length - 1; i += 2) {
       const [px, py] = spine[i];
       const [pxN, pyN] = spine[i + 1];
@@ -656,13 +749,9 @@ function renderCrevasse(ctx, color, width) {
       const perpX = -ty / tl, perpY = tx / tl;
       const hatchLen = size * (0.18 + rng() * 0.14);
       const side = rng() > 0.5 ? 1 : -1;
-      const x1 = px;
-      const y1 = py;
-      const x2 = px + perpX * hatchLen * side;
-      const y2 = py + perpY * hatchLen * side;
       group.append("line")
-        .attr("x1", x1).attr("y1", y1)
-        .attr("x2", x2).attr("y2", y2)
+        .attr("x1", px).attr("y1", py)
+        .attr("x2", px + perpX * hatchLen * side).attr("y2", py + perpY * hatchLen * side)
         .attr("stroke", crevasseColor)
         .attr("stroke-width", w * 0.45)
         .attr("stroke-linecap", "round")
@@ -1062,17 +1151,55 @@ function renderMountainsWithElevation(ctx, mountainDrawer, hillDrawer, options) 
     // large shapes rather than many small ones packed tightly.
     const peakCount = mountainNeighborCount >= 4 ? 2 : 1;
 
-    // Placement grid — first peak at centre, second (if any) pushed toward
-    // the mountain-bordered edge with the fewest existing peaks so the
-    // range flows into its neighbours rather than doubling up at centre.
-    const gridPoints = [[0, 0]];
-    if (peakCount >= 2) {
-      const mountainEdgeIdxs = edgeIsMountain.map((m, i) => m ? i : -1).filter(i => i >= 0);
-      if (mountainEdgeIdxs.length > 0) {
-        const pick = mountainEdgeIdxs[Math.floor(rng() * mountainEdgeIdxs.length)];
-        const [mx, my] = edgeMids[pick];
-        gridPoints.push([mx * 0.55, my * 0.55]);
+    // Anchor bias — each non-mountain neighbour pulls the placement anchor
+    // AWAY from that edge (inward), so a hex on the border of the range
+    // always has its peak(s) pulled toward the centre of the hex with
+    // whitespace + transition hills near the non-mountain side.
+    let anchorX = 0, anchorY = 0;
+    neighbors.forEach((offset, i) => {
+      if (edgeIsMountain[i]) return;
+      // Vector pointing from edge midpoint toward hex centre = negative of edgeMids
+      anchorX -= edgeMids[i][0] * 0.22;
+      anchorY -= edgeMids[i][1] * 0.22;
+    });
+
+    // Ridge axis — if two OPPOSITE edges both border mountains, peaks are
+    // arranged along the through-line so adjacent hexes' ridges appear to
+    // connect in a continuous line.
+    const oppositePairs = [[0, 3], [1, 4], [2, 5]];
+    let ridgeAxis = null;
+    for (const [a, b] of oppositePairs) {
+      if (edgeIsMountain[a] && edgeIsMountain[b]) {
+        ridgeAxis = [edgeMids[a], edgeMids[b]];
+        break;
       }
+    }
+
+    const gridPoints = [];
+    if (ridgeAxis && peakCount >= 2) {
+      // Two peaks straddling centre along the ridge axis — this creates a
+      // "pulled toward each other" line through the mountain cluster.
+      const [p1, p2] = ridgeAxis;
+      gridPoints.push([anchorX + p1[0] * 0.42, anchorY + p1[1] * 0.42]);
+      gridPoints.push([anchorX + p2[0] * 0.42, anchorY + p2[1] * 0.42]);
+    } else if (peakCount >= 2) {
+      // Centre peak plus a second peak biased toward one of the mountain
+      // neighbours (if any) so the cluster leans into the adjacent range.
+      const mountainEdges = edgeIsMountain.map((m, i) => m ? i : -1).filter(i => i >= 0);
+      gridPoints.push([anchorX, anchorY]);
+      if (mountainEdges.length > 0) {
+        const pick = mountainEdges[Math.floor(rng() * mountainEdges.length)];
+        const [mx, my] = edgeMids[pick];
+        gridPoints.push([anchorX + mx * 0.38, anchorY + my * 0.38]);
+      } else {
+        const a = rng() * Math.PI * 2;
+        const r = size * 0.14;
+        gridPoints.push([anchorX + Math.cos(a) * r, anchorY + Math.sin(a) * r]);
+      }
+    } else {
+      // Single peak — place at the biased anchor (centre for fully
+      // surrounded hexes, pulled inward for border hexes).
+      gridPoints.push([anchorX, anchorY]);
     }
 
     // Three unique edge-normal axes for the flat-top hex (30°, 90°, 150°).
@@ -1107,10 +1234,11 @@ function renderMountainsWithElevation(ctx, mountainDrawer, hillDrawer, options) 
     gridPoints.forEach(([ox, oy]) => {
       const jitterX = (rng() - 0.5) * size * 0.08;
       const jitterY = (rng() - 0.5) * size * 0.08;
-      // ~3× larger than the previous packed-peaks scale. Interior hexes
-      // exceed the inscribed radius on purpose — the clamp lets them spill
-      // into mountain neighbours but not into foreign terrain.
-      const mSize = (28 + rng() * 14) * elevation;
+      // Large peaks that fill the hex. Interior hexes exceed the inscribed
+      // radius on purpose — the clamp lets them spill into mountain
+      // neighbours but not into foreign terrain. Sized ~10% smaller than
+      // the initial 3× bump (the peaks were reading a touch too tall).
+      const mSize = (25 + rng() * 13) * elevation;
       const [cx, cy] = clampToHexUnlessMountainEdge(ox + jitterX, oy + jitterY, mSize);
       mountainDrawer(terrainGroup, hx + cx, hy + cy, mSize, rng);
     });
@@ -1416,7 +1544,7 @@ function drawAnimalGlyph(g, x, y, rng, color) {
 // hexes (all neighbors match) get sparse scatter. This produces the classic
 // "border of trees" look where the forest silhouette reads clearly.
 function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
-  const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
+  const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString, nodes } = ctx;
   if (!hexTerrain || Object.keys(hexTerrain).length === 0) return;
   const density = (options && typeof options.density === "number") ? options.density : 1.0;
 
@@ -1431,6 +1559,30 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
     if (matchSet.has(terrain)) forestHexes.add(hex);
   });
   if (forestHexes.size === 0) return;
+
+  // Keep-out zones — large structures (keeps, towers, walled towns, etc.)
+  // must not have trees drawn over them. Build a per-hex list of
+  // {cx, cy, r} circles to avoid during placement.
+  const POINT_TYPE_KEEPOUT = {
+    heart:      size * 1.05,
+    fortress:   size * 0.85,
+    settlement: size * 0.55,
+    tower:      size * 0.55,
+    dungeon:    size * 0.45,
+    sanctuary:  size * 0.40,
+    ruin:       size * 0.35,
+    lair:       size * 0.30,
+    waypoint:   size * 0.25,
+  };
+  const keepoutByHex = new Map();
+  (nodes || []).forEach(n => {
+    if (!n.hex || typeof n.x !== "number" || typeof n.y !== "number") return;
+    const r = POINT_TYPE_KEEPOUT[n.point_type];
+    if (!r) return;
+    const list = keepoutByHex.get(n.hex) || [];
+    list.push({ x: n.x, y: n.y, r });
+    keepoutByHex.set(n.hex, list);
+  });
 
   const neighborsA = [[0, -1], [1, -1], [1, 0], [0, 1], [-1, 0], [-1, -1]];
   const neighborsB = [[0, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
@@ -1472,10 +1624,18 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
     const treeSize = () => 5 + rng() * 3;
 
     // Poisson-ish scatter: generate candidate points and reject any that
-    // land within minDist of an already-placed tree. Produces an even
-    // carpet with natural-looking jitter and minimal overlap.
+    // land within minDist of an already-placed tree, OR inside the
+    // keep-out radius of an important node in this hex (so trees never
+    // cover a keep, tower, walled city, etc.).
+    const keepout = keepoutByHex.get(hex) || [];
     const placed = [];
     function place(x, y, s, minDist) {
+      // Absolute coords for node keep-out test
+      const ax = hx + x, ay = hy + y;
+      for (const k of keepout) {
+        const dx = k.x - ax, dy = k.y - ay;
+        if (dx * dx + dy * dy < k.r * k.r) return false;
+      }
       for (let i = 0; i < placed.length; i++) {
         const dx = placed[i][0] - x, dy = placed[i][1] - y;
         if (dx * dx + dy * dy < minDist * minDist) return false;
@@ -1494,32 +1654,93 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
       }
     }
 
+    // Classify each of the six edges
+    const forestEdges = [];
+    neighbors.forEach((offset, i) => {
+      if (externalEdges.includes(i)) return;
+      const nKey = String(col + offset[0]).padStart(2, "0") + String(row + offset[1]).padStart(2, "0");
+      if (forestHexes.has(nKey)) forestEdges.push(i);
+    });
+
+    // Density gradient: trees are sparse near the forest's outer boundary
+    // (non-forest neighbours) and get progressively denser toward the
+    // interior. `depthFromExternalEdge(x, y)` returns 0 at an external
+    // edge, 1 well inside the forest.
+    const externalEdgeNormals = externalEdges.map(i => {
+      const [mx, my] = edgeMids[i];
+      const mLen = Math.sqrt(mx * mx + my * my) || 1;
+      return { nx: -mx / mLen, ny: -my / mLen };
+    });
+    function depthFromExternalEdge(x, y) {
+      if (externalEdgeNormals.length === 0) return 1;
+      let minDepth = 1;
+      for (const { nx, ny } of externalEdgeNormals) {
+        // Projection onto inward normal; at the edge = -inscribed, at centre = 0
+        const proj = x * nx + y * ny;
+        const depth = (proj + inscribed) / (inscribed * 1.1);
+        if (depth < minDepth) minDepth = depth;
+      }
+      return Math.max(0, Math.min(1, minDepth));
+    }
+
+    // Candidate-based scatter that uses the density gradient. We aim for
+    // `targetCount` successful placements across the hex; candidates near
+    // an external edge are accepted with lower probability so growth fades
+    // out near the forest boundary.
+    function gradientScatter(targetCount, maxR, minDist, sizeFn) {
+      let tries = 0, placedCount = 0;
+      const limit = targetCount * 16;
+      while (placedCount < targetCount && tries < limit) {
+        tries++;
+        const a = rng() * Math.PI * 2;
+        const r = Math.sqrt(rng()) * maxR;
+        const x = Math.cos(a) * r, y = Math.sin(a) * r;
+        const depth = depthFromExternalEdge(x, y);
+        // Gentle sapling probability curve — depth=0 gives ~10% chance,
+        // depth=1 gives 100%. Saplings near the edge are smaller too.
+        const p = 0.1 + 0.9 * Math.pow(depth, 1.4);
+        if (rng() > p) continue;
+        const s = sizeFn(depth);
+        if (place(x, y, s, minDist)) placedCount++;
+      }
+    }
+
+    // Tree-size function: small saplings near the edge, full-size trees
+    // in the interior.
+    const treeSizeByDepth = d => (4 + d * 3) + rng() * 2;
+
     if (externalEdges.length === 0) {
-      // Fully interior forest hex — blanket the whole body with trees.
-      // ~3× the previous count (was 6-9, now 18-27).
-      const baseN = 18 + Math.floor(rng() * 10);
-      scatterInCircle(Math.max(1, Math.round(baseN * density)), size * 0.78, 7);
+      // Fully interior forest hex — blanket the whole body with trees,
+      // right out to the hex edges so neighbouring forest hexes never
+      // show a gap at shared edges.
+      const baseN = 24 + Math.floor(rng() * 10);
+      gradientScatter(Math.max(1, Math.round(baseN * density)), size * 0.98, 6, () => treeSize());
       return;
     }
 
-    // Border hex — concentrate trees along each external edge so the
-    // forest boundary reads as a dense treeline.
-    externalEdges.forEach(edgeIdx => {
+    // Border hex — density gradient: sparse near external edges, denser
+    // toward the interior. Target count stays roughly the same as an
+    // interior hex; the gradient acceptance naturally thins out the
+    // external boundary.
+    const baseN = 22 + Math.floor(rng() * 8);
+    gradientScatter(Math.max(1, Math.round(baseN * density)), size * 0.98, 6, treeSizeByDepth);
+
+    // Forest-bordered edges still get a dense continuous tree line so the
+    // canopy flows seamlessly into the neighbouring forest hex.
+    forestEdges.forEach(edgeIdx => {
       const [mx, my] = edgeMids[edgeIdx];
       const [tx, ty] = edgeTangents[edgeIdx];
-      const inset = 0.82;
+      const inset = 0.95;
       const mxInset = mx * inset;
       const myInset = my * inset;
-      // ~3× the previous count per edge (was 5-7, now 15-21).
-      const baseN = 15 + Math.floor(rng() * 7);
-      const n = Math.max(2, Math.round(baseN * density));
       const mLen = Math.sqrt(mx * mx + my * my) || 1;
+      const n = Math.max(2, Math.round((12 + rng() * 5) * density));
       for (let i = 0; i < n; i++) {
         const t = n === 1 ? 0 : (i / (n - 1) - 0.5);
         const span = t * size * 0.85;
         const jitterX = (rng() - 0.5) * size * 0.08;
         const jitterY = (rng() - 0.5) * size * 0.08;
-        const depthJitter = rng() * size * 0.22;
+        const depthJitter = rng() * size * 0.12;
         const inwardX = -mx / mLen * depthJitter;
         const inwardY = -my / mLen * depthJitter;
         const ox = mxInset + tx * span + jitterX + inwardX;
@@ -1527,10 +1748,6 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
         place(ox, oy, treeSize(), 6);
       }
     });
-    // Interior sprinkle — ~3× the previous count (was 3-5, now 9-15).
-    const interiorBase = 12 - Math.floor(externalEdges.length); // 12..6
-    const interiorN = Math.max(3, Math.round((interiorBase + rng() * 4) * density));
-    scatterInCircle(interiorN, size * 0.6, 7);
   });
 }
 

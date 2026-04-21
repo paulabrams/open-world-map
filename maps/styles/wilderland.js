@@ -54,7 +54,9 @@ window.MapStyles.wilderland = {
     // Tolkien's Wilderland renders the Old Forest Road in blue ink
     // (contrast against black-ink rivers).
     MapCore.renderRoad(ctx, ctx.colors.BLUE, 1.8);
-    MapCore.renderCrevasse(ctx, "#2a1f14", 3);
+    // Twin-banked gorge: tips meet at points, middle bulges irregularly
+    // to read as a crack in the ground instead of a single zig-zag line.
+    MapCore.renderCrevasse(ctx, "#2a1f14", 5, { style: "twinbank" });
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
     MapCore.renderRegionLabels(ctx, {
@@ -885,8 +887,36 @@ window.MapStyles.wilderland = {
           ng.append("ellipse")
             .attr("cx", 0).attr("cy", 0)
             .attr("rx", hs * 2.1).attr("ry", hs * 1.55)
-            .attr("fill", PARCHMENT).attr("fill-opacity", 0.85)
-            .attr("stroke", INK).attr("stroke-width", 1.2).attr("opacity", 0.85);
+            .attr("fill", PARCHMENT).attr("fill-opacity", 0.9)
+            .attr("stroke", INK).attr("stroke-width", 1.4).attr("opacity", 0.95);
+          // Second, faintly-inset wall-walk line — reads as the crenellated
+          // parapet on top of the main wall. Gives the perimeter more weight
+          // so the town body doesn't dissolve into scattered towers.
+          ng.append("ellipse")
+            .attr("cx", 0).attr("cy", 0)
+            .attr("rx", hs * 2.0).attr("ry", hs * 1.45)
+            .attr("fill", "none")
+            .attr("stroke", INK).attr("stroke-width", 0.55).attr("opacity", 0.55);
+          // Crenellation teeth around the oval rim — short rectangular
+          // merlons at regular angular spacing. Concentrated on the upper
+          // and side arcs where they read clearly; skipped on the bottom
+          // arc where the main gate and halo sit.
+          const crenCount = 42;
+          for (let k = 0; k < crenCount; k++) {
+            const a = (k / crenCount) * Math.PI * 2;
+            // Skip the arc around the main gate (bottom)
+            if (a > Math.PI * 0.40 && a < Math.PI * 0.60) continue;
+            const cxT = Math.cos(a) * hs * 2.05;
+            const cyT = Math.sin(a) * hs * 1.50;
+            const nx = Math.cos(a), ny = Math.sin(a);
+            const mW = hs * 0.10, mH = hs * 0.12;
+            // Tooth: small rectangle oriented radially outward from center
+            ng.append("rect")
+              .attr("x", cxT - mW / 2).attr("y", cyT - mH / 2)
+              .attr("width", mW).attr("height", mH)
+              .attr("fill", PARCHMENT).attr("stroke", INK).attr("stroke-width", 0.5)
+              .attr("transform", `rotate(${(Math.atan2(ny, nx) * 180 / Math.PI) + 90} ${cxT} ${cyT})`);
+          }
 
           // Scatter 22 towers across the oval via rejection sampling. Skip a
           // central corridor where the bridge sits and a column where the
@@ -943,6 +973,66 @@ window.MapStyles.wilderland = {
                 .attr("x1", t.x).attr("y1", yTop + (si + 0.5) * storyH - 0.3)
                 .attr("x2", t.x).attr("y2", yTop + (si + 0.5) * storyH + 0.3)
                 .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.7);
+            }
+          });
+
+          // Foreground houses — small gabled buildings filling the gaps
+          // between towers so the town reads as dense rather than sparse.
+          // Placed by rejection-sampling against existing tower positions
+          // and the central corridors. Drawn BEFORE the bridge/gate towers
+          // so those stay on top.
+          const houseMin = hs * 0.16;
+          const houses = [];
+          let hAttempts = 0;
+          while (houses.length < 55 && hAttempts < 1600) {
+            hAttempts++;
+            const rx = (rng() - 0.5) * 2 * (ovRx - hs * 0.15);
+            const ry = (rng() - 0.5) * 2 * (ovRy - hs * 0.15) - hs * 0.1;
+            if ((rx * rx) / (ovRx * ovRx) + (ry * ry) / (ovRy * ovRy) > 0.92) continue;
+            // Keep clear of the bridge corridor + keep column
+            if (Math.abs(ry - bY) < hs * 0.4 && Math.abs(rx) < hs * 1.0) continue;
+            if (rx > -hs * 0.55 && rx < hs * 0.15 && ry < hs * 0.4) continue;
+            // Respect existing towers
+            let ok = true;
+            for (const t of towers) {
+              const dx = t.x - rx, dy = t.y - ry;
+              if (dx * dx + dy * dy < (hs * 0.2) * (hs * 0.2)) { ok = false; break; }
+            }
+            if (!ok) continue;
+            // Respect other houses
+            for (const h of houses) {
+              const dx = h.x - rx, dy = h.y - ry;
+              if (dx * dx + dy * dy < houseMin * houseMin) { ok = false; break; }
+            }
+            if (!ok) continue;
+            houses.push({ x: rx, y: ry, rot: rng() < 0.5 ? 0 : 1 });
+          }
+          // Draw houses back-to-front
+          houses.sort((a, b) => a.y - b.y);
+          houses.forEach(h => {
+            const hw = hs * (0.16 + rng() * 0.07);
+            const hh = hs * (0.12 + rng() * 0.05);
+            const roofH = hs * (0.07 + rng() * 0.04);
+            const yTop = h.y - hh;
+            // Body
+            ng.append("rect")
+              .attr("x", h.x - hw / 2).attr("y", yTop)
+              .attr("width", hw).attr("height", hh)
+              .attr("fill", PARCHMENT).attr("stroke", INK).attr("stroke-width", 0.45);
+            // Pitched roof (gable, pointing "up" visually)
+            ng.append("path")
+              .attr("d", `M ${h.x - hw / 2 - 0.5} ${yTop} L ${h.x} ${yTop - roofH} L ${h.x + hw / 2 + 0.5} ${yTop} Z`)
+              .attr("fill", INK).attr("opacity", 0.16)
+              .attr("stroke", INK).attr("stroke-width", 0.45);
+            // Optional chimney on ~1/3 of houses
+            if (rng() > 0.66) {
+              const chX = h.x + hw * (rng() > 0.5 ? 0.22 : -0.22);
+              const chW = hs * 0.03;
+              const chH = hs * 0.06;
+              ng.append("rect")
+                .attr("x", chX - chW / 2).attr("y", yTop - roofH * 0.35 - chH)
+                .attr("width", chW).attr("height", chH)
+                .attr("fill", PARCHMENT).attr("stroke", INK).attr("stroke-width", 0.4);
             }
           });
 
