@@ -246,9 +246,11 @@ window.MapStyles.thirdage = {
       "plains": (tg, x, y, sz, rng) => style.drawGrassStipple(tg, x, y, sz, rng, INK),
       "graveyard": (tg, x, y, sz, rng) => style.drawGraveyard(tg, x, y, sz, rng, INK),
     });
-    MapCore.renderMountainsWithElevation(ctx,
-      (tg, x, y, sz, rng) => style.drawMountainRange(tg, x, y, sz, rng, INK),
-      (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK));
+    // Region-based mountains: finds contiguous mountain groups and draws
+    // a single serpentine chain along each group's PCA spine (matches
+    // Pauline Baynes' Middle-earth source art).
+    MapCore.renderMountainsByRegion(ctx,
+      (tg, peak, rng) => style.drawSinglePeak(tg, peak, rng, INK));
     MapCore.renderForestEdgeTrees(ctx,
       (tg, x, y, sz, rng) => style.drawForestHatch(tg, x, y, sz, rng, INK),
       ["forest", "forested-hills"]);
@@ -1054,6 +1056,29 @@ window.MapStyles.thirdage = {
      ──────────────────────────────────────────────────────────── */
 
   // Dense engraving-style mountain range: 1-3 overlapping sharp peaks
+  // Single-peak drawer for renderMountainsByRegion. `peak` is the peak
+  // descriptor produced by the region renderer: { px, py, h, pw, isHero,
+  // tx, ty }. Uses px/py as the BASE centre (the peak's apex rises h
+  // pixels above py) with width pw.
+  drawSinglePeak(g, peak, rng, INK) {
+    const peakY = peak.py - peak.h;
+    const apexBend = (rng() < 0.3) ? 0.4 : 0.15;
+    const apexX = peak.px + (rng() - 0.5) * peak.pw * apexBend * 2;
+    g.append("path")
+      .attr("d", `M ${peak.px - peak.pw / 2} ${peak.py} L ${apexX} ${peakY} L ${peak.px + peak.pw / 2} ${peak.py} Z`)
+      .attr("fill", INK)
+      .attr("stroke", "none");
+    if (peak.isHero) {
+      const innerX = peak.px + (rng() - 0.5) * peak.pw * 0.15;
+      g.append("line")
+        .attr("x1", innerX).attr("y1", peakY + peak.h * 0.25)
+        .attr("x2", innerX).attr("y2", peak.py - peak.h * 0.1)
+        .attr("stroke", "#f4e8d1")
+        .attr("stroke-width", 0.7)
+        .attr("opacity", 0.75);
+    }
+  },
+
   drawMountainRange(g, x, y, size, rng, INK) {
     // Pauline Baynes "Middle-earth" mountain field — instead of one
     // straight row of peaks, scatter peaks in 2D across a wide footprint

@@ -1319,6 +1319,178 @@ function renderMountainsWithElevation(ctx, mountainDrawer, hillDrawer, options) 
   });
 }
 
+// --- Region-based mountain rendering ---
+// Finds connected groups of "mountains" hexes, computes a PCA spine
+// through each region, and places single-peak glyphs along that spine.
+// Produces the serpentine, multi-hex-spanning chain silhouette of
+// Pauline Baynes-style ranges — unlike the per-hex cluster approach of
+// renderMountainsWithElevation which can't escape hex-row alignment.
+function renderMountainsByRegion(ctx, singlePeakDrawer, options) {
+  const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
+  if (!hexTerrain) return;
+
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+
+  const hexCenter = (hex) => {
+    const col = parseInt(hex.substring(0, 2));
+    const row = parseInt(hex.substring(2, 4));
+    const hx = (col - bcCol) * colStep + WIDTH / 2;
+    const hy = (row - bcRow) * rowStep + (col % 2 !== bcCol % 2 ? rowStep / 2 : 0) + HEIGHT / 2;
+    return [hx, hy];
+  };
+
+  const mountainHexes = new Set();
+  Object.entries(hexTerrain).forEach(([hex, terrain]) => {
+    if (terrain === "mountains") mountainHexes.add(hex);
+  });
+  if (mountainHexes.size === 0) return;
+
+  // Flood-fill to find connected regions.
+  const visited = new Set();
+  const regions = [];
+  mountainHexes.forEach(startHex => {
+    if (visited.has(startHex)) return;
+    const region = [];
+    const queue = [startHex];
+    while (queue.length) {
+      const h = queue.shift();
+      if (visited.has(h)) continue;
+      visited.add(h);
+      region.push(h);
+      hexNeighbors(h).forEach(n => {
+        if (mountainHexes.has(n) && !visited.has(n)) queue.push(n);
+      });
+    }
+    regions.push(region);
+  });
+
+  const terrainGroup = g.append("g").attr("class", "terrain mountains-region");
+
+  regions.forEach((region, regionIdx) => {
+    const rng = mulberry32(seedFromString("mountain-region-" + regionIdx));
+    const centers = region.map(hexCenter);
+
+    // Centroid
+    const n = centers.length;
+    let cx = 0, cy = 0;
+    centers.forEach(([x, y]) => { cx += x; cy += y; });
+    cx /= n; cy /= n;
+
+    // PCA on centered coordinates for principal axis
+    let sxx = 0, syy = 0, sxy = 0;
+    centers.forEach(([x, y]) => {
+      const dx = x - cx, dy = y - cy;
+      sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
+    });
+    const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+    const ax = Math.cos(theta), ay = Math.sin(theta);        // axis direction
+    const perpX = -ay, perpY = ax;                           // perpendicular
+
+    // Project each hex centre onto the axis (t) and the perpendicular (p).
+    const projected = centers.map(([x, y]) => {
+      const dx = x - cx, dy = y - cy;
+      return {
+        x, y,
+        t: dx * ax + dy * ay,
+        p: dx * perpX + dy * perpY,
+      };
+    });
+    projected.sort((a, b) => a.t - b.t);
+
+    let tMin = Infinity, tMax = -Infinity;
+    let pMin = Infinity, pMax = -Infinity;
+    projected.forEach(q => {
+      if (q.t < tMin) tMin = q.t;
+      if (q.t > tMax) tMax = q.t;
+      if (q.p < pMin) pMin = q.p;
+      if (q.p > pMax) pMax = q.p;
+    });
+    // Extend end-to-end slightly past the outermost hex centres so the
+    // range fills the whole region, not just a stretch between centres.
+    const tStart = tMin - size * 0.7;
+    const tEnd   = tMax + size * 0.7;
+    const rangeLen = tEnd - tStart;
+    // Perpendicular half-thickness of the region (how wide the band is).
+    const halfThick = Math.max(size * 0.2, (pMax - pMin) / 2 + size * 0.3);
+
+    // Build a smooth spine through the ordered projections — lets peaks
+    // follow a curve through a non-linear cluster rather than a straight
+    // line (matters for bent ranges).
+    const spinePts = projected.map(q => [q.x, q.y]);
+    // Ensure endpoints extend past the first/last centre along the axis
+    const first = projected[0], last = projected[projected.length - 1];
+    spinePts.unshift([first.x + ax * (tStart - first.t), first.y + ay * (tStart - first.t)]);
+    spinePts.push([last.x + ax * (tEnd - last.t), last.y + ay * (tEnd - last.t)]);
+
+    // Sample along the spine using d3's line interpolator via path length.
+    const lineGen = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
+    const pathD = lineGen(spinePts);
+    const pathNode = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    pathNode.setAttribute("d", pathD);
+    const totalLen = pathNode.getTotalLength();
+
+    // Peak spacing — 2 peaks per ~size/5 arc length for density. Adjust
+    // count so the line of peaks feels tight (Baynes overlap).
+    const peakSpacing = size * 0.09;
+    const peakCount = Math.max(8, Math.round(totalLen / peakSpacing));
+
+    // Fat regions get peaks scattered across their full perpendicular
+    // width rather than fixed rows. Thin chains get just the spine row.
+    // Using random perpendicular offsets rather than strata rows avoids
+    // the "parallel rails" artifact.
+    const useScatter = halfThick >= size * 0.45;
+
+    // Heroes: a handful per region spaced along the spine
+    const heroT = new Set();
+    const heroCount = Math.max(2, Math.round(peakCount * 0.06));
+    for (let k = 0; k < heroCount; k++) {
+      heroT.add(Math.floor(rng() * peakCount));
+    }
+
+    const mSize = 18 + rng() * 6; // base peak size unit
+
+    // Peak density: bump if the region is fat (covers more 2D area).
+    const densityMult = useScatter ? Math.min(3.5, halfThick / (size * 0.25)) : 1;
+    const totalPeaks = Math.round(peakCount * densityMult);
+
+    const peaks = [];
+    for (let i = 0; i < totalPeaks; i++) {
+      const t = rng(); // any t along the spine
+      const L = t * totalLen;
+      const pt = pathNode.getPointAtLength(L);
+      const pt2 = pathNode.getPointAtLength(Math.min(totalLen, L + 1));
+      const tx = pt2.x - pt.x, ty = pt2.y - pt.y;
+      const tl = Math.sqrt(tx * tx + ty * ty) || 1;
+      const nx = -ty / tl, ny = tx / tl;
+      // Perpendicular offset: within ±halfThick for fat regions, tight
+      // band for thin chains. Triangular distribution clusters peaks
+      // toward the spine centre.
+      const perpRange = useScatter ? halfThick : size * 0.22;
+      const perpOff = ((rng() + rng()) - 1) * perpRange;
+      const px = pt.x + nx * perpOff + (rng() - 0.5) * size * 0.08;
+      const py = pt.y + ny * perpOff + (rng() - 0.5) * size * 0.06;
+      // Hero: sparse, 1-per-~50-peaks
+      const isHero = rng() < 0.03;
+      const hBase = isHero ? 0.9 + rng() * 0.3 : 0.22 + Math.pow(rng(), 1.4) * 0.38;
+      const wBase = isHero ? 0.30 + rng() * 0.08 : 0.18 + rng() * 0.14;
+      peaks.push({
+        px, py,
+        h: mSize * hBase,
+        pw: mSize * wBase,
+        isHero,
+        tx: tx / tl, ty: ty / tl,
+      });
+    }
+
+    // Painter's order: back peaks first so near peaks overlap clearly.
+    peaks.sort((a, b) => a.py - b.py);
+    peaks.forEach(p => singlePeakDrawer(terrainGroup, p, rng));
+  });
+}
+
 // --- Neighbor-aware farmland scattering ---
 // Farmland hexes: place farm clusters close to edges that border roads or
 // rivers (food needs water and trade); leave a gap at edges that border
@@ -4189,7 +4361,7 @@ Object.assign(MapCore, {
   renderRavensPerch, renderHangmanHill, renderSwampWetlands, renderVaultOfFirstLight, renderSpiderCave,
   renderBanditHill, renderKallaCave, renderMountainPass, renderWatchCamp, renderSpecialIcon, specialIconLabelOffset,
   HINT_SCALE, DAY_SCALE, FONT, INTERIOR_TERRAINS, SUBHEX_OFFSETS,
-  isOverlandNode, hexToXY, xyToHex, hexNeighbors, renderRiver, renderRiverLabel, renderRoad, renderCrevasse, renderBridges, renderBoats, renderHexTerrain, renderMountainsWithElevation, renderForestEdgeTrees, renderFarmlandBiased, renderRegionLabels, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
+  isOverlandNode, hexToXY, xyToHex, hexNeighbors, renderRiver, renderRiverLabel, renderRoad, renderCrevasse, renderBridges, renderBoats, renderHexTerrain, renderMountainsWithElevation, renderMountainsByRegion, renderForestEdgeTrees, renderFarmlandBiased, renderRegionLabels, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
   showDetail, closePanel,
   loadData, runSimulation, setupSVG, centerView,
   renderMap, applyTheme, exportSVG,
