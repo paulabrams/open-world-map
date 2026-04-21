@@ -1055,58 +1055,90 @@ window.MapStyles.thirdage = {
 
   // Dense engraving-style mountain range: 1-3 overlapping sharp peaks
   drawMountainRange(g, x, y, size, rng, INK) {
-    // Pauline Baynes "Middle-earth" range (see
-    // style-references/middle-earth.webp). Each call now draws a WIDE
-    // continuous ridge so that adjacent mountain hexes overlap at their
-    // shared edge and read as one long serpentine chain (Ered Lithui /
-    // Misty Mountains), rather than separate cluster-per-hex lumps.
-    const peakCount = 18 + Math.floor(rng() * 7); // 18-24 peaks per call
-    const spacing = size * 0.16;                  // tight overlap
-    const rangeW = (peakCount - 1) * spacing;     // ~2.7-3.8 × size → overflows hex
-    // A couple of hero peaks standing taller within the ridge
-    const heroIdxs = new Set();
-    const heroCount = 2 + Math.floor(rng() * 2);
-    while (heroIdxs.size < heroCount) {
-      heroIdxs.add(3 + Math.floor(rng() * (peakCount - 6)));
-    }
+    // Pauline Baynes "Middle-earth" mountain field — instead of one
+    // straight row of peaks, scatter peaks in 2D across a wide footprint
+    // so adjacent mountain hexes MERGE into a textured field rather
+    // than reading as parallel row-bands. Peaks are rejection-sampled
+    // with a minimum distance so they don't overlap into blobs.
+    const peakCount = 28 + Math.floor(rng() * 8); // 28-35 peaks per cluster (very dense)
+    const heroCount = 1 + Math.floor(rng() * 2);  // 1-2 hero peaks
+    // Ridge-shaped footprint: wide horizontally, narrow vertically. The
+    // horizontal overflow unifies adjacent hex-row ridges; the narrow
+    // vertical band keeps peaks overlapping tightly (Baynes-like) rather
+    // than reading as a scattered forest of isolated dots.
+    const fwHalf = size * 1.3;  // horizontal half-width (overflows hex)
+    const fhHalf = size * 0.22; // vertical half-height (tight ridge band)
+    const yOffset = (rng() - 0.5) * size * 0.3;
+
     const peaks = [];
-    for (let i = 0; i < peakCount; i++) {
-      const isHero = heroIdxs.has(i);
-      // Lots of height variation — most peaks short; heroes clearly tall.
-      const hBase = isHero ? 0.65 + rng() * 0.22 : 0.18 + Math.pow(rng(), 1.4) * 0.38;
-      const wBase = isHero ? 0.26 + rng() * 0.06 : 0.2 + rng() * 0.06;
-      peaks.push({
-        px: x - rangeW / 2 + i * spacing + (rng() - 0.5) * size * 0.03,
-        baseY: y + (rng() - 0.5) * size * 0.025,
-        h: size * hBase,
-        pw: size * wBase,
-        isHero,
-      });
+    const minDist = size * 0.045; // peaks overlap very tightly
+    let attempts = 0;
+    while (peaks.length < peakCount && attempts < peakCount * 30) {
+      attempts++;
+      const px = x + (rng() * 2 - 1) * fwHalf;
+      // Bias Y toward the cluster centerline via a triangular distribution
+      // (sum of two uniforms) so peaks cluster along the spine.
+      const py = y + yOffset + ((rng() + rng()) - 1) * fhHalf;
+      let ok = true;
+      for (const p of peaks) {
+        const dx = p.px - px, dy = p.baseY - py;
+        if (dx * dx + dy * dy < minDist * minDist) { ok = false; break; }
+      }
+      if (!ok) continue;
+      const isHero = peaks.filter(p => p.isHero).length < heroCount && rng() < 0.12;
+      // Heroes stand dramatically taller. Non-heroes get more dramatic
+      // height variation too — some clearly tall, some very short.
+      const hBase = isHero
+        ? 0.8 + rng() * 0.3
+        : 0.22 + Math.pow(rng(), 1.4) * 0.38;
+      // Width variance — Baynes peaks range from narrow spires to squat
+      // wide triangles, not all the same proportions.
+      const wBase = isHero
+        ? 0.30 + rng() * 0.10
+        : 0.18 + rng() * 0.14;
+      // Some peaks get a slight "bent" apex — the tip offset reaches
+      // 40% of the half-width occasionally, not just 15%.
+      const apexBend = (rng() < 0.3) ? 0.4 : 0.15;
+      peaks.push({ px, baseY: py, h: size * hBase, pw: size * wBase, isHero, apexBend });
     }
-    // Tall peaks last so they overlap the shorter ones in front.
-    peaks.sort((a, b) => a.h - b.h);
+
+    // Back-to-front on Y so peaks closer to the viewer (lower y = further
+    // up on screen no — lower baseY = higher on screen = further away)
+    // Sort by baseY descending so nearer (bigger y) peaks render last
+    // and overlap the further ones cleanly.
+    peaks.sort((a, b) => a.baseY - b.baseY);
     peaks.forEach(p => {
       const peakY = p.baseY - p.h;
+      const apexX = p.px + (rng() - 0.5) * p.pw * p.apexBend * 2;
       g.append("path")
-        .attr("d", `M ${p.px - p.pw / 2} ${p.baseY} L ${p.px} ${peakY} L ${p.px + p.pw / 2} ${p.baseY} Z`)
+        .attr("d", `M ${p.px - p.pw / 2} ${p.baseY} L ${apexX} ${peakY} L ${p.px + p.pw / 2} ${p.baseY} Z`)
         .attr("fill", INK)
         .attr("stroke", "none");
+      if (p.isHero) {
+        const innerX = p.px + (rng() - 0.5) * p.pw * 0.15;
+        g.append("line")
+          .attr("x1", innerX).attr("y1", peakY + p.h * 0.25)
+          .attr("x2", innerX).attr("y2", p.baseY - p.h * 0.1)
+          .attr("stroke", "#f4e8d1")
+          .attr("stroke-width", 0.7)
+          .attr("opacity", 0.75);
+      }
     });
 
-    // Foothill arcs at the base — the "^^^^^" row the reference draws
-    // beneath every Baynes range. Runs the full ridge width.
-    const hillCount = Math.round(peakCount * 0.7);
-    const hillSpacing = rangeW / (hillCount - 1);
-    const hillBaseY = y + size * 0.1;
+    // A handful of foothill arcs scattered across the field rather than
+    // in a row beneath the peaks — reads as irregular detail.
+    const hillCount = 3 + Math.floor(rng() * 3);
     for (let i = 0; i < hillCount; i++) {
-      const cx = x - rangeW / 2 + i * hillSpacing + (rng() - 0.5) * size * 0.02;
-      const r = size * (0.05 + rng() * 0.04);
+      const px = x + (rng() * 2 - 1) * fwHalf * 0.9;
+      const py = y + (rng() * 2 - 1) * fhHalf * 0.9;
+      const r = size * (0.03 + rng() * 0.03);
       g.append("path")
-        .attr("d", `M ${cx - r} ${hillBaseY} Q ${cx} ${hillBaseY - r * 1.1} ${cx + r} ${hillBaseY}`)
+        .attr("d", `M ${px - r} ${py} Q ${px} ${py - r * 0.9} ${px + r} ${py}`)
         .attr("fill", "none")
         .attr("stroke", INK)
-        .attr("stroke-width", 0.6)
-        .attr("stroke-linecap", "round");
+        .attr("stroke-width", 0.5)
+        .attr("stroke-linecap", "round")
+        .attr("opacity", 0.5);
     }
   },
 
