@@ -261,6 +261,12 @@ window.MapStyles.thirdage = {
       color: INK, strokeWidth: 0.7, opacity: 0.28, wobble: 2.8,
       className: "forest-region",
     });
+    // Mountain-region boundary — groups adjacent mountain hexes into one
+    // visible range outline so peaks don't read as isolated glyphs.
+    MapCore.renderTerrainEdges(ctx, ["mountains"], {
+      color: INK, strokeWidth: 0.85, opacity: 0.35, wobble: 2.2,
+      className: "mountain-region",
+    });
   },
 
   drawGraveyard(g, x, y, size, rng, INK) {

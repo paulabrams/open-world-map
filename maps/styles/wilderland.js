@@ -815,6 +815,12 @@ window.MapStyles.wilderland = {
       color: INK, strokeWidth: 0.55, opacity: 0.2, wobble: 3.2,
       className: "forest-region",
     });
+    // Same soft-outline treatment for contiguous mountain regions — reads
+    // the range as a unified ridge band rather than loose per-hex peaks.
+    MapCore.renderTerrainEdges(ctx, ["mountains"], {
+      color: INK, strokeWidth: 0.65, opacity: 0.28, wobble: 2.6,
+      className: "mountain-region",
+    });
   },
 
   // --- Node icon rendering ---

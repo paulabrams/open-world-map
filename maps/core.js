@@ -13,6 +13,36 @@ const FONT = "Palatino, 'Palatino Linotype', 'Book Antiqua', 'Times New Roman', 
 // --- Terrain types that are interior locations (not shown on overland map) ---
 const INTERIOR_TERRAINS = new Set(["town", "city", "village", "keep", "stronghold", "castle", "ruin-interior", "underground"]);
 
+// --- OSR travel time per 6-mile hex (off-road, unencumbered on foot) ---
+// Based on B/X D&D Expert Set / 5e PHB normal-pace conventions: clear ground
+// moves ≈24 mi/day (4 hex/day), difficult terrain halves speed, mountains
+// and swamp halve again. Roads apply ROAD_MULTIPLIER (≈33% faster → matches
+// the Basilisk campaign convention of ½ day per hex on the Old Northern
+// Trade Road through forest).
+const TERRAIN_DAYS_PER_HEX = {
+  "plains":          0.25,
+  "grassland":       0.25,
+  "clear":           0.25,
+  "farmland":        0.25,
+  "desert":          0.5,
+  "hills":           0.5,
+  "forest":          0.75,
+  "forested-hills":  1.0,
+  "old-forest":      1.0,
+  "jungle":          1.0,
+  "mountains":       1.0,
+  "swamp":           1.0,
+  "tundra":          0.5,
+};
+const DEFAULT_DAYS_PER_HEX = 0.5;
+const ROAD_MULTIPLIER = 2 / 3; // roads are ~50% faster → cost × 2/3
+
+function hexTravelDays(hex, hexTerrain) {
+  const t = hexTerrain && hexTerrain[hex];
+  const rate = t ? TERRAIN_DAYS_PER_HEX[t] : undefined;
+  return rate != null ? rate : DEFAULT_DAYS_PER_HEX;
+}
+
 function isOverlandNode(n) {
   if (n.visible === false) return false;
   if (n.scale === "local") return false;
@@ -779,20 +809,20 @@ function renderBridges(ctx, bridgeStyle) {
   });
 }
 
-// --- Format fractional days for display: 0.5 → "½", 0.25 → "¼", 0.75 → "¾" ---
+// --- Format fractional days for display: rounds to the nearest twelfth so
+// it can show quarters (¼ ½ ¾) and thirds (⅓ ⅔) cleanly. ---
 function formatDaysLabel(days) {
-  if (days === 1) return "1 day";
-  if (days === 0.5) return "\u00BD day";
-  if (days === 0.25) return "\u00BC day";
-  if (days === 0.75) return "\u00BE day";
-  const whole = Math.floor(days);
-  const frac = days - whole;
-  let fracStr = "";
-  if (frac === 0.5) fracStr = "\u00BD";
-  else if (frac === 0.25) fracStr = "\u00BC";
-  else if (frac === 0.75) fracStr = "\u00BE";
-  if (whole > 0 && fracStr) return whole + fracStr + " days";
-  return days + " days";
+  if (days === 0) return "0 days";
+  const twelfths = Math.round(days * 12);
+  const whole = Math.floor(twelfths / 12);
+  const rem = twelfths - whole * 12;
+  const fracMap = { 2: "\u2159", 3: "\u00BC", 4: "\u2153", 6: "\u00BD", 8: "\u2154", 9: "\u00BE", 10: "\u215A" };
+  const frac = fracMap[rem] || "";
+  if (whole === 0 && frac) return frac + " day";
+  if (whole === 0) return "0 days";
+  if (whole === 1 && !frac) return "1 day";
+  if (frac) return whole + frac + " days";
+  return whole + " days";
 }
 
 // --- Render day labels along the straight-line midpoint of each link,
@@ -1013,43 +1043,76 @@ function renderMountainsWithElevation(ctx, mountainDrawer, hillDrawer, options) 
       else externalEdges.push(i);
     });
 
-    // Elevation factor: ~0.6 on isolated peak, ~1.35 on fully interior hex
-    const elevation = 0.6 + (mountainNeighborCount / 6) * 0.75;
+    // Elevation factor: ~0.75 on isolated peak, ~1.6 on fully interior hex.
+    // This drives BOTH peak size and how close to the edge peaks sit, so a
+    // cluster of mountain hexes reads as a single continuous range without
+    // adding more glyphs per hex.
+    const elevation = 0.75 + (mountainNeighborCount / 6) * 0.85;
 
-    // Scatter pattern: center + inner ring, trimmed by density
-    const fullGrid = [
-      [0, 0],
-      ...[0, 60, 120, 180, 240, 300].map(a => {
-        const r = size * 0.65;
-        return [Math.cos(a * Math.PI / 180) * r, Math.sin(a * Math.PI / 180) * r];
-      }),
-    ];
-    const targetN = Math.max(1, Math.round(fullGrid.length * density));
-    const gridPoints = fullGrid.slice(0, targetN);
-
-    // Add extra peak draws along any edge that borders another mountain
-    // hex — this stitches adjacent clusters into a continuous ridge across
-    // hex boundaries (Tolkien Wilderland "Grey Mountains" look).
-    neighbors.forEach((offset, i) => {
+    // Whether each of the six edges borders another mountain hex. Peaks
+    // drawn near such an edge are allowed to extend across — visually
+    // stitching the adjacent hex's range to this one. Peaks near a non-
+    // mountain edge are clamped so they don't spill into foreign terrain.
+    const edgeIsMountain = neighbors.map((offset) => {
       const nKey = String(col + offset[0]).padStart(2, "0") + String(row + offset[1]).padStart(2, "0");
-      if (!mountainHexes.has(nKey)) return;
-      // Inset from the edge midpoint toward the hex center so peaks don't
-      // clip the adjacent hex's hit box
-      const [mx, my] = edgeMids[i];
-      const inset = 0.55;
-      gridPoints.push([mx * inset, my * inset]);
-      // Optionally add one more along the same edge for continuity
-      if (rng() > 0.4) {
-        const [tx, ty] = edgeTangents[i];
-        gridPoints.push([mx * inset + tx * size * 0.2, my * inset + ty * size * 0.2]);
-      }
+      return mountainHexes.has(nKey);
     });
 
+    // Peak count: 1 on isolated / edge hex, 2 on well-interior hex. Few
+    // large shapes rather than many small ones packed tightly.
+    const peakCount = mountainNeighborCount >= 4 ? 2 : 1;
+
+    // Placement grid — first peak at centre, second (if any) pushed toward
+    // the mountain-bordered edge with the fewest existing peaks so the
+    // range flows into its neighbours rather than doubling up at centre.
+    const gridPoints = [[0, 0]];
+    if (peakCount >= 2) {
+      const mountainEdgeIdxs = edgeIsMountain.map((m, i) => m ? i : -1).filter(i => i >= 0);
+      if (mountainEdgeIdxs.length > 0) {
+        const pick = mountainEdgeIdxs[Math.floor(rng() * mountainEdgeIdxs.length)];
+        const [mx, my] = edgeMids[pick];
+        gridPoints.push([mx * 0.55, my * 0.55]);
+      }
+    }
+
+    // Three unique edge-normal axes for the flat-top hex (30°, 90°, 150°).
+    // Each axis corresponds to an antipodal pair of edges (indices in the
+    // neighbors array: N=0/S=3, NE=1/SW=4, SE=2/NW=5). A peak can safely
+    // extend past an edge only if THAT edge borders another mountain.
+    const axes = [
+      { nx: Math.cos(Math.PI / 6), ny: Math.sin(Math.PI / 6), posEdge: 1, negEdge: 4 },   // 30° ↔ NE / SW
+      { nx: 0,                       ny: 1,                     posEdge: 3, negEdge: 0 }, // 90° ↔  S /  N
+      { nx: Math.cos(5 * Math.PI / 6), ny: Math.sin(5 * Math.PI / 6), posEdge: 5, negEdge: 2 }, // 150° ↔ NW / SE
+    ];
+    // Returns a scale factor ≤ 1 that pulls (ox,oy) toward centre as much
+    // as needed so that a peak of radius r drawn there does not cross any
+    // non-mountain edge. Crossing a mountain-mountain edge is allowed
+    // (overlap into a neighbouring mountain hex reads as continuous range).
+    function clampToHexUnlessMountainEdge(ox, oy, r) {
+      let scale = 1;
+      for (const { nx, ny, posEdge, negEdge } of axes) {
+        const proj = ox * nx + oy * ny;
+        const overflow = Math.abs(proj) - (inscribed - r);
+        if (overflow <= 0) continue;
+        // Which side of this axis are we overflowing toward?
+        const edgeIdx = proj >= 0 ? posEdge : negEdge;
+        if (edgeIsMountain[edgeIdx]) continue; // overlap into mountain — fine
+        // Otherwise, pull in along this axis.
+        const maxProj = Math.max(0, inscribed - r);
+        if (Math.abs(proj) > 0) scale = Math.min(scale, maxProj / Math.abs(proj));
+      }
+      return [ox * scale, oy * scale];
+    }
+
     gridPoints.forEach(([ox, oy]) => {
-      const jitterX = (rng() - 0.5) * size * 0.18;
-      const jitterY = (rng() - 0.5) * size * 0.18;
-      const mSize = (8 + rng() * 5) * elevation;
-      mountainDrawer(terrainGroup, hx + ox + jitterX, hy + oy + jitterY, mSize, rng);
+      const jitterX = (rng() - 0.5) * size * 0.08;
+      const jitterY = (rng() - 0.5) * size * 0.08;
+      // ~3× larger than the previous packed-peaks scale. Interior hexes
+      // exceed the inscribed radius on purpose — the clamp lets them spill
+      // into mountain neighbours but not into foreign terrain.
+      const mSize = (28 + rng() * 14) * elevation;
+      const [cx, cy] = clampToHexUnlessMountainEdge(ox + jitterX, oy + jitterY, mSize);
+      mountainDrawer(terrainGroup, hx + cx, hy + cy, mSize, rng);
     });
 
     // Transition hills on the external edges (border hexes only)
@@ -1404,55 +1467,70 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
       if (!forestHexes.has(nKey)) externalEdges.push(i);
     });
 
-    // Helper: uniform-area scatter across the hex interior for the "trees live
-    // inside the wood, not only along its edges" effect.
-    function interiorScatter(count, maxR) {
-      for (let i = 0; i < count; i++) {
+    // Smaller tree glyphs (trees are ~½ their former size) so the higher
+    // count below doesn't pile up into overlapping blobs.
+    const treeSize = () => 5 + rng() * 3;
+
+    // Poisson-ish scatter: generate candidate points and reject any that
+    // land within minDist of an already-placed tree. Produces an even
+    // carpet with natural-looking jitter and minimal overlap.
+    const placed = [];
+    function place(x, y, s, minDist) {
+      for (let i = 0; i < placed.length; i++) {
+        const dx = placed[i][0] - x, dy = placed[i][1] - y;
+        if (dx * dx + dy * dy < minDist * minDist) return false;
+      }
+      placed.push([x, y]);
+      drawer(terrainGroup, hx + x, hy + y, s, rng);
+      return true;
+    }
+    function scatterInCircle(targetCount, maxR, minDist) {
+      let tries = 0, placedCount = 0;
+      while (placedCount < targetCount && tries < targetCount * 12) {
         const a = rng() * Math.PI * 2;
-        const r = Math.sqrt(rng()) * maxR; // sqrt → uniform areal distribution
-        drawer(terrainGroup, hx + Math.cos(a) * r, hy + Math.sin(a) * r, 8 + rng() * 4, rng);
+        const r = Math.sqrt(rng()) * maxR;
+        if (place(Math.cos(a) * r, Math.sin(a) * r, treeSize(), minDist)) placedCount++;
+        tries++;
       }
     }
 
     if (externalEdges.length === 0) {
-      // Fully interior forest hex — scatter trees across the whole body
-      // Fully interior forest hex — bumped 20% from 5-7 to 6-9 trees
-      const baseN = 6 + Math.floor(rng() * 4);
-      interiorScatter(Math.max(1, Math.round(baseN * density)), size * 0.7);
+      // Fully interior forest hex — blanket the whole body with trees.
+      // ~3× the previous count (was 6-9, now 18-27).
+      const baseN = 18 + Math.floor(rng() * 10);
+      scatterInCircle(Math.max(1, Math.round(baseN * density)), size * 0.78, 7);
       return;
     }
 
-    // Border hex — concentrate trees along each external edge. Trees are
-    // packed a bit denser here so the forest border reads clearly even
-    // without a hex-outline stroke.
+    // Border hex — concentrate trees along each external edge so the
+    // forest boundary reads as a dense treeline.
     externalEdges.forEach(edgeIdx => {
       const [mx, my] = edgeMids[edgeIdx];
       const [tx, ty] = edgeTangents[edgeIdx];
       const inset = 0.82;
       const mxInset = mx * inset;
       const myInset = my * inset;
-      // Bumped 20% on top of previous: 5-7 trees per edge
-      const baseN = 5 + Math.floor(rng() * 3);
+      // ~3× the previous count per edge (was 5-7, now 15-21).
+      const baseN = 15 + Math.floor(rng() * 7);
       const n = Math.max(2, Math.round(baseN * density));
+      const mLen = Math.sqrt(mx * mx + my * my) || 1;
       for (let i = 0; i < n; i++) {
         const t = n === 1 ? 0 : (i / (n - 1) - 0.5);
-        const span = t * size * 0.8;
-        const jitterX = (rng() - 0.5) * size * 0.12;
-        const jitterY = (rng() - 0.5) * size * 0.12;
-        const depthJitter = rng() * size * 0.18;
-        const inwardX = -mx / Math.sqrt(mx * mx + my * my) * depthJitter;
-        const inwardY = -my / Math.sqrt(mx * mx + my * my) * depthJitter;
+        const span = t * size * 0.85;
+        const jitterX = (rng() - 0.5) * size * 0.08;
+        const jitterY = (rng() - 0.5) * size * 0.08;
+        const depthJitter = rng() * size * 0.22;
+        const inwardX = -mx / mLen * depthJitter;
+        const inwardY = -my / mLen * depthJitter;
         const ox = mxInset + tx * span + jitterX + inwardX;
         const oy = myInset + ty * span + jitterY + inwardY;
-        drawer(terrainGroup, hx + ox, hy + oy, 8 + rng() * 4, rng);
+        place(ox, oy, treeSize(), 6);
       }
     });
-    // Interior sprinkle — always fill the hex body, scaled by how much edge
-    // coverage we already have. Fewer external edges → more interior trees.
-    // Interior sprinkle bumped 20% — was 2-4, now 3-5 depending on edges
-    const interiorBase = 5 - Math.floor(externalEdges.length / 2); // 5, 4, 3
-    const interiorN = Math.max(1, Math.round((interiorBase + rng() * 2) * density));
-    interiorScatter(interiorN, size * 0.55);
+    // Interior sprinkle — ~3× the previous count (was 3-5, now 9-15).
+    const interiorBase = 12 - Math.floor(externalEdges.length); // 12..6
+    const interiorN = Math.max(3, Math.round((interiorBase + rng() * 4) * density));
+    scatterInCircle(interiorN, size * 0.6, 7);
   });
 }
 
@@ -1612,12 +1690,38 @@ function renderHexHover(ctx) {
     if (coordEl) coordEl.classList.remove("visible");
   });
 
+  // Pre-compute the set of road hexes so we can tell per hex whether the
+  // faster "on road" rate applies.
+  const roadHexSet = new Set();
+  if (graphData && Array.isArray(graphData.road_path)) {
+    const entries = typeof graphData.road_path[0] === "string"
+      ? [{ hexes: graphData.road_path }]
+      : graphData.road_path;
+    entries.forEach(e => {
+      const hs = Array.isArray(e) ? e : (e && e.hexes) || [];
+      hs.forEach(h => roadHexSet.add(h));
+    });
+  }
+
   function updatePanel(hex) {
     const terrain = (hexTerrain && hexTerrain[hex]) || null;
     const pois = hexNodes[hex] || [];
     // Always open the panel — every hex gets a card, even empty ones.
     // Hex id (mono, small-caps at the top)
     document.getElementById("panel-hex-id").textContent = "HEX " + hex;
+    // Travel-time line — per-hex rate in days. If the hex is on a road, show
+    // both the off-road rate and the faster on-road rate.
+    const travelEl = document.getElementById("panel-travel");
+    if (travelEl) {
+      const offRoad = hexTravelDays(hex, hexTerrain);
+      const onRoad = offRoad * ROAD_MULTIPLIER;
+      const onThisRoad = roadHexSet.has(hex);
+      if (onThisRoad) {
+        travelEl.innerHTML = `Travel: <strong>${formatDaysLabel(onRoad)}</strong> per hex on road · ${formatDaysLabel(offRoad)} off-road`;
+      } else {
+        travelEl.innerHTML = `Travel: <strong>${formatDaysLabel(offRoad)}</strong> per hex · ${formatDaysLabel(onRoad)} if on road`;
+      }
+    }
     // Main title — the terrain or the first named POI's name
     const titleEl = document.getElementById("panel-name");
     const typeEl = document.getElementById("panel-type");
@@ -2040,8 +2144,10 @@ function _clearRouteState() {
   _routeEndHex = null;
 }
 
-// Build an undirected graph keyed by hex code. Road entries define faster edges
-// (wins over overland). Overland neighbor edges default to 0.5 days.
+// Build an undirected graph keyed by hex code. Edge cost is the average of
+// the two hexes' terrain travel times (see TERRAIN_DAYS_PER_HEX). Road
+// edges apply ROAD_MULTIPLIER so Dijkstra always prefers a road when one
+// is available.
 function _buildTravelGraph() {
   const graph = new Map();
   const addEdge = (a, b, days) => {
@@ -2054,17 +2160,24 @@ function _buildTravelGraph() {
     }
   };
 
-  // Road edges — one per consecutive pair within each road entry
+  const hexTerrain = (graphData && graphData.hex_terrain) || {};
+  const edgeCost = (a, b) => (hexTravelDays(a, hexTerrain) + hexTravelDays(b, hexTerrain)) / 2;
+
+  // Road edges — faster than off-road over the same terrain
   const roads = graphData && graphData.road_path ? graphData.road_path : [];
   const roadEntries = typeof roads[0] === "string" ? [{ hexes: roads }] : roads;
   roadEntries.forEach(entry => {
     const hexes = Array.isArray(entry) ? entry : (entry && entry.hexes) || [];
     if (hexes.length < 2) return;
-    const perHop = entry && entry.days && hexes.length > 1
+    // Explicit `days` on the entry overrides the terrain calculation.
+    const explicitPerHop = entry && entry.days && hexes.length > 1
       ? entry.days / (hexes.length - 1)
-      : 1 / 8; // default 1 hour per hex on road
+      : null;
     for (let i = 0; i < hexes.length - 1; i++) {
-      addEdge(hexes[i], hexes[i + 1], perHop);
+      const cost = explicitPerHop != null
+        ? explicitPerHop
+        : edgeCost(hexes[i], hexes[i + 1]) * ROAD_MULTIPLIER;
+      addEdge(hexes[i], hexes[i + 1], cost);
     }
   });
 
@@ -2082,7 +2195,7 @@ function _buildTravelGraph() {
 
   known.forEach(hex => {
     hexNeighbors(hex).forEach(n => {
-      if (known.has(n)) addEdge(hex, n, 0.5);
+      if (known.has(n)) addEdge(hex, n, edgeCost(hex, n));
     });
   });
 
@@ -2153,7 +2266,13 @@ function _hexLinePath(start, end) {
     const [rx, , rz] = cubeRound(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, z1 + (z2 - z1) * t);
     path.push(cubeToOffset(rx, rz));
   }
-  return { path, days: n * 0.5 };
+  // Sum per-hex terrain costs for the straight-line path (off-road).
+  const hexTerrain = (graphData && graphData.hex_terrain) || {};
+  let days = 0;
+  for (let i = 1; i < path.length; i++) {
+    days += (hexTravelDays(path[i - 1], hexTerrain) + hexTravelDays(path[i], hexTerrain)) / 2;
+  }
+  return { path, days };
 }
 
 function _findRoute(startHex, endHex) {

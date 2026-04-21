@@ -335,7 +335,7 @@
     },
     {
       "id": "hangman-hill",
-      "name": "Hangman Hill Bandit Camp",
+      "name": "Bandit Camp",
       "point_type": "lair",
       "terrain": "forest",
       "visible": true,
@@ -375,13 +375,12 @@
       "days": 0.5
     },
     {
-      "source": "tower-of-stargazer",
-      "target": "bandit-camp",
-      "name": "Path to Hangman Hill",
-      "path_type": "trail",
+      "source": "bandit-camp",
+      "target": "hangman-hill",
+      "name": "Overland to Hangman Hill",
+      "path_type": "wilderness",
       "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.1
+      "visible": true
     },
     {
       "source": "blackwater-crossing",
