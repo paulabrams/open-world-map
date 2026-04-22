@@ -979,7 +979,7 @@ window.MapStyles.thirdage = {
   // --- Title cartouche (ornate box) ---
   renderCartouche(ctx) {
     const { g, bounds, meta, FONT } = ctx;
-    const { INK, INK_LIGHT, PARCHMENT } = ctx.colors;
+    const { INK, INK_LIGHT, PARCHMENT, LABEL_RED } = ctx.colors;
 
     const boxW = 200;
     const boxH = 70;
@@ -1023,7 +1023,7 @@ window.MapStyles.thirdage = {
       .attr("font-size", "15px")
       .attr("font-weight", "bold")
       .attr("letter-spacing", "3px")
-      .attr("fill", INK)
+      .attr("fill", LABEL_RED)
       .text(meta.region ? meta.region.toUpperCase() : meta.campaign.toUpperCase());
 
     g.append("text")
