@@ -236,22 +236,110 @@ window.MapStyles.dragonisles = {
 
   // --- Simple tactical-style border ---
   renderBorder(ctx) {
+    // Celtic-interlace frame around all four edges. Two offset sinusoidal
+    // paths weave over-under between an outer and inner rectangle,
+    // producing the characteristic knotwork visual. Four corner
+    // medallions (circles with a cross-knot inside) terminate the bands.
     const { g, bounds } = ctx;
     const { INK } = ctx.colors;
-    const pad = 40;
-    const x = bounds.minX - pad, y = bounds.minY - pad;
-    const w = bounds.maxX - bounds.minX + pad * 2;
-    const h = bounds.maxY - bounds.minY + pad * 2;
-    g.append("rect")
-      .attr("x", x).attr("y", y).attr("width", w).attr("height", h)
-      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.4);
-    // Short tick marks at corners — just a hint of a frame
-    const cm = 10;
-    [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]].forEach(([cx, cy, sx, sy]) => {
-      g.append("line").attr("x1", cx).attr("y1", cy).attr("x2", cx + cm * sx).attr("y2", cy)
-        .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.5);
-      g.append("line").attr("x1", cx).attr("y1", cy).attr("x2", cx).attr("y2", cy + cm * sy)
-        .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.5);
+    const outerPad = 24;
+    const bandW = 22;               // width of the knotwork band
+    const ox = bounds.minX - outerPad;
+    const oy = bounds.minY - outerPad;
+    const ow = bounds.maxX - bounds.minX + outerPad * 2;
+    const oh = bounds.maxY - bounds.minY + outerPad * 2;
+    const ix = ox + bandW, iy = oy + bandW;
+    const iw = ow - bandW * 2, ih = oh - bandW * 2;
+
+    const frame = g.append("g").attr("class", "celtic-frame");
+
+    // Outer and inner rectangle rulings that bracket the knotwork band.
+    frame.append("rect")
+      .attr("x", ox).attr("y", oy).attr("width", ow).attr("height", oh)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.3);
+    frame.append("rect")
+      .attr("x", ix).attr("y", iy).attr("width", iw).attr("height", ih)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.9);
+
+    // Build two offset sinusoidal strands along the inside of the band
+    // for each of the four edges. Each strand is a dashed path so the
+    // over-under weave is suggested by the gaps.
+    const unit = 18;                 // width of one knotwork "cell"
+    const amp = bandW * 0.32;        // vertical amplitude of the weave
+    const strandMid = bandW / 2;     // band center offset
+
+    // Helper to append a single strand along an edge. `orient` is one of
+    // "top", "right", "bottom", "left"; phase shifts between strands
+    // create the interlace illusion.
+    const buildStrand = (orient, phase) => {
+      let d = "";
+      if (orient === "top" || orient === "bottom") {
+        const len = iw - unit * 2;
+        const startX = ix + unit;
+        const yBase = orient === "top" ? oy + strandMid : oy + oh - strandMid;
+        const steps = Math.max(12, Math.floor(len / (unit / 6)));
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const x = startX + t * len;
+          const theta = (t * len / unit) * Math.PI * 2 + phase;
+          const y = yBase + Math.sin(theta) * amp;
+          d += (i === 0 ? "M " : "L ") + x + " " + y + " ";
+        }
+      } else {
+        const len = ih - unit * 2;
+        const startY = iy + unit;
+        const xBase = orient === "left" ? ox + strandMid : ox + ow - strandMid;
+        const steps = Math.max(12, Math.floor(len / (unit / 6)));
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          const y = startY + t * len;
+          const theta = (t * len / unit) * Math.PI * 2 + phase;
+          const x = xBase + Math.sin(theta) * amp;
+          d += (i === 0 ? "M " : "L ") + x + " " + y + " ";
+        }
+      }
+      frame.append("path")
+        .attr("d", d)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 1.1)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-dasharray", "16 4");
+    };
+
+    ["top", "bottom"].forEach(orient => {
+      buildStrand(orient, 0);
+      buildStrand(orient, Math.PI);
+    });
+    ["left", "right"].forEach(orient => {
+      buildStrand(orient, 0);
+      buildStrand(orient, Math.PI);
+    });
+
+    // Corner medallions: a ~bandW-diameter circle with an inscribed
+    // cross-knot that terminates the four strands at each corner.
+    const corners = [
+      [ox + strandMid, oy + strandMid],
+      [ox + ow - strandMid, oy + strandMid],
+      [ox + strandMid, oy + oh - strandMid],
+      [ox + ow - strandMid, oy + oh - strandMid],
+    ];
+    corners.forEach(([cx, cy]) => {
+      const r = bandW * 0.42;
+      frame.append("circle")
+        .attr("cx", cx).attr("cy", cy).attr("r", r)
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2);
+      frame.append("circle")
+        .attr("cx", cx).attr("cy", cy).attr("r", r * 0.55)
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.9);
+      // Inscribed cross-knot: two arcs crossing through the small circle.
+      const a = r * 0.9;
+      frame.append("path")
+        .attr("d", `M ${cx - a} ${cy} Q ${cx} ${cy - a} ${cx + a} ${cy} Q ${cx} ${cy + a} ${cx - a} ${cy}`)
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.8);
+      frame.append("path")
+        .attr("d", `M ${cx} ${cy - a} Q ${cx + a} ${cy} ${cx} ${cy + a} Q ${cx - a} ${cy} ${cx} ${cy - a}`)
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.8);
     });
   },
 
