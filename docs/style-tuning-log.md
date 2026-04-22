@@ -9,7 +9,7 @@ Current score per style, out of 10. Update after every iteration.
 | Style        | Score | Last iteration | Notes                                    |
 |--------------|-------|----------------|------------------------------------------|
 | thirdage     | 8     | 7              | red cartouche title + scale bar landed   |
-| wilderland   | 9.35  | wl-10          | denser peak hatching (leeward flank)     |
+| wilderland   | 9.5   | wl-11          | cartouche subtitle overlap fixed         |
 | moonletters  | —     | —              | not yet rated                            |
 | dragonisles  | 7.5   | 5              | frame + banner + compass landed; scope q |
 
@@ -58,3 +58,4 @@ Append one row per iteration. Do not delete rows, even for rolled-back experimen
 | wl-8 | wilderland | Extend Greek-key meander to left+right cartouche edges | 8.5 → 9 | Kept | Same unit-builder rotated 90° via SVG transform. Cartouche now has continuous decorated border on all four sides, matching the reference's fully-bordered meander. |
 | wl-9 | wilderland | Forest density 1.0 → 1.8 | 9 → 9.25 | Kept | Reference Mirkwood is a dense packed tree blob; default density rendered too sparse. Bumping the density option on renderForestEdgeTrees packs trees tighter. Still could go higher but minDist limits further packing. |
 | wl-10 | wilderland | Denser peak hatching (count p.h/4.5→p.h/2.5, opacity 0.7→0.9) | 9.25 → 9.35 | Kept | Reference Misty Mountains have heavy leeward-flank hatching; mine was sparse. Incremental improvement; peaks are small at map zoom so the effect is modest. |
+| wl-11 | wilderland | Fix subtitle overlap (boxH 62→78, subtitle y moved up) | 9.35 → 9.5 | Kept | Bottom meander strip from wl-7 was overlapping the italic subtitle line. Taller cartouche + subtitle repositioned between title and bottom meander. Cartouche now reads cleanly. |
