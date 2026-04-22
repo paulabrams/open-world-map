@@ -9,7 +9,7 @@ Current score per style, out of 10. Update after every iteration.
 | Style        | Score | Last iteration | Notes                                    |
 |--------------|-------|----------------|------------------------------------------|
 | thirdage     | 8     | 7              | red cartouche title + scale bar landed   |
-| wilderland   | 7.5   | wl-4           | campaign labels via ctx.offMapArrows     |
+| wilderland   | 8     | wl-5           | all 4 edges data-driven; top banner wired|
 | moonletters  | —     | —              | not yet rated                            |
 | dragonisles  | 7.5   | 5              | frame + banner + compass landed; scope q |
 
@@ -46,3 +46,4 @@ Append one row per iteration. Do not delete rows, even for rolled-back experimen
 | wl-2 | wilderland | Edge-label opacity 0.5 → 0.85 | 6 → 6.5 | Kept | Labels were present but too faint to read; bumping opacity makes them function as the directional frame labels the reference uses instead of a compass. |
 | wl-3 | wilderland | Three stacked left-edge labels (was one centered) | 6.5 → 7 | Kept | Reference's defining left-edge triplet (Western Lands / Edge of the Wild / Hobbiton) now structurally matches. Content is fallback text because off_map_arrows NW/W/SW keys aren't populating into meta; fixing data pipeline is a follow-up. |
 | wl-4 | wilderland | Read ctx.offMapArrows (not meta.off_map_arrows) | 7 → 7.5 | Kept | off_map_arrows is exposed on ctx directly, not nested under meta. One-key change routes real campaign-neighbor labels through; left edge now reads "Vales of Belerion / West lie the Forandol Mountains / South to Kyrgar and Ashenrise". |
+| wl-5 | wilderland | Top/right/bottom edges use ctx.offMapArrows (N/NE-E-SE/S) | 7.5 → 8 | Kept | All four frame edges now describe real campaign neighbors rather than hardcoded generic labels. Reference is stricter (left-only triplet + top banner), but data-driven accuracy on all four edges is a better functional map. |
