@@ -9,7 +9,7 @@ Current score per style, out of 10. Update after every iteration.
 | Style        | Score | Last iteration | Notes                                    |
 |--------------|-------|----------------|------------------------------------------|
 | thirdage     | 8     | 7              | red cartouche title + scale bar landed   |
-| wilderland   | 7     | wl-3           | three stacked left-edge labels landed    |
+| wilderland   | 7.5   | wl-4           | campaign labels via ctx.offMapArrows     |
 | moonletters  | —     | —              | not yet rated                            |
 | dragonisles  | 7.5   | 5              | frame + banner + compass landed; scope q |
 
@@ -45,3 +45,4 @@ Append one row per iteration. Do not delete rows, even for rolled-back experimen
 | wl-1 | wilderland | Move compass top-right → top-left | 5 → 6 | Kept | Reference position is top-left, not top-right; simple position change fixes a basic style-read error. |
 | wl-2 | wilderland | Edge-label opacity 0.5 → 0.85 | 6 → 6.5 | Kept | Labels were present but too faint to read; bumping opacity makes them function as the directional frame labels the reference uses instead of a compass. |
 | wl-3 | wilderland | Three stacked left-edge labels (was one centered) | 6.5 → 7 | Kept | Reference's defining left-edge triplet (Western Lands / Edge of the Wild / Hobbiton) now structurally matches. Content is fallback text because off_map_arrows NW/W/SW keys aren't populating into meta; fixing data pipeline is a follow-up. |
+| wl-4 | wilderland | Read ctx.offMapArrows (not meta.off_map_arrows) | 7 → 7.5 | Kept | off_map_arrows is exposed on ctx directly, not nested under meta. One-key change routes real campaign-neighbor labels through; left edge now reads "Vales of Belerion / West lie the Forandol Mountains / South to Kyrgar and Ashenrise". |
