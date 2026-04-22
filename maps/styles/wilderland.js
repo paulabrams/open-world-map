@@ -1715,12 +1715,14 @@ window.MapStyles.wilderland = {
     });
   },
 
-  // --- Compass rose (Wilderland style — subtle decorative arrow in a circle) ---
+  // --- Compass rose (Wilderland style — small 4-arrow compass with
+  // "N" marker at top-LEFT, matching the reference where the compass
+  // sits just above the "Western Lands" edge label, not top-right) ---
   renderCompass(ctx) {
     const { g, bounds } = ctx;
     const { INK } = ctx.colors;
 
-    const x = bounds.maxX + 30;
+    const x = bounds.minX - 30;
     const y = bounds.minY - 20;
     const size = 22;
 
