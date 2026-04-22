@@ -1014,81 +1014,94 @@ window.MapStyles.dragonisles = {
     });
   },
 
-  // --- Compass rose ---
+  // --- Compass rose: sword-and-dagger heraldic medallion, top-left ---
+  // Matches the dragonisles reference where the compass is a circular
+  // knotwork medallion with a sword (vertical, point up) inside. No
+  // N/E/S/W lettering; cardinals are conveyed by the orientation.
   renderCompass(ctx) {
-    const { g, bounds, FONT } = ctx;
+    const { g, bounds } = ctx;
     const { INK } = ctx.colors;
 
-    const x = bounds.maxX + 40;
-    const y = bounds.minY - 20;
-    const size = 26;
+    // Top-left inside the Celtic frame's inner rectangle.
+    const x = bounds.minX - 6;
+    const y = bounds.minY - 6;
+    const size = 34;
 
     const cg = g.append("g").attr("transform", `translate(${x}, ${y})`);
 
-    // Outer circle
+    // Concentric knotwork medallion rings.
     cg.append("circle")
       .attr("cx", 0).attr("cy", 0).attr("r", size)
-      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.0).attr("opacity", 0.75);
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.3);
     cg.append("circle")
-      .attr("cx", 0).attr("cy", 0).attr("r", size * 0.32)
-      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.7).attr("opacity", 0.65);
+      .attr("cx", 0).attr("cy", 0).attr("r", size * 0.92)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.6);
+    cg.append("circle")
+      .attr("cx", 0).attr("cy", 0).attr("r", size * 0.78)
+      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.6);
 
-    // Filled half-diamond pointers with cardinal labels
-    const cardinals = [
-      { dx: 0, dy: -1, label: "N" },
-      { dx: 1, dy: 0, label: "E" },
-      { dx: 0, dy: 1, label: "S" },
-      { dx: -1, dy: 0, label: "W" },
-    ];
-    cardinals.forEach(({ dx, dy, label }) => {
-      const tipX = dx * size, tipY = dy * size;
-      const baseX = dx * size * 0.32, baseY = dy * size * 0.32;
-      const perpX = -dy * size * 0.11, perpY = dx * size * 0.11;
+    // Four-petal knotwork inside the outer ring (a simple celtic
+    // "cross-in-circle" cued by four crossing arcs).
+    const kr = size * 0.85;
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI / 2);
+      const c1x = Math.cos(a) * kr * 0.55, c1y = Math.sin(a) * kr * 0.55;
+      const c2x = Math.cos(a + Math.PI / 2) * kr * 0.55, c2y = Math.sin(a + Math.PI / 2) * kr * 0.55;
       cg.append("path")
-        .attr("d", `M ${baseX} ${baseY} L ${tipX} ${tipY} L ${(baseX + tipX) / 2 + perpX} ${(baseY + tipY) / 2 + perpY} Z`)
-        .attr("fill", INK).attr("opacity", 0.85);
-      cg.append("path")
-        .attr("d", `M ${baseX} ${baseY} L ${tipX} ${tipY} L ${(baseX + tipX) / 2 - perpX} ${(baseY + tipY) / 2 - perpY} Z`)
-        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.7).attr("opacity", 0.8);
-      const labelDist = size + 7;
-      cg.append("text")
-        .attr("x", dx * labelDist).attr("y", dy * labelDist + (dy === 0 ? 3 : 0))
-        .attr("text-anchor", dx === 0 ? "middle" : dx > 0 ? "start" : "end")
-        .attr("dominant-baseline", dy === 0 ? "middle" : dy > 0 ? "hanging" : "baseline")
-        .attr("font-family", FONT)
-        .attr("font-size", "12px")
-        .attr("font-weight", "bold")
-        .attr("fill", INK).attr("opacity", 0.9)
-        .text(label);
-    });
-
-    // Minor tick marks between cardinals
-    for (let i = 0; i < 8; i++) {
-      const a = (i * Math.PI / 4) + Math.PI / 8;
-      cg.append("line")
-        .attr("x1", Math.cos(a) * size).attr("y1", Math.sin(a) * size)
-        .attr("x2", Math.cos(a) * (size - 3)).attr("y2", Math.sin(a) * (size - 3))
-        .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.6);
+        .attr("d", `M ${Math.cos(a) * kr} ${Math.sin(a) * kr} Q ${(c1x + c2x) / 2} ${(c1y + c2y) / 2} ${Math.cos(a + Math.PI / 2) * kr} ${Math.sin(a + Math.PI / 2) * kr}`)
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.7);
     }
-    // Center fleur-de-lis marking North
-    const fsz = 26;
-    const fleurG = cg.append("g").attr("opacity", 0.9);
-    fleurG.append("path")
-      .attr("d", `M 0 ${-fsz * 0.25} L 0 ${fsz * 0.1}`)
-      .attr("stroke", INK).attr("stroke-width", 1.0).attr("fill", "none");
-    fleurG.append("path")
-      .attr("d", `M 0 ${-fsz * 0.3} C -${fsz * 0.08} ${-fsz * 0.35}, -${fsz * 0.08} ${-fsz * 0.22}, 0 ${-fsz * 0.2} C ${fsz * 0.08} ${-fsz * 0.22}, ${fsz * 0.08} ${-fsz * 0.35}, 0 ${-fsz * 0.3} Z`)
+
+    // Sword and dagger cross inside the medallion.
+    // Sword: vertical, point up, crossguard about 1/3 from top.
+    const sLen = size * 1.55;
+    const sTop = -sLen * 0.56;
+    const sBot = sLen * 0.44;
+    const gy = sTop + sLen * 0.30;   // crossguard Y
+    const gW = size * 0.55;          // crossguard half-width
+    const bW = size * 0.045;         // blade half-width
+
+    // Blade.
+    cg.append("path")
+      .attr("d",
+        `M 0 ${sTop} ` +
+        `L ${bW} ${sTop + size * 0.08} ` +
+        `L ${bW} ${gy} ` +
+        `L -${bW} ${gy} ` +
+        `L -${bW} ${sTop + size * 0.08} Z`)
+      .attr("fill", INK)
+      .attr("stroke", INK).attr("stroke-width", 0.4);
+
+    // Crossguard.
+    cg.append("rect")
+      .attr("x", -gW).attr("y", gy)
+      .attr("width", gW * 2).attr("height", size * 0.10)
       .attr("fill", INK);
-    fleurG.append("path")
-      .attr("d", `M 0 ${-fsz * 0.15} C -${fsz * 0.13} ${-fsz * 0.1}, -${fsz * 0.14} ${fsz * 0.02}, -${fsz * 0.05} ${fsz * 0.05}`)
-      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.9);
-    fleurG.append("path")
-      .attr("d", `M 0 ${-fsz * 0.15} C ${fsz * 0.13} ${-fsz * 0.1}, ${fsz * 0.14} ${fsz * 0.02}, ${fsz * 0.05} ${fsz * 0.05}`)
-      .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.9);
-    fleurG.append("line")
-      .attr("x1", -fsz * 0.1).attr("y1", fsz * 0.05)
-      .attr("x2", fsz * 0.1).attr("y2", fsz * 0.05)
-      .attr("stroke", INK).attr("stroke-width", 1.0);
+
+    // Grip.
+    cg.append("rect")
+      .attr("x", -size * 0.07).attr("y", gy + size * 0.10)
+      .attr("width", size * 0.14).attr("height", size * 0.28)
+      .attr("fill", INK);
+
+    // Pommel.
+    cg.append("circle")
+      .attr("cx", 0).attr("cy", sBot - size * 0.04)
+      .attr("r", size * 0.10)
+      .attr("fill", INK);
+
+    // A horizontal dagger crossing the hilt, offset to the right for
+    // the sword-and-dagger visual of the reference.
+    const dLen = size * 0.9;
+    const dxOff = size * 0.0;
+    const dyOff = gy + size * 0.05;
+    cg.append("line")
+      .attr("x1", dxOff - dLen / 2).attr("y1", dyOff)
+      .attr("x2", dxOff + dLen / 2).attr("y2", dyOff)
+      .attr("stroke", INK).attr("stroke-width", 1.4);
+    // Dagger pommel knobs on each end.
+    cg.append("circle").attr("cx", dxOff - dLen / 2).attr("cy", dyOff).attr("r", size * 0.045).attr("fill", INK);
+    cg.append("circle").attr("cx", dxOff + dLen / 2).attr("cy", dyOff).attr("r", size * 0.045).attr("fill", INK);
   },
 
   // --- Scale bar ---
