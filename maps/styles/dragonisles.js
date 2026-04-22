@@ -1022,10 +1022,12 @@ window.MapStyles.dragonisles = {
     const { g, bounds } = ctx;
     const { INK } = ctx.colors;
 
-    // Top-left inside the Celtic frame's inner rectangle.
-    const x = bounds.minX + 38;
-    const y = bounds.minY + 38;
-    const size = 90;
+    // Top-left inside the Celtic frame corner — replaces the knotwork
+    // corner medallion, matching the reference where the compass IS the
+    // top-left frame corner rather than an inset element.
+    const x = bounds.minX - 13;
+    const y = bounds.minY - 13;
+    const size = 54;
 
     const cg = g.append("g").attr("transform", `translate(${x}, ${y})`);
 
