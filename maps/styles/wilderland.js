@@ -59,12 +59,15 @@ window.MapStyles.wilderland = {
     MapCore.renderCrevasse(ctx, "#2a1f14", 5, { style: "twinbank" });
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
+    // Wilderland reference uses BLUE ink for region labels ("GREY
+    // MOUNTAINS", "Mirkwood", etc.), not black/brown. Matches Tolkien's
+    // two-ink convention (black line art + blue label text).
     MapCore.renderRegionLabels(ctx, {
-      color: ctx.colors.INK,
+      color: ctx.colors.BLUE,
       strokeColor: ctx.colors.PARCHMENT,
       fontSize: 22,
       letterSpacing: "6px",
-      opacity: 0.6,
+      opacity: 0.75,
       fontStyle: "normal",
     });
     this.renderNodes(ctx);
