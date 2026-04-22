@@ -1910,6 +1910,48 @@ window.MapStyles.wilderland = {
         .attr("fill", INK);
     });
 
+    // Greek-key meander strip along top and bottom of the cartouche,
+    // matching the reference's decorated border. A single unit is a
+    // squared-spiral shape; repeated horizontally it reads as the
+    // classic meander ornament used in the reference Wilderland
+    // cartouche border.
+    const meanderStripH = 5;
+    const meanderUnitW = 8;
+    // Top strip sits just inside the middle rule.
+    const meanderTopY = by + 5;
+    const meanderBotY = by + boxH - 5 - meanderStripH;
+    const meanderLeftX = bx + 6;
+    const meanderRightX = bx + boxW - 6;
+    const meanderSpan = meanderRightX - meanderLeftX;
+    const meanderUnits = Math.floor(meanderSpan / meanderUnitW);
+    const meanderActualSpan = meanderUnits * meanderUnitW;
+    const meanderStartX = meanderLeftX + (meanderSpan - meanderActualSpan) / 2;
+
+    const buildMeanderUnit = (ux, uy, w, h, flipY) => {
+      // Draw a simple squared-spiral meander. If flipY is true, mirror
+      // vertically so the bottom strip is symmetric with the top.
+      const y0 = uy;
+      const y1 = uy + h * 0.33;
+      const y2 = uy + h * 0.66;
+      const y3 = uy + h;
+      const x0 = ux, x1 = ux + w * 0.33, x2 = ux + w * 0.66, x3 = ux + w;
+      // Top strip: spiral opens downward. Bottom: opens upward.
+      if (!flipY) {
+        return `M ${x0} ${y3} L ${x0} ${y1} L ${x2} ${y1} L ${x2} ${y2} L ${x1} ${y2} L ${x1} ${y3}`;
+      }
+      return `M ${x0} ${y0} L ${x0} ${y2} L ${x2} ${y2} L ${x2} ${y1} L ${x1} ${y1} L ${x1} ${y0}`;
+    };
+
+    for (let i = 0; i < meanderUnits; i++) {
+      const ux = meanderStartX + i * meanderUnitW;
+      g.append("path")
+        .attr("d", buildMeanderUnit(ux, meanderTopY, meanderUnitW, meanderStripH, false))
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.5);
+      g.append("path")
+        .attr("d", buildMeanderUnit(ux, meanderBotY, meanderUnitW, meanderStripH, true))
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.5);
+    }
+
     // Decorative flourish above the title — short ink rule with centre pip
     const flourishY = by + 18;
     const flourishL = boxW * 0.45;
