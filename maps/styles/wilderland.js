@@ -940,7 +940,9 @@ window.MapStyles.wilderland = {
     // separate triangular stamps.
     MapCore.renderMountainsByRegion(ctx,
       (tg, peaks, rng, opts) => drawMountainRidge(tg, peaks, rng, opts));
-    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"]);
+    // Dense forest packing to match Mirkwood density in the reference —
+    // scattered trees at default density (1.0) read too sparse.
+    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 1.8 });
     MapCore.renderFarmlandBiased(ctx, drawFarm);
     // Very soft forest-region outline — traces the outer boundary of the
     // contiguous forest (skips interior hex-to-hex edges) with a wobbly
