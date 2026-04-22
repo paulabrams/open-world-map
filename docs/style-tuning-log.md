@@ -9,7 +9,7 @@ Current score per style, out of 10. Update after every iteration.
 | Style        | Score | Last iteration | Notes                                    |
 |--------------|-------|----------------|------------------------------------------|
 | thirdage     | 8     | 7              | red cartouche title + scale bar landed   |
-| wilderland   | 6.5   | wl-2           | edge labels readable at 0.85 opacity     |
+| wilderland   | 7     | wl-3           | three stacked left-edge labels landed    |
 | moonletters  | —     | —              | not yet rated                            |
 | dragonisles  | 7.5   | 5              | frame + banner + compass landed; scope q |
 
@@ -44,3 +44,4 @@ Append one row per iteration. Do not delete rows, even for rolled-back experimen
 | wl-pre | wilderland | ATTEMPTED: remove compass based on wrong inventory claim | 5 → n/a | Rolled back | USER CORRECTION: wilderland DOES have a small 4-arrow N-compass at top-left. Inventory was wrong. Takeaway: use PIL for reference crops — sips' cropOffset behaved unexpectedly and I missed the top-left corner. |
 | wl-1 | wilderland | Move compass top-right → top-left | 5 → 6 | Kept | Reference position is top-left, not top-right; simple position change fixes a basic style-read error. |
 | wl-2 | wilderland | Edge-label opacity 0.5 → 0.85 | 6 → 6.5 | Kept | Labels were present but too faint to read; bumping opacity makes them function as the directional frame labels the reference uses instead of a compass. |
+| wl-3 | wilderland | Three stacked left-edge labels (was one centered) | 6.5 → 7 | Kept | Reference's defining left-edge triplet (Western Lands / Edge of the Wild / Hobbiton) now structurally matches. Content is fallback text because off_map_arrows NW/W/SW keys aren't populating into meta; fixing data pipeline is a follow-up. |
