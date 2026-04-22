@@ -950,7 +950,7 @@ window.MapStyles.wilderland = {
     // faint line so the forest reads as a unified ZONE the way Tolkien's
     // Mirkwood does, without the hard per-hex outline the user rejected.
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
-      color: INK, strokeWidth: 0.55, opacity: 0.2, wobble: 3.2,
+      color: INK, strokeWidth: 0.9, opacity: 0.55, wobble: 3.8,
       className: "forest-region",
     });
     // Same soft-outline treatment for contiguous mountain regions — reads
