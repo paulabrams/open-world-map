@@ -1023,9 +1023,9 @@ window.MapStyles.dragonisles = {
     const { INK } = ctx.colors;
 
     // Top-left inside the Celtic frame's inner rectangle.
-    const x = bounds.minX - 6;
-    const y = bounds.minY - 6;
-    const size = 34;
+    const x = bounds.minX + 38;
+    const y = bounds.minY + 38;
+    const size = 90;
 
     const cg = g.append("g").attr("transform", `translate(${x}, ${y})`);
 
