@@ -258,7 +258,9 @@ All mountains share: **outlined silhouette (not solid-filled)**, dense diagonal 
 
 ### Palette
 
-- **Monochrome black ink on cream paper.** No red ink anywhere. A wilderland render with any red is fundamentally wrong.
+- **Two-ink: black line art + pale-blue label text** on cream paper. NOT pure monochrome — the reference uses a specific pale blue (~#3a6090) for region names ("GREY MOUNTAINS", "Mirkwood") and some river/water labels. Mountain line art, tree glyphs, and the cartouche border stay black.
+- No red ink anywhere. A wilderland render with any red is fundamentally wrong.
+- **Correction (2026-04-22):** earlier version of this inventory claimed wilderland was monochrome black. It is not; blue label ink is a defining feature.
 
 ### Current gaps in wilderland.js (cross-ref)
 
