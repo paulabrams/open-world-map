@@ -1965,20 +1965,38 @@ window.MapStyles.wilderland = {
 
     const annotGroup = g.append("g").attr("class", "edge-annotations");
 
-    // Left edge — "Western Lands" rotated vertically
+    // Left edge — three stacked labels, matching the Wilderland reference's
+    // "Western Lands / Edge of the Wild / Hobbiton" triplet. When the
+    // campaign provides off_map_arrows we use them for NW / W / SW;
+    // otherwise we fall back to the reference's generic idiom.
+    const arrows = (meta && meta.off_map_arrows) || [];
+    const byDir = {};
+    arrows.forEach(a => { byDir[a.direction] = a.label; });
+    const leftLabels = [
+      byDir.NW || "Western Lands",
+      byDir.W  || "Edge of the Wild",
+      byDir.SW || byDir.S || "to Hobbiton and beyond",
+    ];
     const leftX = bounds.minX - 20;
-    const leftY = (bounds.minY + bounds.maxY) / 2;
-    annotGroup.append("text")
-      .attr("x", leftX)
-      .attr("y", leftY)
-      .attr("text-anchor", "middle")
-      .attr("font-family", font)
-      .attr("font-size", "10px")
-      .attr("font-style", "italic")
-      .attr("fill", INK_LIGHT)
-      .attr("opacity", 0.85)
-      .attr("transform", `rotate(-90, ${leftX}, ${leftY})`)
-      .text("Western Lands");
+    const leftYs = [
+      bounds.minY + (bounds.maxY - bounds.minY) * 0.22,
+      (bounds.minY + bounds.maxY) / 2,
+      bounds.minY + (bounds.maxY - bounds.minY) * 0.78,
+    ];
+    leftLabels.forEach((label, i) => {
+      const ly = leftYs[i];
+      annotGroup.append("text")
+        .attr("x", leftX)
+        .attr("y", ly)
+        .attr("text-anchor", "middle")
+        .attr("font-family", font)
+        .attr("font-size", "10px")
+        .attr("font-style", "italic")
+        .attr("fill", INK_LIGHT)
+        .attr("opacity", 0.85)
+        .attr("transform", `rotate(-90, ${leftX}, ${ly})`)
+        .text(label);
+    });
 
     // Top edge — region name in loose arching style
     const topX = (bounds.minX + bounds.maxX) / 2;
