@@ -1959,7 +1959,7 @@ window.MapStyles.wilderland = {
 
   // --- Edge annotations ---
   renderEdgeAnnotations(ctx) {
-    const { g, bounds, meta } = ctx;
+    const { g, bounds, meta, offMapArrows } = ctx;
     const { INK_LIGHT } = ctx.colors;
     const font = "'Palatino Linotype', 'Book Antiqua', Palatino, serif";
 
@@ -1967,9 +1967,9 @@ window.MapStyles.wilderland = {
 
     // Left edge — three stacked labels, matching the Wilderland reference's
     // "Western Lands / Edge of the Wild / Hobbiton" triplet. When the
-    // campaign provides off_map_arrows we use them for NW / W / SW;
-    // otherwise we fall back to the reference's generic idiom.
-    const arrows = (meta && meta.off_map_arrows) || [];
+    // campaign provides off_map_arrows (on ctx.offMapArrows) we use them
+    // for NW / W / SW directions; otherwise fall back to generic idiom.
+    const arrows = offMapArrows || [];
     const byDir = {};
     arrows.forEach(a => { byDir[a.direction] = a.label; });
     const leftLabels = [
