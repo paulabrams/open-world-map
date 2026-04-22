@@ -1678,7 +1678,12 @@ window.MapStyles.wilderland = {
       // Tolkien's Wilderland. Locals use light ink italic for contrast.
       const fontStyle = isLocal || isBlue ? "italic" : "normal";
       const letterSpacing = isImportant ? "1.5px" : "normal";
-      const color = isLocal ? INK_LIGHT : (isBlue ? BLUE : INK);
+      // Per Wilderland reference, essentially all overland text labels
+      // are rendered in blue ink (Esgaroth, River Running, settlements
+      // and features alike). Important-name styling stays in INK for
+      // emphasis weight, but everything else defaults to BLUE instead
+      // of INK.
+      const color = isLocal ? INK_LIGHT : (isImportant ? INK : BLUE);
       // Per-type offset — bigger icons need their label further below so
       // the text doesn't collide with the icon body.
       const typeOffset = {
