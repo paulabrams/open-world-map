@@ -1048,6 +1048,54 @@ window.MapStyles.thirdage = {
         .attr("opacity", 0.6)
         .text("A Map of " + (meta.region || meta.campaign));
     }
+
+    // Extend cartouche downward with a scale bar — matches Baynes
+    // reference's alternating black/white tick pattern labeled "Miles"
+    // with numeric stops. One day of overland travel is one hex; we
+    // label in days here (the Basilisk campaign's unit) at 4-day ticks.
+    const sBarY = by + boxH + 10;
+    const sBarX = bx + 20;
+    const sBarW = boxW - 40;
+    const sBarH = 6;
+    const sTicks = 4;
+    const sTickW = sBarW / sTicks;
+    // Extend outer cartouche box to enclose the scale bar as well.
+    g.append("rect")
+      .attr("x", bx).attr("y", by)
+      .attr("width", boxW).attr("height", boxH + 28)
+      .attr("fill", "none")
+      .attr("stroke", INK)
+      .attr("stroke-width", 1.5);
+    // Alternating black/white scale segments.
+    for (let i = 0; i < sTicks; i++) {
+      g.append("rect")
+        .attr("x", sBarX + i * sTickW).attr("y", sBarY)
+        .attr("width", sTickW).attr("height", sBarH)
+        .attr("fill", i % 2 === 0 ? INK : PARCHMENT)
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.4);
+    }
+    // Numeric labels at ticks.
+    for (let i = 0; i <= sTicks; i++) {
+      g.append("text")
+        .attr("x", sBarX + i * sTickW)
+        .attr("y", sBarY + sBarH + 10)
+        .attr("text-anchor", "middle")
+        .attr("font-family", FONT)
+        .attr("font-size", "7px")
+        .attr("fill", INK)
+        .text(String(i * 4));
+    }
+    // "Days" label (the Basilisk unit; analogous to "Miles" in Baynes).
+    g.append("text")
+      .attr("x", sBarX - 4)
+      .attr("y", sBarY + sBarH)
+      .attr("text-anchor", "end")
+      .attr("font-family", FONT)
+      .attr("font-size", "7px")
+      .attr("font-style", "italic")
+      .attr("fill", INK)
+      .text("Days");
   },
 
   /* ────────────────────────────────────────────────────────────
