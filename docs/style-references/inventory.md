@@ -170,7 +170,12 @@ J.R.R. Tolkien's pen-and-ink map for The Hobbit (redrawn by Christopher Tolkien 
 
 ### Compass rose
 
-- **NONE.** Directions are conveyed by **edge-label strips** running along the outer frame:
+- **Top-left corner.** Small 4-arrow compass (N/E/S/W arms) with a prominent "N" letter above the top arrow.
+- Enclosed in a thin circle; minimal decoration compared to thirdage's red star.
+- Sits just above the "Western Lands" edge label.
+- **Correction (2026-04-21):** earlier version of this inventory incorrectly claimed Wilderland had no compass. It does; the compass is small and top-left.
+
+Directions are ALSO conveyed by **edge-label strips** running along the outer frame:
   - Left edge, upper: "Western Lands" with ornament flourishes.
   - Left edge, middle: "Edge of the Wild" with little hash-mark accents.
   - Left edge, lower: "Hobbiton" (location-reference).

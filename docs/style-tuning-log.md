@@ -1,0 +1,45 @@
+# Style Tuning Log
+
+Persistent, append-only record of every style-tuning experiment — wins AND rollbacks. See [style-tuning.md](style-tuning.md) for the process.
+
+## Scoreboard
+
+Current score per style, out of 10. Update after every iteration.
+
+| Style        | Score | Last iteration | Notes                                    |
+|--------------|-------|----------------|------------------------------------------|
+| thirdage     | 8     | 7              | red cartouche title + scale bar landed   |
+| wilderland   | 6     | wl-1           | compass moved to top-left (reference pos)|
+| moonletters  | —     | —              | not yet rated                            |
+| dragonisles  | 7.5   | 5              | frame + banner + compass landed; scope q |
+
+## Patterns
+
+Heuristics distilled from the takeaway column, updated every 10 iterations. These are the rules that survived contact with the reference.
+
+_No patterns yet — populate after the first 10 iterations._
+
+Structure once populated, grouped by element:
+
+- **Mountains**: …
+- **Forests**: …
+- **Rivers & coastlines**: …
+- **Labels, cartouches, compasses**: …
+- **Palette**: …
+- **Cross-style**: …
+
+## Iterations
+
+Append one row per iteration. Do not delete rows, even for rolled-back experiments — a logged rollback prevents the same dead end from being re-tried.
+
+| Iter | Target | Change | Score (before → after) | Outcome | Takeaway |
+|------|--------|--------|------------------------|---------|----------|
+| 1 | dragonisles | Celtic interlace knotwork frame border (replaced plain rect) | 2 → 4 | Kept | Frame is a defining style element; presence jumps the score two points on its own. |
+| 2 | dragonisles | Scroll-banner "LEGENDS of the X" title top-right | 4 → 5 | Kept | Banner now present but small; reference banner dominates the corner more. |
+| 3 | dragonisles | Sword-and-dagger compass medallion at top-left | 5 → 6 | Kept | Heraldic compass reads correctly; N/E/S/W letters removed per reference. |
+| 4 | dragonisles | Compass size 34 → 90 radius | 6 → 7 | Kept | Must match reference's visual weight; "present but tiny" is not enough. |
+| 5 | dragonisles | Move compass into frame corner (size 54) | 7 → 7.5 | Kept | Compass shouldn't overlap map content; reference compass IS the corner medallion. |
+| 6 | thirdage | Cartouche title INK → LABEL_RED | 7 → 7.5 | Kept | Baynes's red title is a defining convention; one-line color swap is big visual shift. |
+| 7 | thirdage | Numbered scale bar "Days 0 4 8 12 16" in cartouche | 7.5 → 8 | Kept | Scale bar with alternating black/white segments present; matches reference's "Miles" convention. |
+| wl-pre | wilderland | ATTEMPTED: remove compass based on wrong inventory claim | 5 → n/a | Rolled back | USER CORRECTION: wilderland DOES have a small 4-arrow N-compass at top-left. Inventory was wrong. Takeaway: use PIL for reference crops — sips' cropOffset behaved unexpectedly and I missed the top-left corner. |
+| wl-1 | wilderland | Move compass top-right → top-left | 5 → 6 | Kept | Reference position is top-left, not top-right; simple position change fixes a basic style-read error. |
