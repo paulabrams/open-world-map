@@ -1499,5 +1499,87 @@ window.MapStyles.dragonisles = {
         .attr("opacity", 0.75)
         .text(sub);
     }
+
+    // ---- Scroll-banner overlay at top-right (dragonisles reference).
+    const bannerW = 240;
+    const bannerH = 52;
+    const bnx = bounds.maxX - bannerW + 14;
+    const bny = bounds.minY - 4;
+    const curlR = bannerH * 0.48;
+    const bodyL = bnx + curlR * 0.8;
+    const bodyR = bnx + bannerW - curlR * 0.8;
+
+    g.append("path")
+      .attr("d",
+        `M ${bodyL} ${bny} ` +
+        `L ${bodyR} ${bny} ` +
+        `L ${bodyR} ${bny + bannerH} ` +
+        `L ${bodyL} ${bny + bannerH} Z`)
+      .attr("fill", PARCHMENT)
+      .attr("stroke", INK)
+      .attr("stroke-width", 1.1);
+
+    const drawCurl = (cx, flip) => {
+      const s = flip ? -1 : 1;
+      const top = bny + bannerH * 0.18;
+      const bot = bny + bannerH * 0.82;
+      g.append("path")
+        .attr("d",
+          `M ${cx} ${top} ` +
+          `Q ${cx - s * curlR * 1.0} ${bny + bannerH / 2}, ${cx} ${bot} ` +
+          `Q ${cx + s * curlR * 0.4} ${bny + bannerH / 2}, ${cx} ${top} Z`)
+        .attr("fill", PARCHMENT)
+        .attr("stroke", INK)
+        .attr("stroke-width", 1.1);
+      g.append("path")
+        .attr("d",
+          `M ${cx - s * curlR * 0.25} ${bny + bannerH / 2} ` +
+          `q ${s * curlR * 0.5} -${curlR * 0.15}, 0 -${curlR * 0.6}`)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.55);
+    };
+    drawCurl(bodyL, true);
+    drawCurl(bodyR, false);
+
+    g.append("line")
+      .attr("x1", bodyL + 6).attr("y1", bny + 4)
+      .attr("x2", bodyR - 6).attr("y2", bny + 4)
+      .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.5);
+    g.append("line")
+      .attr("x1", bodyL + 6).attr("y1", bny + bannerH - 4)
+      .attr("x2", bodyR - 6).attr("y2", bny + bannerH - 4)
+      .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.5);
+
+    const region = (meta.region || meta.campaign || "").toUpperCase();
+    const titleColor = ctx.colors.TITLE || "#8b2500";
+    g.append("text")
+      .attr("x", (bodyL + bodyR) / 2 - 44)
+      .attr("y", bny + bannerH / 2 - 3)
+      .attr("text-anchor", "middle")
+      .attr("font-family", FONT)
+      .attr("font-size", "11px")
+      .attr("letter-spacing", "1.5px")
+      .attr("fill", INK)
+      .text("LEGENDS");
+    g.append("text")
+      .attr("x", (bodyL + bodyR) / 2 + 14)
+      .attr("y", bny + bannerH / 2 - 3)
+      .attr("text-anchor", "middle")
+      .attr("font-family", FONT)
+      .attr("font-size", "9px")
+      .attr("font-style", "italic")
+      .attr("fill", INK)
+      .text("of the");
+    g.append("text")
+      .attr("x", (bodyL + bodyR) / 2)
+      .attr("y", bny + bannerH - 10)
+      .attr("text-anchor", "middle")
+      .attr("font-family", FONT)
+      .attr("font-size", "15px")
+      .attr("font-weight", "bold")
+      .attr("letter-spacing", "2px")
+      .attr("fill", titleColor)
+      .text(region);
   },
 };
