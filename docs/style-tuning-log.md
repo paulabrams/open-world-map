@@ -9,7 +9,7 @@ Current score per style, out of 10. Update after every iteration.
 | Style        | Score | Last iteration | Notes                                    |
 |--------------|-------|----------------|------------------------------------------|
 | thirdage     | 8     | 7              | red cartouche title + scale bar landed   |
-| wilderland   | 9.65  | wl-13          | region labels now pale-blue ink          |
+| wilderland   | 9.7   | wl-14          | river labels now blue (two-ink palette)  |
 | moonletters  | —     | —              | not yet rated                            |
 | dragonisles  | 7.5   | 5              | frame + banner + compass landed; scope q |
 
@@ -61,3 +61,4 @@ Append one row per iteration. Do not delete rows, even for rolled-back experimen
 | wl-11 | wilderland | Fix subtitle overlap (boxH 62→78, subtitle y moved up) | 9.35 → 9.5 | Kept | Bottom meander strip from wl-7 was overlapping the italic subtitle line. Taller cartouche + subtitle repositioned between title and bottom meander. Cartouche now reads cleanly. |
 | wl-12 | wilderland | Forest-region outline prominence (op 0.2→0.55, sw 0.55→0.9) | 9.5 → 9.6 | Kept | Forest regions now read as unified Mirkwood-style blobs with clearly traced exterior boundaries rather than hex-by-hex tree tiles. Cross-hex principle applied. |
 | wl-13 | wilderland | Region labels INK → BLUE (opacity 0.6→0.75) | 9.6 → 9.65 | Kept | Reference uses pale-blue ink for region names ("GREY MOUNTAINS" etc.), not black — second inventory correction. Palette is now two-ink (black line art + blue labels) matching the reference. Visible effect at map zoom is modest because Basilisk's region labels are small; will read clearer at higher zoom. |
+| wl-14 | wilderland | River labels INK → BLUE | 9.65 → 9.7 | Kept | River names ("River Running", "Long Lake") in reference are blue ink. One-line color swap on renderRiverLabel. Extends the two-ink palette to another text element class. |
