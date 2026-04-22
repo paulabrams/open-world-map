@@ -185,9 +185,10 @@ Directions are ALSO conveyed by **edge-label strips** running along the outer fr
 ### Title cartouche
 
 - **Bottom-right corner.**
-- Plain SINGLE-ruled rectangular box (NOT double-ruled).
-- Contains a single word: **"WILDERLAND"** in serifed all-caps.
-- Simpler than the thirdage cartouche — no scale bar inside the box.
+- **Decorated border with a Greek-key / meander pattern** around the edge of the box (not a plain single rule — this was my earlier misread).
+- Contains a single word: **"WILDERLAND"** in bold blue serifed all-caps.
+- Small monogram/symbol in the upper-right area of the box.
+- Simpler than the thirdage cartouche in that there is no scale bar inside; ornament comes entirely from the Greek-key border.
 
 ### Mountains
 
