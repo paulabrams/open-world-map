@@ -760,7 +760,7 @@ window.MapStyles.wilderland = {
           .attr("x2", x + Math.cos(a) * len).attr("y2", y + Math.sin(a) * len)
           .attr("stroke", INK)
           .attr("stroke-width", 0.4)
-          .attr("opacity", 0.5);
+          .attr("opacity", 0.85);
       });
 
       // Draw 2 concentric arc segments connecting radials
@@ -782,7 +782,7 @@ window.MapStyles.wilderland = {
             .attr("fill", "none")
             .attr("stroke", INK)
             .attr("stroke-width", 0.4)
-            .attr("opacity", 0.5);
+            .attr("opacity", 0.85);
         }
       });
     }
@@ -1976,7 +1976,7 @@ window.MapStyles.wilderland = {
       .attr("font-size", "10px")
       .attr("font-style", "italic")
       .attr("fill", INK_LIGHT)
-      .attr("opacity", 0.5)
+      .attr("opacity", 0.85)
       .attr("transform", `rotate(-90, ${leftX}, ${leftY})`)
       .text("Western Lands");
 
@@ -1991,7 +1991,7 @@ window.MapStyles.wilderland = {
       .attr("font-family", font)
       .attr("font-size", "14px")
       .attr("fill", INK_LIGHT)
-      .attr("opacity", 0.5)
+      .attr("opacity", 0.85)
       .attr("letter-spacing", "4px")
       .text(regionName.toUpperCase());
 
@@ -2006,7 +2006,7 @@ window.MapStyles.wilderland = {
       .attr("font-size", "9px")
       .attr("font-style", "italic")
       .attr("fill", INK_LIGHT)
-      .attr("opacity", 0.5)
+      .attr("opacity", 0.85)
       .text("to the South\u2026");
 
     // Right edge — "Eastward" rotated vertically, mirroring the left edge
@@ -2020,7 +2020,7 @@ window.MapStyles.wilderland = {
       .attr("font-size", "10px")
       .attr("font-style", "italic")
       .attr("fill", INK_LIGHT)
-      .attr("opacity", 0.5)
+      .attr("opacity", 0.85)
       .attr("transform", `rotate(90, ${rightX}, ${rightY})`)
       .text("Eastern Reaches");
   },
