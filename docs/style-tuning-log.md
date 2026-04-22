@@ -9,7 +9,7 @@ Current score per style, out of 10. Update after every iteration.
 | Style        | Score | Last iteration | Notes                                    |
 |--------------|-------|----------------|------------------------------------------|
 | thirdage     | 8     | 7              | red cartouche title + scale bar landed   |
-| wilderland   | 8.5   | wl-7           | greek key meander top+bottom of cartouche|
+| wilderland   | 9     | wl-8           | meander now wraps all 4 cart edges       |
 | moonletters  | —     | —              | not yet rated                            |
 | dragonisles  | 7.5   | 5              | frame + banner + compass landed; scope q |
 
@@ -49,3 +49,4 @@ Append one row per iteration. Do not delete rows, even for rolled-back experimen
 | wl-5 | wilderland | Top/right/bottom edges use ctx.offMapArrows (N/NE-E-SE/S) | 7.5 → 8 | Kept | All four frame edges now describe real campaign neighbors rather than hardcoded generic labels. Reference is stricter (left-only triplet + top banner), but data-driven accuracy on all four edges is a better functional map. |
 | wl-6 | wilderland | ATTEMPTED: simplify cartouche to plain single-ruled box | 8 → 7.5 | Rolled back | USER/INVENTORY ERROR: reference cartouche has a decorated Greek-key (meander) border, NOT a plain rule. Stripped too much ornament. Takeaway: always zoom-crop the reference element IN DETAIL before deciding "simplify"; a half-inspected inventory entry cost a rollback. Inventory has been corrected. |
 | wl-7 | wilderland | Greek key meander strip along cartouche top+bottom | 8 → 8.5 | Kept | Squared-spiral meander unit drawn as SVG path, repeated horizontally at top and bottom of the box. Matches reference's decorated border. Side edges still need the meander; bottom strip slightly overlaps the italic subtitle — both are follow-up iterations. |
+| wl-8 | wilderland | Extend Greek-key meander to left+right cartouche edges | 8.5 → 9 | Kept | Same unit-builder rotated 90° via SVG transform. Cartouche now has continuous decorated border on all four sides, matching the reference's fully-bordered meander. |
