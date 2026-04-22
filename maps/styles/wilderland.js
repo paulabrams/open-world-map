@@ -48,7 +48,9 @@ window.MapStyles.wilderland = {
     // Two black-ink bank lines (river color INK rather than the default
     // blue). Keeps the hand-drawn twin-bank look from the reference.
     MapCore.renderRiver(ctx, ctx.colors.INK, 2);
-    MapCore.renderRiverLabel(ctx, { color: ctx.colors.INK, strokeColor: ctx.colors.PARCHMENT });
+    // River labels in BLUE ink — matches Tolkien's Wilderland reference
+    // where "River Running", "Long Lake", etc. are all rendered in blue.
+    MapCore.renderRiverLabel(ctx, { color: ctx.colors.BLUE, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.0, bridgeLen: 14 });
     MapCore.renderBoats(ctx, { color: ctx.colors.INK, parchment: ctx.colors.PARCHMENT, count: 4 });
     // Tolkien's Wilderland renders the Old Forest Road in blue ink
