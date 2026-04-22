@@ -1876,7 +1876,9 @@ window.MapStyles.wilderland = {
     const { INK, INK_LIGHT, PARCHMENT } = ctx.colors;
 
     const boxW = 210;
-    const boxH = 62;
+    // Cartouche is taller than before so the subtitle line can sit below
+    // the bottom Greek-key meander strip instead of overlapping it.
+    const boxH = 78;
     const bx = bounds.maxX - boxW + 20;
     const by = bounds.maxY - boxH + 22;
 
@@ -2010,11 +2012,12 @@ window.MapStyles.wilderland = {
       .attr("x2", bx + (boxW + flourishL) / 2).attr("y2", flourishY2)
       .attr("stroke", INK).attr("stroke-width", 0.45).attr("opacity", 0.6);
 
-    // Subtitle (world / era)
+    // Subtitle (world / era) — positioned between the title and the
+    // bottom meander strip so the meander is never overlapped.
     if (meta.world) {
       g.append("text")
         .attr("x", bx + boxW / 2)
-        .attr("y", by + boxH - 5)
+        .attr("y", by + boxH - 20)
         .attr("text-anchor", "middle")
         .attr("font-family", FONT)
         .attr("font-size", "9px")
