@@ -1952,6 +1952,28 @@ window.MapStyles.wilderland = {
         .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.5);
     }
 
+    // Vertical meander strips along left + right edges of the cartouche.
+    // We reuse the same unit-builder but rotate each unit 90° via SVG
+    // transform so the squared-spiral points inward (toward the title).
+    const meanderUnitsV = Math.floor((boxH - 10 - meanderStripH) / meanderUnitW) + 1;
+    const meanderVSpan = meanderUnitsV * meanderUnitW;
+    const meanderStartY = by + (boxH - meanderVSpan) / 2;
+    for (let i = 0; i < meanderUnitsV; i++) {
+      const uy = meanderStartY + i * meanderUnitW;
+      // Left strip: spiral opens rightward (into the box).
+      const leftXStart = bx + 5;
+      g.append("path")
+        .attr("d", buildMeanderUnit(0, 0, meanderUnitW, meanderStripH, false))
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.5)
+        .attr("transform", `translate(${leftXStart + meanderStripH}, ${uy}) rotate(90)`);
+      // Right strip: spiral opens leftward.
+      const rightXStart = bx + boxW - 5;
+      g.append("path")
+        .attr("d", buildMeanderUnit(0, 0, meanderUnitW, meanderStripH, true))
+        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.5)
+        .attr("transform", `translate(${rightXStart - meanderStripH}, ${uy}) rotate(90)`);
+    }
+
     // Decorative flourish above the title — short ink rule with centre pip
     const flourishY = by + 18;
     const flourishL = boxW * 0.45;
