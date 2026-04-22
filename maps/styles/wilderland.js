@@ -444,9 +444,10 @@ window.MapStyles.wilderland = {
         // Perpendicular points INTO the peak interior (see thirdage).
         const perpX = shadowRight ? -uy : uy;
         const perpY = shadowRight ? ux : -ux;
-        const hatchCount = Math.max(2, Math.min(6, Math.round(p.h / 4.5)));
+        // Denser hatching to match reference's heavy-hatched leeward flanks.
+        const hatchCount = Math.max(4, Math.min(12, Math.round(p.h / 2.5)));
         for (let k = 0; k < hatchCount; k++) {
-          const t = 0.25 + (k / (hatchCount - 1 || 1)) * 0.65;
+          const t = 0.18 + (k / (hatchCount - 1 || 1)) * 0.72;
           const sx = apexX + ux * slopeLen * t;
           const sy = apexY + uy * slopeLen * t;
           const hLen = p.h * (0.10 + t * 0.22) * (0.7 + rng() * 0.4);
@@ -456,8 +457,8 @@ window.MapStyles.wilderland = {
             .attr("x1", sx).attr("y1", sy)
             .attr("x2", ex).attr("y2", ey)
             .attr("stroke", INK)
-            .attr("stroke-width", 0.35)
-            .attr("opacity", 0.7)
+            .attr("stroke-width", 0.4)
+            .attr("opacity", 0.9)
             .attr("stroke-linecap", "round");
         }
       });
