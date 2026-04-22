@@ -17,16 +17,22 @@ Current score per style, out of 10. Update after every iteration.
 
 Heuristics distilled from the takeaway column, updated every 10 iterations. These are the rules that survived contact with the reference.
 
-_No patterns yet — populate after the first 10 iterations._
+Distilled after first 10 iterations (7 dragonisles+thirdage, 10 wilderland):
 
-Structure once populated, grouped by element:
-
-- **Mountains**: …
-- **Forests**: …
-- **Rivers & coastlines**: …
-- **Labels, cartouches, compasses**: …
-- **Palette**: …
-- **Cross-style**: …
+- **Mountains**: Outline + dense leeward hatching reads better than solid fill at small scale. Hatch count should scale with peak height (~p.h/2.5) — sparser hatching looks cartoonish. Taller-than-wide aspect is mandatory.
+- **Forests**: Default density (1.0) is always too sparse vs hand-drawn references. Bump to 1.6–1.8 for Mirkwood-style packing. The `density` option on `renderForestEdgeTrees` is the lever.
+- **Rivers & coastlines**: Not yet explored in this iteration batch.
+- **Labels, cartouches, compasses**:
+  - Labels render too faint at default 0.5 opacity — always bump to ≥0.85 for edge/frame labels.
+  - Data for off-map / neighbor labels lives on `ctx.offMapArrows` (top-level), NOT `meta.off_map_arrows`. Read the actual ctx construction, don't assume nesting.
+  - Stacked/triplet labels match hand-drawn references better than single centered labels for edge strips.
+  - **Never simplify a cartouche based on a thumbnail-level reading**: references are almost always MORE ornate than they look at a glance. Crop to ≥100% resolution before deciding to strip decoration.
+  - Greek-key meander can be drawn as a repeated squared-spiral SVG path, rotated 90° via SVG transform for vertical strips.
+- **Palette**: Swapping INK → LABEL_RED for a single element (e.g. the title) is a one-line change with large visual impact — do this early.
+- **Cross-style**:
+  - Use PIL (not `sips`) for reference cropping — `sips --cropOffset` behaved unexpectedly on the reference images, causing at least one false "element is absent" conclusion.
+  - Match errors in `Edit` tool with unicode escapes (`—`, `…`) in the source vs literal characters in the old_string — fall back to Python replace when Edit can't match.
+  - Every iteration must include the reference image read in the same response as the render, not just recall.
 
 ## Iterations
 
