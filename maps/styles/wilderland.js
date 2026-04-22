@@ -1998,10 +1998,11 @@ window.MapStyles.wilderland = {
         .text(label);
     });
 
-    // Top edge — region name in loose arching style
+    // Top edge — campaign's N off-map neighbor, in loose arching style.
     const topX = (bounds.minX + bounds.maxX) / 2;
     const topY = bounds.minY - 15;
     const regionName = meta.region || meta.campaign || "";
+    const topLabel = byDir.N || regionName.toUpperCase();
     annotGroup.append("text")
       .attr("x", topX)
       .attr("y", topY)
@@ -2011,7 +2012,7 @@ window.MapStyles.wilderland = {
       .attr("fill", INK_LIGHT)
       .attr("opacity", 0.85)
       .attr("letter-spacing", "4px")
-      .text(regionName.toUpperCase());
+      .text(topLabel);
 
     // Bottom edge — "to the South..."
     const botX = (bounds.minX + bounds.maxX) / 2;
@@ -2025,21 +2026,34 @@ window.MapStyles.wilderland = {
       .attr("font-style", "italic")
       .attr("fill", INK_LIGHT)
       .attr("opacity", 0.85)
-      .text("to the South\u2026");
+      .text(byDir.S || "to the South\u2026");
 
-    // Right edge — "Eastward" rotated vertically, mirroring the left edge
+    // Right edge — three stacked labels mirroring the left edge:
+    // NE / E / SE when present, otherwise generic fallbacks.
+    const rightLabels = [
+      byDir.NE || "Far Reaches",
+      byDir.E  || "Eastern Reaches",
+      byDir.SE || "to the far east",
+    ];
     const rightX = bounds.maxX + 20;
-    const rightY = (bounds.minY + bounds.maxY) / 2;
-    annotGroup.append("text")
-      .attr("x", rightX)
-      .attr("y", rightY)
-      .attr("text-anchor", "middle")
-      .attr("font-family", font)
-      .attr("font-size", "10px")
-      .attr("font-style", "italic")
-      .attr("fill", INK_LIGHT)
-      .attr("opacity", 0.85)
-      .attr("transform", `rotate(90, ${rightX}, ${rightY})`)
-      .text("Eastern Reaches");
+    const rightYs = [
+      bounds.minY + (bounds.maxY - bounds.minY) * 0.22,
+      (bounds.minY + bounds.maxY) / 2,
+      bounds.minY + (bounds.maxY - bounds.minY) * 0.78,
+    ];
+    rightLabels.forEach((label, i) => {
+      const ry = rightYs[i];
+      annotGroup.append("text")
+        .attr("x", rightX)
+        .attr("y", ry)
+        .attr("text-anchor", "middle")
+        .attr("font-family", font)
+        .attr("font-size", "10px")
+        .attr("font-style", "italic")
+        .attr("fill", INK_LIGHT)
+        .attr("opacity", 0.85)
+        .attr("transform", `rotate(90, ${rightX}, ${ry})`)
+        .text(label);
+    });
   },
 };
