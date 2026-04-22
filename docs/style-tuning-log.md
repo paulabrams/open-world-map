@@ -9,7 +9,7 @@ Current score per style, out of 10. Update after every iteration.
 | Style        | Score | Last iteration | Notes                                    |
 |--------------|-------|----------------|------------------------------------------|
 | thirdage     | 8     | 7              | red cartouche title + scale bar landed   |
-| wilderland   | 6     | wl-1           | compass moved to top-left (reference pos)|
+| wilderland   | 6.5   | wl-2           | edge labels readable at 0.85 opacity     |
 | moonletters  | —     | —              | not yet rated                            |
 | dragonisles  | 7.5   | 5              | frame + banner + compass landed; scope q |
 
@@ -43,3 +43,4 @@ Append one row per iteration. Do not delete rows, even for rolled-back experimen
 | 7 | thirdage | Numbered scale bar "Days 0 4 8 12 16" in cartouche | 7.5 → 8 | Kept | Scale bar with alternating black/white segments present; matches reference's "Miles" convention. |
 | wl-pre | wilderland | ATTEMPTED: remove compass based on wrong inventory claim | 5 → n/a | Rolled back | USER CORRECTION: wilderland DOES have a small 4-arrow N-compass at top-left. Inventory was wrong. Takeaway: use PIL for reference crops — sips' cropOffset behaved unexpectedly and I missed the top-left corner. |
 | wl-1 | wilderland | Move compass top-right → top-left | 5 → 6 | Kept | Reference position is top-left, not top-right; simple position change fixes a basic style-read error. |
+| wl-2 | wilderland | Edge-label opacity 0.5 → 0.85 | 6 → 6.5 | Kept | Labels were present but too faint to read; bumping opacity makes them function as the directional frame labels the reference uses instead of a compass. |
