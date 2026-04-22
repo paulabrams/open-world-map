@@ -367,23 +367,6 @@
       "days": 1.0
     },
     {
-      "source": "serpents-pass",
-      "target": "tower-of-stargazer",
-      "name": "Foothills Trail West",
-      "path_type": "wilderness",
-      "terrain_difficulty": "tough",
-      "visible": true,
-      "days": 0.5
-    },
-    {
-      "source": "bandit-camp",
-      "target": "hangman-hill",
-      "name": "Overland to Hangman Hill",
-      "path_type": "wilderness",
-      "terrain_difficulty": "tough",
-      "visible": false
-    },
-    {
       "source": "blackwater-crossing",
       "target": "laughing-basilisk",
       "name": "North Gate Road",

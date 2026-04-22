@@ -62,8 +62,8 @@ lsof -ti:8787 | xargs kill 2>/dev/null; cd maps && python3 -m http.server 8787 &
 
 Use Playwright to open each style in the unified viewer (`map.html`), wait for the map to render, extract `document.querySelector('#map').outerHTML`, and write to disk:
 
-- `http://localhost:8787/map.html?map=$ARGUMENTS&style=hexcrawl&grid=square` → `maps/$ARGUMENTS/$ARGUMENTS-grid.svg`
-- `http://localhost:8787/map.html?map=$ARGUMENTS&style=hexcrawl&grid=hex` → `maps/$ARGUMENTS/$ARGUMENTS-hex.svg`
+- `http://localhost:8787/map.html?map=$ARGUMENTS&style=dragonisles&grid=square` → `maps/$ARGUMENTS/$ARGUMENTS-grid.svg`
+- `http://localhost:8787/map.html?map=$ARGUMENTS&style=dragonisles&grid=hex` → `maps/$ARGUMENTS/$ARGUMENTS-hex.svg`
 - `http://localhost:8787/map.html?map=$ARGUMENTS&style=moonletters&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-moonletters.svg`
 - `http://localhost:8787/map.html?map=$ARGUMENTS&style=wilderland&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-wilderland.svg`
 - `http://localhost:8787/map.html?map=$ARGUMENTS&style=thirdage&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-thirdage.svg`

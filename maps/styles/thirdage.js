@@ -250,7 +250,7 @@ window.MapStyles.thirdage = {
     // a single serpentine chain along each group's PCA spine (matches
     // Pauline Baynes' Middle-earth source art).
     MapCore.renderMountainsByRegion(ctx,
-      (tg, peak, rng) => style.drawSinglePeak(tg, peak, rng, INK));
+      (tg, peaks, rng, opts) => style.drawMountainRidge(tg, peaks, rng, INK, opts));
     MapCore.renderForestEdgeTrees(ctx,
       (tg, x, y, sz, rng) => style.drawForestHatch(tg, x, y, sz, rng, INK),
       ["forest", "forested-hills"]);
@@ -1055,28 +1055,154 @@ window.MapStyles.thirdage = {
      INK is passed explicitly so they stay pure functions.
      ──────────────────────────────────────────────────────────── */
 
-  // Dense engraving-style mountain range: 1-3 overlapping sharp peaks
-  // Single-peak drawer for renderMountainsByRegion. `peak` is the peak
-  // descriptor produced by the region renderer: { px, py, h, pw, isHero,
-  // tx, ty }. Uses px/py as the BASE centre (the peak's apex rises h
-  // pixels above py) with width pw.
-  drawSinglePeak(g, peak, rng, INK) {
-    const peakY = peak.py - peak.h;
-    const apexBend = (rng() < 0.3) ? 0.4 : 0.15;
-    const apexX = peak.px + (rng() - 0.5) * peak.pw * apexBend * 2;
-    g.append("path")
-      .attr("d", `M ${peak.px - peak.pw / 2} ${peak.py} L ${apexX} ${peakY} L ${peak.px + peak.pw / 2} ${peak.py} Z`)
-      .attr("fill", INK)
-      .attr("stroke", "none");
-    if (peak.isHero) {
-      const innerX = peak.px + (rng() - 0.5) * peak.pw * 0.15;
-      g.append("line")
-        .attr("x1", innerX).attr("y1", peakY + peak.h * 0.25)
-        .attr("x2", innerX).attr("y2", peak.py - peak.h * 0.1)
-        .attr("stroke", "#f4e8d1")
-        .attr("stroke-width", 0.7)
-        .attr("opacity", 0.75);
+  // Baynes-style continuous mountain ridgeline: builds ONE filled
+  // polygon per region by tracing a zigzag skyline — baseline left →
+  // apex₁ → valley₁ → apex₂ → valley₂ → … → apex_N → baseline right →
+  // back along a shared baseline to close. Produces the interlocking
+  // peaks-with-shared-edges look of Pauline Baynes' Middle-earth art
+  // rather than a row of separate triangles.
+  //
+  // `peaks` is sorted along the spine (t ascending) and each peak has
+  // { px, py, h, pw }. The ridge polygon uses each peak's (px, py) as
+  // its base-centre and py as the baseline y at that column.
+  drawMountainRidge(g, peaks, rng, INK, opts) {
+    if (!peaks || peaks.length === 0) return;
+
+    // Peak silhouette is TALLER than wide in Baynes reference — aspect
+    // ~1.3-1.6:1 (height:width). halfW = 0.30-0.45 of h → full width
+    // = 0.60-0.90 of height.
+    const halfW = (p) => p.h * (0.30 + (p._hwJitter || 0) * 0.15);
+
+    // Pre-jitter each peak's width factor for consistency between
+    // silhouette and shading passes.
+    peaks.forEach(p => { p._hwJitter = rng(); });
+
+    // Build apex/baseline data first so we can use it for both the
+    // outline and the shading strokes.
+    const apexes = [];
+    const skyPts = [];  // points forming the skyline (top edge only)
+    const basePts = []; // corresponding baseline points under the skyline
+
+    for (let i = 0; i < peaks.length; i++) {
+      const p = peaks[i];
+      const hw = halfW(p);
+      // Subtle apex lean.
+      const apexBend = rng() < 0.3 ? 0.18 : 0.05;
+      const apexX = p.px + (rng() - 0.5) * hw * apexBend * 2;
+      const apexY = p.py - p.h;
+      apexes.push({ apexX, apexY, hw, p });
+
+      if (i === 0) {
+        skyPts.push([p.px - hw, p.py]);  // left foot
+        basePts.push([p.px - hw, p.py]);
+      }
+      skyPts.push([apexX, apexY]);
+      basePts.push([p.px, p.py]);  // baseline follows peak base centres
+
+      if (i < peaks.length - 1) {
+        const next = peaks[i + 1];
+        const nhw = halfW(next);
+        const vx = (p.px + hw + next.px - nhw) / 2;
+        const baseY = (p.py + next.py) / 2;
+        const neighbourH = Math.min(p.h, next.h);
+        // Deep valleys ~65% of the time so individual peaks read clearly.
+        const deep = rng() < 0.65;
+        const depthT = deep ? 0.0 + rng() * 0.08 : 0.18 + rng() * 0.22;
+        const vy = baseY - neighbourH * depthT;
+
+        // Sub-peak in the valley: ~50% chance — small triangular notch
+        // between the two main apexes, giving Baynes-like fractal detail
+        // (small peak peeks up from the valley between two big ones).
+        if (rng() < 0.5) {
+          const valleyW = Math.max(0.1, (next.px - nhw) - (p.px + hw));
+          const subH = neighbourH * (0.12 + rng() * 0.25);
+          const subApexY = baseY - subH;
+          const subLeftX = vx - valleyW * (0.22 + rng() * 0.1);
+          const subRightX = vx + valleyW * (0.22 + rng() * 0.1);
+          // Go from one side of the valley up to sub-apex and back down.
+          skyPts.push([subLeftX, vy + (baseY - vy) * 0.35]);
+          skyPts.push([vx + (rng() - 0.5) * valleyW * 0.15, subApexY]);
+          skyPts.push([subRightX, vy + (baseY - vy) * 0.35]);
+          basePts.push([subLeftX, baseY]);
+          basePts.push([vx, baseY]);
+          basePts.push([subRightX, baseY]);
+        } else {
+          skyPts.push([vx, vy]);
+          basePts.push([vx, baseY]);
+        }
+      } else {
+        skyPts.push([p.px + hw, p.py]);  // right foot
+        basePts.push([p.px + hw, p.py]);
+      }
     }
+
+    // Outline path: skyline forward, then baseline back (closed polygon).
+    let outlineD = `M ${skyPts[0][0]} ${skyPts[0][1]}`;
+    for (let i = 1; i < skyPts.length; i++) {
+      outlineD += ` L ${skyPts[i][0]} ${skyPts[i][1]}`;
+    }
+    for (let i = basePts.length - 1; i >= 0; i--) {
+      outlineD += ` L ${basePts[i][0]} ${basePts[i][1]}`;
+    }
+    outlineD += " Z";
+
+    // Outline only — thin ink line traces the skyline and baseline.
+    g.append("path")
+      .attr("d", outlineD)
+      .attr("fill", "none")
+      .attr("stroke", INK)
+      .attr("stroke-width", 0.9)
+      .attr("stroke-linejoin", "round")
+      .attr("stroke-linecap", "round");
+
+    // Shadow side: ink one flank of each peak (usually LEFT — Baynes is
+    // lit from the right — but ~20% on the RIGHT for variation, as a
+    // handful of reference peaks show). Plus a few hatch lines over
+    // the shadow so it reads as hand-drawn, not flat vector fill.
+    apexes.forEach(({ apexX, apexY, hw, p }) => {
+      // Solid dark fill — Baynes small peaks (Misty Mtns, Ered Nimrais,
+      // Drúwaith) are 100% filled black silhouettes at this scale. Fill
+      // the whole peak triangle rather than a half-shadow.
+      const leftX = p.px - hw;
+      const rightX = p.px + hw;
+      g.append("path")
+        .attr("d", `M ${apexX} ${apexY} L ${leftX} ${p.py} L ${rightX} ${p.py} Z`)
+        .attr("fill", INK)
+        .attr("stroke", "none")
+        .attr("opacity", 0.95);
+      // keep unused-var shape compatibility below (still dereffed for hatch pass)
+      const shadowRight = false;
+      const footX = leftX;
+      const slopeDX = footX - apexX;
+      const slopeDY = p.py - apexY;
+      const slopeLen = Math.sqrt(slopeDX * slopeDX + slopeDY * slopeDY);
+      if (slopeLen >= 2) {
+        const ux = slopeDX / slopeLen, uy = slopeDY / slopeLen;
+        // Perpendicular points INTO the peak interior (not into sky).
+        // Left-shadow: slope goes apex→leftfoot (down-left); interior is
+        // to the RIGHT of that slope → CW 90° rotation = (uy, -ux).
+        // Right-shadow: slope goes apex→rightfoot (down-right); interior
+        // is to the LEFT → CCW 90° rotation = (-uy, ux).
+        const perpX = shadowRight ? -uy : uy;
+        const perpY = shadowRight ? ux : -ux;
+        const hatchCount = Math.max(2, Math.min(8, Math.round(p.h / 4)));
+        for (let k = 0; k < hatchCount; k++) {
+          const t = 0.2 + (k / (hatchCount - 1 || 1)) * 0.7;
+          const sx = apexX + ux * slopeLen * t;
+          const sy = apexY + uy * slopeLen * t;
+          const hLen = p.h * (0.12 + t * 0.25) * (0.6 + rng() * 0.5);
+          const ex = sx + perpX * hLen;
+          const ey = sy + perpY * hLen;
+          g.append("line")
+            .attr("x1", sx).attr("y1", sy)
+            .attr("x2", ex).attr("y2", ey)
+            .attr("stroke", INK)
+            .attr("stroke-width", 0.4)
+            .attr("opacity", 0.9)
+            .attr("stroke-linecap", "round");
+        }
+      }
+    });
   },
 
   drawMountainRange(g, x, y, size, rng, INK) {

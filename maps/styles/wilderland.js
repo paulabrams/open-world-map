@@ -337,6 +337,132 @@ window.MapStyles.wilderland = {
       });
     }
 
+    function drawMountainRidge(tg, peaks, rng, opts) {
+      // Christopher Tolkien Wilderland-style ridge: single continuous
+      // jagged skyline per mountain region with a flat baseline. The
+      // shape is outlined (no fill beyond parchment), and the LEFT side
+      // of each peak carries short diagonal shadow-hatch strokes.
+      if (!peaks || peaks.length === 0) return;
+
+      // Taller-than-wide silhouettes (0.60-0.90 × height).
+      const halfW = (p) => p.h * 0.375;
+
+      const apexes = [];
+      const skyPts = [];
+      const basePts = [];
+
+      for (let i = 0; i < peaks.length; i++) {
+        const p = peaks[i];
+        const hw = halfW(p);
+        const apexBend = rng() < 0.3 ? 0.18 : 0.05;
+        const apexX = p.px + (rng() - 0.5) * hw * apexBend * 2;
+        const apexY = p.py - p.h;
+        apexes.push({ apexX, apexY, hw, p });
+
+        if (i === 0) {
+          skyPts.push([p.px - hw, p.py]);
+          basePts.push([p.px - hw, p.py]);
+        }
+        skyPts.push([apexX, apexY]);
+        basePts.push([p.px, p.py]);
+
+        if (i < peaks.length - 1) {
+          const next = peaks[i + 1];
+          const nhw = halfW(next);
+          const vx = (p.px + hw + next.px - nhw) / 2;
+          const baseY = (p.py + next.py) / 2;
+          const neighbourH = Math.min(p.h, next.h);
+          const deep = rng() < 0.65;
+          const depthT = deep ? 0.0 + rng() * 0.08 : 0.18 + rng() * 0.22;
+          const vy = baseY - neighbourH * depthT;
+          if (rng() < 0.5) {
+            const valleyW = Math.max(0.1, (next.px - nhw) - (p.px + hw));
+            const subH = neighbourH * (0.12 + rng() * 0.25);
+            const subApexY = baseY - subH;
+            const subLeftX = vx - valleyW * (0.22 + rng() * 0.1);
+            const subRightX = vx + valleyW * (0.22 + rng() * 0.1);
+            skyPts.push([subLeftX, vy + (baseY - vy) * 0.35]);
+            skyPts.push([vx + (rng() - 0.5) * valleyW * 0.15, subApexY]);
+            skyPts.push([subRightX, vy + (baseY - vy) * 0.35]);
+            basePts.push([subLeftX, baseY]);
+            basePts.push([vx, baseY]);
+            basePts.push([subRightX, baseY]);
+          } else {
+            skyPts.push([vx, vy]);
+            basePts.push([vx, baseY]);
+          }
+        } else {
+          skyPts.push([p.px + hw, p.py]);
+          basePts.push([p.px + hw, p.py]);
+        }
+      }
+
+      let outlineD = `M ${skyPts[0][0]} ${skyPts[0][1]}`;
+      for (let i = 1; i < skyPts.length; i++) {
+        outlineD += ` L ${skyPts[i][0]} ${skyPts[i][1]}`;
+      }
+      for (let i = basePts.length - 1; i >= 0; i--) {
+        outlineD += ` L ${basePts[i][0]} ${basePts[i][1]}`;
+      }
+      outlineD += " Z";
+
+      tg.append("path")
+        .attr("d", outlineD)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.8)
+        .attr("stroke-linejoin", "round")
+        .attr("stroke-linecap", "round");
+
+      apexes.forEach(({ apexX, apexY, hw, p }) => {
+        // Wilderland reference: peaks are OUTLINE-drawn with dense
+        // cross-hatching on the shadow (left) side. Not solid-filled.
+        const shadowRight = rng() < 0.15;
+        const footX = shadowRight ? p.px + hw : p.px - hw;
+        const oppositeFootX = shadowRight ? p.px - hw : p.px + hw;
+        // Outline the peak triangle.
+        tg.append("path")
+          .attr("d", `M ${apexX} ${apexY} L ${p.px - hw} ${p.py} L ${p.px + hw} ${p.py} Z`)
+          .attr("fill", "none")
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.7)
+          .attr("stroke-linejoin", "round")
+          .attr("stroke-linecap", "round");
+        // Shaded shadow flank (~70% of peak width) with slightly reduced
+        // opacity so cross-hatching over top reads as texture.
+        const midX = shadowRight ? p.px - hw * 0.35 : p.px + hw * 0.35;
+        tg.append("path")
+          .attr("d", `M ${apexX} ${apexY} L ${footX} ${p.py} L ${midX} ${p.py} Z`)
+          .attr("fill", INK)
+          .attr("stroke", "none")
+          .attr("opacity", 0.35);
+        const slopeDX = footX - apexX;
+        const slopeDY = p.py - apexY;
+        const slopeLen = Math.sqrt(slopeDX * slopeDX + slopeDY * slopeDY);
+        if (slopeLen < 2) return;
+        const ux = slopeDX / slopeLen, uy = slopeDY / slopeLen;
+        // Perpendicular points INTO the peak interior (see thirdage).
+        const perpX = shadowRight ? -uy : uy;
+        const perpY = shadowRight ? ux : -ux;
+        const hatchCount = Math.max(2, Math.min(6, Math.round(p.h / 4.5)));
+        for (let k = 0; k < hatchCount; k++) {
+          const t = 0.25 + (k / (hatchCount - 1 || 1)) * 0.65;
+          const sx = apexX + ux * slopeLen * t;
+          const sy = apexY + uy * slopeLen * t;
+          const hLen = p.h * (0.10 + t * 0.22) * (0.7 + rng() * 0.4);
+          const ex = sx + perpX * hLen;
+          const ey = sy + perpY * hLen;
+          tg.append("line")
+            .attr("x1", sx).attr("y1", sy)
+            .attr("x2", ex).attr("y2", ey)
+            .attr("stroke", INK)
+            .attr("stroke-width", 0.35)
+            .attr("opacity", 0.7)
+            .attr("stroke-linecap", "round");
+        }
+      });
+    }
+
     function drawTreeCanopy(tg, x, y, size, rng) {
       // Pick one of several hand-drawn tree variants at random — matches
       // the hand-drawn source's mix of round-leaf trees, fir/pine peaks,
@@ -806,7 +932,14 @@ window.MapStyles.wilderland = {
       "plains": drawGrassTuft,
       "graveyard": drawGraveyard,
     });
-    MapCore.renderMountainsWithElevation(ctx, drawMountain, drawHill);
+    // Hills still get hex-by-hex rendering (they read as individual lumps).
+    MapCore.renderMountainsWithElevation(ctx, () => {}, drawHill);
+    // Mountains: continuous zigzag skyline per region, outline + left-side
+    // shadow hatching — matches Christopher Tolkien's Wilderland reference
+    // where ranges form connected ridges with shared bases, not rows of
+    // separate triangular stamps.
+    MapCore.renderMountainsByRegion(ctx,
+      (tg, peaks, rng, opts) => drawMountainRidge(tg, peaks, rng, opts));
     MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"]);
     MapCore.renderFarmlandBiased(ctx, drawFarm);
     // Very soft forest-region outline — traces the outer boundary of the

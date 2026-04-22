@@ -216,7 +216,7 @@
 <div id="controls">
   <label>Style
     <select id="style-select">
-      <option value="hexcrawl">Hex Crawl</option>
+      <option value="dragonisles">Dragon Isles</option>
       <option value="wilderland" selected>Wilderland</option>
       <option value="thirdage">Third Age</option>
       <option value="moonletters">Moon Letters</option>
@@ -236,7 +236,7 @@
 
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="core.js"></script>
-<script src="styles/hexcrawl.js"></script>
+<script src="styles/dragonisles.js"></script>
 <script src="styles/wilderland.js"></script>
 <script src="styles/thirdage.js"></script>
 <script src="styles/moonletters.js"></script>
@@ -263,7 +263,7 @@
   // Style switcher
   document.getElementById("style-select").addEventListener("change", (e) => {
     style = e.target.value;
-    if (style === "hexcrawl") {
+    if (style === "dragonisles") {
       grid = "hex";
       document.getElementById("grid-select").value = "hex";
     }

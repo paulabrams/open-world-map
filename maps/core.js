@@ -1325,7 +1325,7 @@ function renderMountainsWithElevation(ctx, mountainDrawer, hillDrawer, options) 
 // Produces the serpentine, multi-hex-spanning chain silhouette of
 // Pauline Baynes-style ranges — unlike the per-hex cluster approach of
 // renderMountainsWithElevation which can't escape hex-row alignment.
-function renderMountainsByRegion(ctx, singlePeakDrawer, options) {
+function renderMountainsByRegion(ctx, ridgeDrawer, options) {
   const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
   if (!hexTerrain) return;
 
@@ -1348,146 +1348,86 @@ function renderMountainsByRegion(ctx, singlePeakDrawer, options) {
   });
   if (mountainHexes.size === 0) return;
 
-  // Flood-fill to find connected regions.
-  const visited = new Set();
-  const regions = [];
-  mountainHexes.forEach(startHex => {
-    if (visited.has(startHex)) return;
-    const region = [];
-    const queue = [startHex];
-    while (queue.length) {
-      const h = queue.shift();
-      if (visited.has(h)) continue;
-      visited.add(h);
-      region.push(h);
-      hexNeighbors(h).forEach(n => {
-        if (mountainHexes.has(n) && !visited.has(n)) queue.push(n);
-      });
-    }
-    regions.push(region);
-  });
-
   const terrainGroup = g.append("g").attr("class", "terrain mountains-region");
 
-  regions.forEach((region, regionIdx) => {
-    const rng = mulberry32(seedFromString("mountain-region-" + regionIdx));
-    const centers = region.map(hexCenter);
-
-    // Centroid
-    const n = centers.length;
-    let cx = 0, cy = 0;
-    centers.forEach(([x, y]) => { cx += x; cy += y; });
-    cx /= n; cy /= n;
-
-    // PCA on centered coordinates for principal axis
-    let sxx = 0, syy = 0, sxy = 0;
-    centers.forEach(([x, y]) => {
-      const dx = x - cx, dy = y - cy;
-      sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
-    });
-    const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy);
-    const ax = Math.cos(theta), ay = Math.sin(theta);        // axis direction
-    const perpX = -ay, perpY = ax;                           // perpendicular
-
-    // Project each hex centre onto the axis (t) and the perpendicular (p).
-    const projected = centers.map(([x, y]) => {
-      const dx = x - cx, dy = y - cy;
-      return {
-        x, y,
-        t: dx * ax + dy * ay,
-        p: dx * perpX + dy * perpY,
-      };
-    });
-    projected.sort((a, b) => a.t - b.t);
-
-    let tMin = Infinity, tMax = -Infinity;
-    let pMin = Infinity, pMax = -Infinity;
-    projected.forEach(q => {
-      if (q.t < tMin) tMin = q.t;
-      if (q.t > tMax) tMax = q.t;
-      if (q.p < pMin) pMin = q.p;
-      if (q.p > pMax) pMax = q.p;
-    });
-    // Extend end-to-end slightly past the outermost hex centres so the
-    // range fills the whole region, not just a stretch between centres.
-    const tStart = tMin - size * 0.7;
-    const tEnd   = tMax + size * 0.7;
-    const rangeLen = tEnd - tStart;
-    // Perpendicular half-thickness of the region (how wide the band is).
-    const halfThick = Math.max(size * 0.2, (pMax - pMin) / 2 + size * 0.3);
-
-    // Build a smooth spine through the ordered projections — lets peaks
-    // follow a curve through a non-linear cluster rather than a straight
-    // line (matters for bent ranges).
-    const spinePts = projected.map(q => [q.x, q.y]);
-    // Ensure endpoints extend past the first/last centre along the axis
-    const first = projected[0], last = projected[projected.length - 1];
-    spinePts.unshift([first.x + ax * (tStart - first.t), first.y + ay * (tStart - first.t)]);
-    spinePts.push([last.x + ax * (tEnd - last.t), last.y + ay * (tEnd - last.t)]);
-
-    // Sample along the spine using d3's line interpolator via path length.
-    const lineGen = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
-    const pathD = lineGen(spinePts);
-    const pathNode = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    pathNode.setAttribute("d", pathD);
-    const totalLen = pathNode.getTotalLength();
-
-    // Peak spacing — 2 peaks per ~size/5 arc length for density. Adjust
-    // count so the line of peaks feels tight (Baynes overlap).
-    const peakSpacing = size * 0.09;
-    const peakCount = Math.max(8, Math.round(totalLen / peakSpacing));
-
-    // Fat regions get peaks scattered across their full perpendicular
-    // width rather than fixed rows. Thin chains get just the spine row.
-    // Using random perpendicular offsets rather than strata rows avoids
-    // the "parallel rails" artifact.
-    const useScatter = halfThick >= size * 0.45;
-
-    // Heroes: a handful per region spaced along the spine
-    const heroT = new Set();
-    const heroCount = Math.max(2, Math.round(peakCount * 0.06));
-    for (let k = 0; k < heroCount; k++) {
-      heroT.add(Math.floor(rng() * peakCount));
+  // Horizontal runs: a run is a chain of mountain hexes that share the
+  // same vertical position (same row, same column parity → same y) and
+  // are adjacent along the east-west axis (Δcol = ±2). Ridges run
+  // east-to-west inside each run so the skyline never wiggles up/down
+  // between rows — only within a row. A single mountain hex is a run
+  // of length 1.
+  const visited = new Set();
+  const runs = [];
+  mountainHexes.forEach(startHex => {
+    if (visited.has(startHex)) return;
+    const sCol = parseInt(startHex.substring(0, 2));
+    const sRow = parseInt(startHex.substring(2, 4));
+    const run = [startHex];
+    visited.add(startHex);
+    // Extend east.
+    for (let col = sCol + 2; ; col += 2) {
+      const h = String(col).padStart(2, "0") + String(sRow).padStart(2, "0");
+      if (!mountainHexes.has(h) || visited.has(h)) break;
+      run.push(h);
+      visited.add(h);
     }
-
-    const mSize = 18 + rng() * 6; // base peak size unit
-
-    // Peak density: bump if the region is fat (covers more 2D area).
-    const densityMult = useScatter ? Math.min(3.5, halfThick / (size * 0.25)) : 1;
-    const totalPeaks = Math.round(peakCount * densityMult);
-
-    const peaks = [];
-    for (let i = 0; i < totalPeaks; i++) {
-      const t = rng(); // any t along the spine
-      const L = t * totalLen;
-      const pt = pathNode.getPointAtLength(L);
-      const pt2 = pathNode.getPointAtLength(Math.min(totalLen, L + 1));
-      const tx = pt2.x - pt.x, ty = pt2.y - pt.y;
-      const tl = Math.sqrt(tx * tx + ty * ty) || 1;
-      const nx = -ty / tl, ny = tx / tl;
-      // Perpendicular offset: within ±halfThick for fat regions, tight
-      // band for thin chains. Triangular distribution clusters peaks
-      // toward the spine centre.
-      const perpRange = useScatter ? halfThick : size * 0.22;
-      const perpOff = ((rng() + rng()) - 1) * perpRange;
-      const px = pt.x + nx * perpOff + (rng() - 0.5) * size * 0.08;
-      const py = pt.y + ny * perpOff + (rng() - 0.5) * size * 0.06;
-      // Hero: sparse, 1-per-~50-peaks
-      const isHero = rng() < 0.03;
-      const hBase = isHero ? 0.9 + rng() * 0.3 : 0.22 + Math.pow(rng(), 1.4) * 0.38;
-      const wBase = isHero ? 0.30 + rng() * 0.08 : 0.18 + rng() * 0.14;
-      peaks.push({
-        px, py,
-        h: mSize * hBase,
-        pw: mSize * wBase,
-        isHero,
-        tx: tx / tl, ty: ty / tl,
-      });
+    // Extend west.
+    for (let col = sCol - 2; ; col -= 2) {
+      const h = String(col).padStart(2, "0") + String(sRow).padStart(2, "0");
+      if (!mountainHexes.has(h) || visited.has(h)) break;
+      run.unshift(h);
+      visited.add(h);
     }
+    runs.push(run);
+  });
 
-    // Painter's order: back peaks first so near peaks overlap clearly.
-    peaks.sort((a, b) => a.py - b.py);
-    peaks.forEach(p => singlePeakDrawer(terrainGroup, p, rng));
+  runs.forEach((run, runIdx) => {
+    const rng = mulberry32(seedFromString("mountain-run-" + run[0] + "-" + runIdx));
+    const mSize = (18 + rng() * 6) * 0.99;
+
+    // Each hex in the run becomes its own CLUSTER of peaks, rendered
+    // as a separate ridge. Clusters are visually separated by the
+    // natural gap at hex boundaries — matches the Baynes reference
+    // where mountain ranges read as groups of 3-6 peaks, not one long
+    // unbroken saw-tooth row.
+    run.forEach(hexId => {
+      const [hx, hy] = hexCenter(hexId);
+      // Tighter cluster extent forces peak bases to overlap — matches
+      // Baynes dense Drúwaith clusters where peaks share bases.
+      const inset = size * 0.40;
+      const leftX = hx - size + inset;
+      const rightX = hx + size - inset;
+      const extent = rightX - leftX;
+      // Per-hex cluster: 7-11 small peaks (Baynes Misty-Mtn density).
+      const peakCount = 7 + Math.floor(rng() * 5);
+
+      // Heights: most peaks are similar-sized (small), with just slight
+      // variation. No dominant hero that swallows the hex — reference
+      // clusters feel like a group of similar-size teeth, not 1 giant
+      // peak + foothills.
+      // One hero index per cluster — rises ~1.6× taller than neighbours
+      // to match Baynes reference where heros clearly stand out.
+      const heroIdx = Math.floor(rng() * peakCount);
+      const peaks = [];
+      for (let i = 0; i < peakCount; i++) {
+        const t = (i + 0.5) / peakCount + (rng() - 0.5) * 0.35 / peakCount;
+        const px = leftX + t * extent;
+        const isHero = i === heroIdx;
+        const hBase = isHero ? 0.85 + rng() * 0.25
+                             : 0.30 + Math.pow(rng(), 1.3) * 0.40;
+        const pyJitter = (rng() - 0.5) * mSize * 0.50;
+        peaks.push({
+          px,
+          py: hy + pyJitter,
+          h: mSize * hBase,
+          pw: mSize * (0.55 + rng() * 0.20),
+          isHero,
+          t,
+        });
+      }
+
+      ridgeDrawer(terrainGroup, peaks, rng, { mSize, size });
+    });
   });
 }
 
