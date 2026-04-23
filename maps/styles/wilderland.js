@@ -352,9 +352,11 @@ window.MapStyles.wilderland = {
       // of each peak carries short diagonal shadow-hatch strokes.
       if (!peaks || peaks.length === 0) return;
 
-      // Sharp taller-than-wide silhouettes (width ≈ 0.5 × height). Reference
-      // Misty Mountains peaks read as pointed teeth, not squat triangles.
-      const halfW = (p) => p.h * 0.25;
+      // Reference Misty Mountains peaks are WAVE-shaped, wider than tall.
+      // halfW ≈ 0.40 × height gives base-to-height ratio ~0.80, matching
+      // the reference's chunky wave-crest silhouette. Previous 0.25 made
+      // them too spike-like.
+      const halfW = (p) => p.h * 0.40;
 
       const apexes = [];
       const skyPts = [];
@@ -424,53 +426,65 @@ window.MapStyles.wilderland = {
         .attr("stroke-linecap", "round");
 
       apexes.forEach(({ apexX, apexY, hw, p }) => {
-        // Wilderland reference: peaks are OUTLINE-drawn with dense
-        // cross-hatching on the shadow (left) side. Not solid-filled.
-        const shadowRight = rng() < 0.15;
-        const footX = shadowRight ? p.px + hw : p.px - hw;
-        const oppositeFootX = shadowRight ? p.px - hw : p.px + hw;
-        // Outline the peak triangle.
+        // Reference peaks tilt the apex strongly to the right, leaving
+        // a long gentle LEFT slope and a short steep RIGHT slope. The
+        // horizontal hatching packs the right (shadow) flank while the
+        // left outline stays a clean curve — the characteristic
+        // Wilderland "wave crest" look.
+        const baseY = p.py;
+        const baseLX = p.px - hw;
+        const baseRX = p.px + hw;
+        const tiltRight = 0.30 + rng() * 0.15;
+        const apX = p.px + hw * tiltRight;
+        const apY = baseY - p.h;
+
+        // Left flank: gentle upward sweep from base to apex, with a
+        // slight outward belly so the curve reads as a hand-drawn
+        // wave-crest rather than a straight hypotenuse.
+        const lC1x = baseLX + hw * 0.45;
+        const lC1y = baseY - p.h * 0.35;
+        const lC2x = apX - hw * 0.25;
+        const lC2y = apY + p.h * 0.15;
+        const silhouetteD = `M ${baseLX} ${baseY}
+          C ${lC1x} ${lC1y}, ${lC2x} ${lC2y}, ${apX} ${apY}
+          L ${baseRX} ${baseY} Z`;
+
         tg.append("path")
-          .attr("d", `M ${apexX} ${apexY} L ${p.px - hw} ${p.py} L ${p.px + hw} ${p.py} Z`)
+          .attr("d", silhouetteD)
           .attr("fill", "none")
           .attr("stroke", INK)
-          .attr("stroke-width", 0.7)
+          .attr("stroke-width", 0.75)
           .attr("stroke-linejoin", "round")
           .attr("stroke-linecap", "round");
-        // Shaded shadow flank (~70% of peak width) with slightly reduced
-        // opacity so cross-hatching over top reads as texture.
-        const midX = shadowRight ? p.px - hw * 0.35 : p.px + hw * 0.35;
-        tg.append("path")
-          .attr("d", `M ${apexX} ${apexY} L ${footX} ${p.py} L ${midX} ${p.py} Z`)
-          .attr("fill", INK)
-          .attr("stroke", "none")
-          .attr("opacity", 0.35);
-        const slopeDX = footX - apexX;
-        const slopeDY = p.py - apexY;
-        const slopeLen = Math.sqrt(slopeDX * slopeDX + slopeDY * slopeDY);
-        if (slopeLen < 2) return;
-        const ux = slopeDX / slopeLen, uy = slopeDY / slopeLen;
-        // Perpendicular points INTO the peak interior (see thirdage).
-        const perpX = shadowRight ? -uy : uy;
-        const perpY = shadowRight ? ux : -ux;
-        // Very dense hatching — reference Misty Mountains' leeward flanks
-        // read as nearly-solid shadow from tightly-stacked hatch lines.
-        // Divisor 1.5 (was 2.5); ceiling raised to 16 so taller peaks
-        // don't clamp to the old 12-line limit.
-        const hatchCount = Math.max(4, Math.min(16, Math.round(p.h / 1.5)));
+
+        // Horizontal hatching — packed densely across the RIGHT flank
+        // from apex down to base. Each row starts near the right-side
+        // silhouette (inside by ~2px) and ends at the right base edge.
+        // This gives the dark shadow side the reference shows while
+        // keeping the left curve white/unhatched.
+        const hatchCount = Math.max(6, Math.min(22, Math.round(p.h / 1.3)));
         for (let k = 0; k < hatchCount; k++) {
-          const t = 0.18 + (k / (hatchCount - 1 || 1)) * 0.72;
-          const sx = apexX + ux * slopeLen * t;
-          const sy = apexY + uy * slopeLen * t;
-          const hLen = p.h * (0.10 + t * 0.22) * (0.7 + rng() * 0.4);
-          const ex = sx + perpX * hLen;
-          const ey = sy + perpY * hLen;
+          const t = 0.08 + (k / (hatchCount - 1 || 1)) * 0.88;
+          const hy = apY + (baseY - apY) * t;
+          // At height t, the right silhouette interpolates from apex x
+          // to baseRX linearly (straight right edge of the peak).
+          const rightEdgeX = apX + (baseRX - apX) * t;
+          // Left end of the hatch: inside the left curve. Approximate
+          // the curve at height t as a linear interp from baseLX → apX,
+          // then bias slightly rightward so the left outline shows.
+          const leftEdgeX = baseLX + (apX - baseLX) * t;
+          const jitterX = (rng() - 0.5) * 1.1;
+          const hx1 = leftEdgeX + 1.2 + jitterX;
+          const hx2 = rightEdgeX - 0.4;
+          if (hx2 - hx1 < 1.5) continue;
+          // Tiny downward slant per stroke for hand-drawn feel
+          const slant = (rng() - 0.2) * 0.9;
           tg.append("line")
-            .attr("x1", sx).attr("y1", sy)
-            .attr("x2", ex).attr("y2", ey)
+            .attr("x1", hx1).attr("y1", hy)
+            .attr("x2", hx2).attr("y2", hy + slant)
             .attr("stroke", INK)
-            .attr("stroke-width", 0.4)
-            .attr("opacity", 0.9)
+            .attr("stroke-width", 0.45)
+            .attr("opacity", 0.92)
             .attr("stroke-linecap", "round");
         }
       });
