@@ -1763,7 +1763,7 @@ window.MapStyles.wilderland = {
     const spineHalfWidth = 55;
     // Pack many small peaks along the vertical column — 2D density so
     // the range reads as a thick band, not a thin line.
-    const peakCount = Math.max(280, Math.floor(spineHeight / 1.8));
+    const peakCount = Math.max(550, Math.floor(spineHeight / 0.9));
 
     const sampleCubic = (P0, P1, P2, P3, steps, includeStart) => {
       const pts = [];
