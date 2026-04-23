@@ -2082,6 +2082,58 @@ window.MapStyles.wilderland = {
         .text(label);
     });
 
+    // Decorative horizontal peak strip above the banner — reference has
+    // a row of small mountain silhouettes along the top edge, above the
+    // "GREY MOUNTAINS" label. Pure ornament (not data-driven). Small
+    // wobbled open-curve peaks matching the main-mountain drawing model.
+    const peakStripY = bounds.minY - 40;
+    const peakStripLeftX = bounds.minX + (bounds.maxX - bounds.minX) * 0.08;
+    const peakStripRightX = bounds.maxX - (bounds.maxX - bounds.minX) * 0.08;
+    const peakStripWidth = peakStripRightX - peakStripLeftX;
+    const stripRng = ctx.mulberry32(ctx.seedFromString("wilderland-top-peaks"));
+    const stripPeakCount = 25;
+    const stripINK = ctx.colors.INK;
+    for (let i = 0; i < stripPeakCount; i++) {
+      const cx = peakStripLeftX + (i / stripPeakCount) * peakStripWidth + (stripRng() - 0.5) * 6;
+      const h = 16 + stripRng() * 14;
+      const hw = h * 0.55;
+      const baseLX = cx - hw;
+      const baseRX = cx + hw;
+      const apX = cx + hw * (0.15 + stripRng() * 0.2);
+      const apY = peakStripY - h;
+      const baseY = peakStripY;
+      // Same sampled-Bezier wobble model as main peaks
+      const sampleCubic = (P0, P1, P2, P3, steps, includeStart) => {
+        const pts = [];
+        for (let k = includeStart ? 0 : 1; k <= steps; k++) {
+          const t = k / steps;
+          const it = 1 - t;
+          const b0 = it*it*it, b1 = 3*it*it*t, b2 = 3*it*t*t, b3 = t*t*t;
+          const x = b0*P0[0] + b1*P1[0] + b2*P2[0] + b3*P3[0];
+          const y = b0*P0[1] + b1*P1[1] + b2*P2[1] + b3*P3[1];
+          const ed = Math.min(t, 1-t) * 2;
+          pts.push([x + (stripRng()-0.5)*0.8*ed, y + (stripRng()-0.5)*0.8*ed]);
+        }
+        return pts;
+      };
+      const lC1 = [baseLX + hw*0.4, baseY - h*0.3];
+      const lC2 = [apX - hw*0.2, apY + h*0.15];
+      const rC1 = [apX + hw*0.1, apY + h*0.2];
+      const rC2 = [baseRX - hw*0.1, baseY - h*0.1];
+      const leftPts = sampleCubic([baseLX, baseY], lC1, lC2, [apX, apY], 8, true);
+      const rightPts = sampleCubic([apX, apY], rC1, rC2, [baseRX, baseY], 6, false);
+      const allPts = leftPts.concat(rightPts);
+      const d = "M " + allPts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ");
+      annotGroup.append("path")
+        .attr("d", d)
+        .attr("fill", "none")
+        .attr("stroke", stripINK)
+        .attr("stroke-width", 0.7 + stripRng() * 0.3)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round")
+        .attr("opacity", 0.65 + stripRng() * 0.3);
+    }
+
     // Top edge — reference shows a large blue spaced-caps "GREY MOUNTAINS"
     // banner stretching across much of the top. Mine was 14px at 4px
     // letter-spacing and barely visible. Bump font to 28px, letter-spacing
