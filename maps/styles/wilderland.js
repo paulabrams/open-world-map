@@ -1831,6 +1831,54 @@ window.MapStyles.wilderland = {
       }
     }
 
+    // Decorative headwater: a thin double-line river ribbon wiggling
+    // from the spine east into the left-gap forest. Pure ornament —
+    // evokes "rivers rise in the mountains" without touching game data.
+    const riverStartX = spineCenterX + spineHalfWidth + 5;
+    const riverStartY = spineTop + spineHeight * 0.3;
+    const riverEndX = bounds.minX - 10;
+    const riverEndY = spineTop + spineHeight * 0.25;
+    const riverDX = riverEndX - riverStartX;
+    const riverDY = riverEndY - riverStartY;
+    const riverPts = [];
+    const riverSegs = 40;
+    const riverRng = ctx.mulberry32(ctx.seedFromString("wl-decor-river"));
+    for (let s = 0; s <= riverSegs; s++) {
+      const t = s / riverSegs;
+      const bx = riverStartX + riverDX * t;
+      const by = riverStartY + riverDY * t;
+      // Perpendicular wiggle (dampened at endpoints)
+      const envelope = Math.sin(t * Math.PI);
+      const wave = Math.sin(t * Math.PI * 3.5 + riverRng() * 0.5) * 8;
+      const wave2 = Math.sin(t * Math.PI * 9) * 2.5;
+      const offset = (wave + wave2) * envelope;
+      // perpendicular to (riverDX, riverDY)
+      const pLen = Math.sqrt(riverDX * riverDX + riverDY * riverDY) || 1;
+      const nx = -riverDY / pLen, ny = riverDX / pLen;
+      riverPts.push([bx + nx * offset, by + ny * offset]);
+    }
+    const riverD = "M " + riverPts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ");
+    const riverBankOffset = 1.8;
+    // Two thin parallel bank lines (ribbon)
+    for (const side of [+1, -1]) {
+      const bankPts = riverPts.map((p, i) => {
+        const prev = riverPts[Math.max(0, i - 1)];
+        const next = riverPts[Math.min(riverPts.length - 1, i + 1)];
+        const tx = next[0] - prev[0];
+        const ty = next[1] - prev[1];
+        const tl = Math.sqrt(tx*tx + ty*ty) || 1;
+        return [p[0] + (-ty/tl) * side * riverBankOffset, p[1] + (tx/tl) * side * riverBankOffset];
+      });
+      const bankD = "M " + bankPts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ");
+      group.append("path")
+        .attr("d", bankD)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.7)
+        .attr("opacity", 0.85)
+        .attr("stroke-linecap", "round");
+    }
+
     // Vertical "MISTY MOUNTAINS"-style label running along the spine
     const labelText = "FORANDOL MOUNTAINS";
     const labelCX = spineCenterX - 48;
