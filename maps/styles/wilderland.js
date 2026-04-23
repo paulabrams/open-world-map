@@ -73,9 +73,9 @@ window.MapStyles.wilderland = {
       // Reference region labels ("MISTY MOUNTAINS", "MIRKWOOD") dominate
       // their territories; 22px was too subordinate. Bump to 36px with
       // wider spacing so region names match reference prominence.
-      fontSize: 36,
-      letterSpacing: "10px",
-      opacity: 0.80,
+      fontSize: 52,
+      letterSpacing: "14px",
+      opacity: 0.85,
       fontStyle: "normal",
     });
     this.renderNodes(ctx);
