@@ -1782,6 +1782,10 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
   // non-forest hexes for a ragged organic edge matching hand-drawn
   // woodland references. Default 1.0 preserves prior behavior.
   const bleedOut = (options && typeof options.bleedOut === "number") ? options.bleedOut : 1.0;
+  // treeSizeMul: scales the default tree glyph size. Default 1.0
+  // preserves prior behavior. Styles that want larger / smaller
+  // canopy glyphs can override.
+  const treeSizeMul = (options && typeof options.treeSizeMul === "number") ? options.treeSizeMul : 1.0;
 
   const bcCol = 10, bcRow = 10;
   const size = HINT_SCALE / 2;
@@ -1856,7 +1860,7 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
 
     // Smaller tree glyphs (trees are ~½ their former size) so the higher
     // count below doesn't pile up into overlapping blobs.
-    const treeSize = () => 5 + rng() * 3;
+    const treeSize = () => (5 + rng() * 3) * treeSizeMul;
 
     // Poisson-ish scatter: generate candidate points and reject any that
     // land within minDist of an already-placed tree, OR inside the
@@ -1942,7 +1946,7 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
 
     // Tree-size function: small saplings near the edge, full-size trees
     // in the interior.
-    const treeSizeByDepth = d => (4 + d * 3) + rng() * 2;
+    const treeSizeByDepth = d => ((4 + d * 3) + rng() * 2) * treeSizeMul;
 
     if (externalEdges.length === 0) {
       // Fully interior forest hex — blanket the whole body with trees,

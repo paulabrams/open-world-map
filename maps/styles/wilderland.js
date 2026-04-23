@@ -594,7 +594,7 @@ window.MapStyles.wilderland = {
           .attr("stroke", INK).attr("stroke-width", 0.42).attr("opacity", 0.5);
       }
 
-      if (variant < 0.80) {
+      if (variant < 0.92) {
         // --- Cloud-blob canopy (old-growth look) ---
         // Biased to 80% of all trees. Reference Mirkwood is uniformly
         // cloud-canopy trees. Canopy glyph is an ASYMMETRIC cloud puff
@@ -614,53 +614,46 @@ window.MapStyles.wilderland = {
         }
         canopies.sort((a, b) => a.cy - b.cy);
         canopies.forEach(c => {
-          // Build an OPEN cloud-puff silhouette: the top half is a
-          // sequence of 3-5 bumps (varying radii), and the bottom is
-          // a gently wavy line — NOT a closed circle. Reads as a
-          // tree-top canopy profile, not an eye.
-          const bumps = 3 + Math.floor(rng() * 3); // 3-5 bumps along top
+          // OPEN cloud-puff canopy profile — a single curved line of
+          // 3-5 bumps along the top + a short trunk line below. NO
+          // closed path, NO dark filled silhouette, NO ground shadow.
+          // Reads as the kind of individual tree glyph Tolkien /
+          // Baynes drew in the reference Mirkwood.
+          const bumps = 3 + Math.floor(rng() * 2); // 3-4 bumps along top
           const topPts = [];
           const spanL = c.cx - c.cr;
           const spanR = c.cx + c.cr;
-          const topY0 = c.cy - c.cr * 0.15;
-          // Start at left-base
+          const topY0 = c.cy - c.cr * 0.10;
           topPts.push([spanL, topY0]);
           for (let b = 0; b < bumps; b++) {
-            const t0 = b / bumps;
             const t1 = (b + 0.5) / bumps;
             const t2 = (b + 1) / bumps;
             const apexX = spanL + (spanR - spanL) * (t1 + (rng() - 0.5) * 0.12);
-            const apexY = c.cy - c.cr * (0.9 + rng() * 0.25);
-            const valleyX = spanL + (spanR - spanL) * (t2);
-            const valleyY = topY0 - c.cr * (rng() * 0.15);
+            const apexY = c.cy - c.cr * (0.85 + rng() * 0.30);
+            const valleyX = spanL + (spanR - spanL) * t2;
+            const valleyY = topY0 - c.cr * (rng() * 0.10);
             topPts.push([apexX, apexY]);
             if (b < bumps - 1) topPts.push([valleyX, valleyY]);
           }
           topPts.push([spanR, topY0]);
-          // Bottom: slight wavy line back to start
-          const botCount = 3;
-          for (let k = 1; k <= botCount; k++) {
-            const t = k / botCount;
-            const bx = spanR + (spanL - spanR) * t;
-            const by = topY0 + c.cr * (0.05 + rng() * 0.08);
-            topPts.push([bx, by]);
-          }
-          // Close path
-          const pathD = "M " + topPts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ") + " Z";
-          // Stroke-only (no fill except parchment to mask anything behind)
+          // Smoothed stroke-only canopy line (no closure, no fill).
+          const smoothLine = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
           tg.append("path")
-            .attr("d", pathD)
-            .attr("fill", PARCH).attr("stroke", INK).attr("stroke-width", 0.85)
-            .attr("stroke-linejoin", "round").attr("opacity", 0.92);
-          // Heavy top-edge overdraw for canopy pop — only the top
-          // bumps, not a full semicircle.
-          const topOnlyPts = topPts.slice(0, bumps * 2 + 1);
-          const topD = "M " + topOnlyPts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ");
-          tg.append("path")
-            .attr("d", topD)
-            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.1)
+            .attr("d", smoothLine(topPts))
+            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.95)
             .attr("stroke-linejoin", "round").attr("stroke-linecap", "round")
-            .attr("opacity", 0.88);
+            .attr("opacity", 0.92);
+          // Short trunk below the canopy center
+          if (rng() > 0.25) {
+            const trunkX = (spanL + spanR) / 2 + (rng() - 0.5) * c.cr * 0.4;
+            const trunkY0 = topY0 + c.cr * 0.05;
+            const trunkY1 = trunkY0 + c.cr * (0.5 + rng() * 0.3);
+            tg.append("line")
+              .attr("x1", trunkX).attr("y1", trunkY0)
+              .attr("x2", trunkX).attr("y2", trunkY1)
+              .attr("stroke", INK).attr("stroke-width", 0.75)
+              .attr("stroke-linecap", "round").attr("opacity", 0.85);
+          }
         });
         // A few scattered forest-floor detail marks around the cluster —
         // tiny broken lines at a slight downward-right angle (mapeffects
@@ -1074,9 +1067,10 @@ window.MapStyles.wilderland = {
     // density high and reduce minDist so canopies sit shoulder-to-shoulder
     // the way they do on Tolkien's hand-drawn Wilderland.
     // Lower density + bigger minDist so tree glyphs don't overlap
-    // ("bunch of eyes" effect per user feedback 2026-04-23). The
-    // forest now reads as the outline + spaced canopy tops inside.
-    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 1.4, minDist: 7.5, bleedOut: 1.18 });
+    // ("bunch of eyes" effect per user feedback 2026-04-23). Larger
+    // size so cloud-puff silhouette actually reads — at the previous
+    // 5-8 px size the glyph looked like a small dark blob.
+    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 1.4, minDist: 9.0, bleedOut: 1.18, treeSizeMul: 1.6 });
     MapCore.renderFarmlandBiased(ctx, drawFarm);
     // Forest-region outline — inset inside the hex (not on the hex
     // edge) so it reads as a hand-drawn tree-line around the woodland
