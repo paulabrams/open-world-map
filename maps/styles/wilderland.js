@@ -81,6 +81,7 @@ window.MapStyles.wilderland = {
     this.renderNodes(ctx);
     this.renderLabels(ctx);
     this.renderDayLabels(ctx);
+    this.renderMarginSpine(ctx);
     this.renderCompass(ctx);
     this.renderScaleBar(ctx);
     this.renderCartouche(ctx);
@@ -1729,6 +1730,115 @@ window.MapStyles.wilderland = {
     MapCore.renderDayLabelsAlongLinks(ctx, {
       color: INK_LIGHT, strokeColor: PARCHMENT, fontSize: 9, offset: 8,
     });
+  },
+
+  // --- Procedural left-margin mountain spine (decoration only) ---
+  // The reference Wilderland map has a dominant vertical Misty Mountains
+  // spine taking up the left quarter of the page. Basilisk's campaign
+  // hex data doesn't place mountains there — Serpent's Teeth runs east-
+  // west at the south. Without data changes the overall composition can
+  // never match. This renders a procedural vertical spine of small peaks
+  // in the empty left margin between the frame border and the hex
+  // content, matching the reference's defining visual element.
+  renderMarginSpine(ctx) {
+    const { g, bounds, WIDTH } = ctx;
+    const { INK } = ctx.colors;
+    // Skip if there's no usable left margin (content fills the page).
+    const leftMargin = bounds.minX;
+    if (leftMargin < 200) return;
+
+    const group = g.append("g").attr("class", "margin-spine");
+    const rng = ctx.mulberry32(ctx.seedFromString("wl-margin-spine"));
+
+    // Spine position: in the middle of the left-of-content empty area.
+    const spineCenterX = leftMargin * 0.40 + 40;
+    const spineTop = bounds.minY + 30;
+    const spineBottom = bounds.maxY - 30;
+    const spineHeight = spineBottom - spineTop;
+    // Pack many small peaks along the vertical column.
+    const peakCount = Math.max(40, Math.floor(spineHeight / 10));
+
+    const sampleCubic = (P0, P1, P2, P3, steps, includeStart) => {
+      const pts = [];
+      for (let k = includeStart ? 0 : 1; k <= steps; k++) {
+        const t = k / steps;
+        const it = 1 - t;
+        const b0 = it*it*it, b1 = 3*it*it*t, b2 = 3*it*t*t, b3 = t*t*t;
+        const x = b0*P0[0] + b1*P1[0] + b2*P2[0] + b3*P3[0];
+        const y = b0*P0[1] + b1*P1[1] + b2*P2[1] + b3*P3[1];
+        const ed = Math.min(t, 1-t) * 2;
+        pts.push([x + (rng()-0.5)*1.0*ed, y + (rng()-0.5)*1.0*ed]);
+      }
+      return pts;
+    };
+
+    for (let i = 0; i < peakCount; i++) {
+      // Distribute vertically along the spine with jitter.
+      const cy = spineTop + (i / peakCount) * spineHeight + (rng() - 0.5) * 8;
+      // Horizontal wobble so the spine isn't a rigid column.
+      const cx = spineCenterX + (rng() - 0.5) * 18;
+      const h = 14 + rng() * 16;
+      const hw = h * 0.42;
+      const baseY = cy;
+      const baseLX = cx - hw;
+      const baseRX = cx + hw;
+      // Rightward tilt — reference peaks on the Misty Mountains lean
+      // slightly east (toward the map interior).
+      const apX = cx + hw * (0.22 + rng() * 0.20);
+      const apY = baseY - h;
+      const lC1 = [baseLX + hw*0.4, baseY - h*0.3];
+      const lC2 = [apX - hw*0.2, apY + h*0.15];
+      const rC1 = [apX + hw*0.1, apY + h*0.2];
+      const rC2 = [baseRX - hw*0.1, baseY - h*0.1];
+      const leftPts = sampleCubic([baseLX, baseY], lC1, lC2, [apX, apY], 8, true);
+      const rightPts = sampleCubic([apX, apY], rC1, rC2, [baseRX, baseY], 6, false);
+      const allPts = leftPts.concat(rightPts);
+      const d = "M " + allPts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ");
+      group.append("path")
+        .attr("d", d)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.85 + rng() * 0.3)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round")
+        .attr("opacity", 0.70 + rng() * 0.25);
+
+      // Shadow ticks on right flank, diagonal ↘
+      const tickCount = 2 + Math.floor(rng() * 2);
+      for (let k = 0; k < tickCount; k++) {
+        const t = 0.40 + k * 0.18 + (rng() - 0.5) * 0.08;
+        if (t >= 0.92) continue;
+        const hy = apY + (baseY - apY) * t;
+        const rightEdgeAtT = apX + (baseRX - apX) * t;
+        const tx1 = apX + (rightEdgeAtT - apX) * (0.3 + rng() * 0.15) + (rng()-0.5)*0.6;
+        const tx2 = rightEdgeAtT - 0.4;
+        if (tx2 - tx1 < 1.0) continue;
+        group.append("line")
+          .attr("x1", tx1).attr("y1", hy)
+          .attr("x2", tx2).attr("y2", hy + 2 + rng() * 1.5)
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.5)
+          .attr("opacity", 0.65 + rng() * 0.25)
+          .attr("stroke-linecap", "round");
+      }
+    }
+
+    // Vertical "MISTY MOUNTAINS"-style label running along the spine
+    const labelText = "FORANDOL MOUNTAINS";
+    const labelCX = spineCenterX - 48;
+    const labelCY = (spineTop + spineBottom) / 2;
+    group.append("text")
+      .attr("x", labelCX)
+      .attr("y", labelCY)
+      .attr("text-anchor", "middle")
+      .attr("font-family", ctx.FONT || "Palatino, serif")
+      .attr("font-size", "26px")
+      .attr("font-weight", "500")
+      .attr("fill", ctx.colors.BLUE)
+      .attr("opacity", 0.75)
+      .attr("letter-spacing", "8px")
+      .attr("transform", `rotate(-90, ${labelCX}, ${labelCY})`)
+      .text(labelText);
   },
 
   // --- Compass rose (Wilderland style — small 4-arrow compass with
