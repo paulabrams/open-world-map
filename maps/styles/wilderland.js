@@ -346,147 +346,68 @@ window.MapStyles.wilderland = {
     }
 
     function drawMountainRidge(tg, peaks, rng, opts) {
-      // Christopher Tolkien Wilderland-style ridge: single continuous
-      // jagged skyline per mountain region with a flat baseline. The
-      // shape is outlined (no fill beyond parchment), and the LEFT side
-      // of each peak carries short diagonal shadow-hatch strokes.
+      // Wilderland peaks at 5x zoom on the reference are LINE DRAWINGS,
+      // not filled shapes. Each peak is a single curved pen stroke —
+      // wave-crest shape, open at the bottom — with a few short hatch
+      // ticks underneath for shadow. The dark character of the spine in
+      // the reference comes from MANY OVERLAPPING peak strokes, not
+      // from each peak being individually dark.
       if (!peaks || peaks.length === 0) return;
 
-      // Reference Misty Mountains peaks are WAVE-shaped, wider than tall.
-      // halfW ≈ 0.40 × height gives base-to-height ratio ~0.80, matching
-      // the reference's chunky wave-crest silhouette. Previous 0.25 made
-      // them too spike-like.
-      const halfW = (p) => p.h * 0.40;
-
-      const apexes = [];
-      const skyPts = [];
-      const basePts = [];
-
-      for (let i = 0; i < peaks.length; i++) {
-        const p = peaks[i];
-        const hw = halfW(p);
-        const apexBend = rng() < 0.3 ? 0.18 : 0.05;
-        const apexX = p.px + (rng() - 0.5) * hw * apexBend * 2;
-        const apexY = p.py - p.h;
-        apexes.push({ apexX, apexY, hw, p });
-
-        if (i === 0) {
-          skyPts.push([p.px - hw, p.py]);
-          basePts.push([p.px - hw, p.py]);
-        }
-        skyPts.push([apexX, apexY]);
-        basePts.push([p.px, p.py]);
-
-        if (i < peaks.length - 1) {
-          const next = peaks[i + 1];
-          const nhw = halfW(next);
-          const vx = (p.px + hw + next.px - nhw) / 2;
-          const baseY = (p.py + next.py) / 2;
-          const neighbourH = Math.min(p.h, next.h);
-          const deep = rng() < 0.65;
-          const depthT = deep ? 0.0 + rng() * 0.08 : 0.18 + rng() * 0.22;
-          const vy = baseY - neighbourH * depthT;
-          if (rng() < 0.5) {
-            const valleyW = Math.max(0.1, (next.px - nhw) - (p.px + hw));
-            const subH = neighbourH * (0.12 + rng() * 0.25);
-            const subApexY = baseY - subH;
-            const subLeftX = vx - valleyW * (0.22 + rng() * 0.1);
-            const subRightX = vx + valleyW * (0.22 + rng() * 0.1);
-            skyPts.push([subLeftX, vy + (baseY - vy) * 0.35]);
-            skyPts.push([vx + (rng() - 0.5) * valleyW * 0.15, subApexY]);
-            skyPts.push([subRightX, vy + (baseY - vy) * 0.35]);
-            basePts.push([subLeftX, baseY]);
-            basePts.push([vx, baseY]);
-            basePts.push([subRightX, baseY]);
-          } else {
-            skyPts.push([vx, vy]);
-            basePts.push([vx, baseY]);
-          }
-        } else {
-          skyPts.push([p.px + hw, p.py]);
-          basePts.push([p.px + hw, p.py]);
-        }
-      }
-
-      let outlineD = `M ${skyPts[0][0]} ${skyPts[0][1]}`;
-      for (let i = 1; i < skyPts.length; i++) {
-        outlineD += ` L ${skyPts[i][0]} ${skyPts[i][1]}`;
-      }
-      for (let i = basePts.length - 1; i >= 0; i--) {
-        outlineD += ` L ${basePts[i][0]} ${basePts[i][1]}`;
-      }
-      outlineD += " Z";
-
-      tg.append("path")
-        .attr("d", outlineD)
-        .attr("fill", "none")
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.8)
-        .attr("stroke-linejoin", "round")
-        .attr("stroke-linecap", "round");
-
-      apexes.forEach(({ apexX, apexY, hw, p }) => {
-        // Reference peaks tilt the apex strongly to the right, leaving
-        // a long gentle LEFT slope and a short steep RIGHT slope. The
-        // horizontal hatching packs the right (shadow) flank while the
-        // left outline stays a clean curve — the characteristic
-        // Wilderland "wave crest" look.
+      peaks.forEach(p => {
         const baseY = p.py;
+        const hw = p.h * 0.42;
         const baseLX = p.px - hw;
         const baseRX = p.px + hw;
-        const tiltRight = 0.30 + rng() * 0.15;
+        // Strong rightward apex tilt — matches reference's wind-shaped
+        // peaks. Randomize slightly so peaks don't look stamped.
+        const tiltRight = 0.22 + rng() * 0.20;
         const apX = p.px + hw * tiltRight;
         const apY = baseY - p.h;
 
-        // Left flank: gentle upward sweep from base to apex, with a
-        // slight outward belly so the curve reads as a hand-drawn
-        // wave-crest rather than a straight hypotenuse.
-        const lC1x = baseLX + hw * 0.45;
-        const lC1y = baseY - p.h * 0.35;
-        const lC2x = apX - hw * 0.25;
-        const lC2y = apY + p.h * 0.15;
-        const silhouetteD = `M ${baseLX} ${baseY}
+        // Single open curve: rise on the left with a subtle belly,
+        // drop on the right more steeply. Two cubic Bezier segments
+        // meeting at the apex — no closure to the baseline.
+        const lC1x = baseLX + hw * (0.35 + rng() * 0.15);
+        const lC1y = baseY - p.h * (0.25 + rng() * 0.12);
+        const lC2x = apX - hw * (0.15 + rng() * 0.10);
+        const lC2y = apY + p.h * (0.10 + rng() * 0.08);
+        const rC1x = apX + hw * (0.08 + rng() * 0.06);
+        const rC1y = apY + p.h * (0.22 + rng() * 0.10);
+        const rC2x = baseRX - hw * (0.08 + rng() * 0.08);
+        const rC2y = baseY - p.h * (0.12 + rng() * 0.08);
+
+        const strokeD = `M ${baseLX} ${baseY}
           C ${lC1x} ${lC1y}, ${lC2x} ${lC2y}, ${apX} ${apY}
-          L ${baseRX} ${baseY} Z`;
+          C ${rC1x} ${rC1y}, ${rC2x} ${rC2y}, ${baseRX} ${baseY}`;
 
         tg.append("path")
-          .attr("d", silhouetteD)
+          .attr("d", strokeD)
           .attr("fill", "none")
           .attr("stroke", INK)
-          .attr("stroke-width", 0.75)
-          .attr("stroke-linejoin", "round")
+          .attr("stroke-width", 0.8 + rng() * 0.2)
           .attr("stroke-linecap", "round");
 
-        // Horizontal hatching — packed densely across the RIGHT flank
-        // from apex down to base. Each row starts near the right-side
-        // silhouette (inside by ~2px) and ends at the right base edge.
-        // Side-by-side with the reference shows the shadow side is
-        // nearly-solid dark; pack hatches tightly (divisor 0.85) and
-        // thicken the stroke so the shadow reads as a dark mass, not
-        // as individual visible lines.
-        const hatchCount = Math.max(8, Math.min(32, Math.round(p.h / 0.85)));
+        // Shadow hatches: 2-4 SHORT horizontal ticks on the right flank
+        // below the apex. NOT a dense fill — just a few dashes hinting
+        // at the shadow side. Reference peaks have minimal hatching.
+        const hatchCount = 2 + Math.floor(rng() * 3);
         for (let k = 0; k < hatchCount; k++) {
-          const t = 0.08 + (k / (hatchCount - 1 || 1)) * 0.88;
+          const t = 0.35 + k * 0.16 + (rng() - 0.5) * 0.06;
+          if (t >= 0.95) continue;
           const hy = apY + (baseY - apY) * t;
-          // At height t, the right silhouette interpolates from apex x
-          // to baseRX linearly (straight right edge of the peak).
-          const rightEdgeX = apX + (baseRX - apX) * t;
-          // Left end of the hatch: inside the left curve. Approximate
-          // the curve at height t as a linear interp from baseLX → apX,
-          // then bias slightly rightward so the left outline shows.
-          const leftEdgeX = baseLX + (apX - baseLX) * t;
-          const jitterX = (rng() - 0.5) * 1.1;
-          const hx1 = leftEdgeX + 1.2 + jitterX;
-          const hx2 = rightEdgeX - 0.4;
-          if (hx2 - hx1 < 1.5) continue;
-          // Tiny downward slant per stroke for hand-drawn feel
-          const slant = (rng() - 0.2) * 0.9;
+          // Right silhouette x at this y (linear approx of the Bezier)
+          const rightEdgeAtT = apX + (baseRX - apX) * t;
+          // Hatch spans from ~30-40% along the flank to just inside the edge
+          const hx1 = apX + (rightEdgeAtT - apX) * (0.30 + rng() * 0.15) + (rng() - 0.5) * 0.8;
+          const hx2 = rightEdgeAtT - 0.6 - rng() * 0.8;
+          if (hx2 - hx1 < 1.0) continue;
+          const slant = rng() * 0.5;
           tg.append("line")
             .attr("x1", hx1).attr("y1", hy)
             .attr("x2", hx2).attr("y2", hy + slant)
             .attr("stroke", INK)
-            .attr("stroke-width", 0.6)
-            .attr("opacity", 0.95)
+            .attr("stroke-width", 0.5)
             .attr("stroke-linecap", "round");
         }
       });
