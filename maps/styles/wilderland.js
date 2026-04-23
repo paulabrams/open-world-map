@@ -969,21 +969,20 @@ window.MapStyles.wilderland = {
       (tg, peaks, rng, opts) => drawMountainRidge(tg, peaks, rng, opts),
       {
         clusterInset: 0.10,
-        // Denser cluster jag — 10-14 peaks per hex instead of 7-11 —
-        // so adjacent hexes form a richer jagged skyline like the
-        // reference Misty Mountains.
-        peakCountMin: 10,
-        peakCountRange: 5,
-        // Continuous height distribution instead of the hero model:
-        // the Wilderland reference has many peaks of varied heights
-        // with no single "hero" dominating the cluster. pow<1 biases
-        // toward taller peaks; range 0.35-1.05 keeps peaks tall enough
-        // to read as mountains rather than foothills.
+        // Side-by-side with the reference shows the Misty Mountains
+        // are a DENSE packing of MANY SMALL peaks — dozens per range-
+        // length, blending into a continuous dark spine at map zoom.
+        // My earlier 10-14 peaks per hex with peakSize 30 produced a
+        // handful of big individual silhouettes with parchment gaps.
+        // Pack 20-30 small peaks per hex instead.
+        peakCountMin: 20,
+        peakCountRange: 10,
+        // Continuous height distribution — varied peaks mixed tightly.
         heightProfile: (rng) => 0.35 + Math.pow(rng(), 0.85) * 0.70,
-        // Larger peak scale than Baynes default — reference Misty Mtns
-        // dominate the map; small peaks read as foothills not mountains.
-        peakSize: 30,
-        peakSizeRange: 8,
+        // Smaller peak scale so many peaks fit per hex. Reference peaks
+        // at map zoom are ~10-14 px tall, not 30-40.
+        peakSize: 20,
+        peakSizeRange: 5,
       });
     // Dense forest packing to match Mirkwood density in the reference —
     // scattered trees at default density (1.0) read too sparse.
