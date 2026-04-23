@@ -1885,6 +1885,56 @@ window.MapStyles.wilderland = {
           .attr("stroke-linecap", "round");
       }
 
+      // Decorative serpent/basilisk sprite near the top of the sea —
+      // echoes the reference wilderland's winged wyrm under "Withered
+      // Heath". Basilisk is the campaign's titular creature, so a
+      // small serpent ornament is campaign-consistent.
+      const sx = seaCenterX - 20;
+      const sy = seaTop + 80;
+      const sG = seaGroup.append("g");
+      // Serpentine body — S-shape
+      sG.append("path")
+        .attr("d", `M ${sx-40} ${sy} C ${sx-20} ${sy-25}, ${sx+10} ${sy+15}, ${sx+40} ${sy-10} S ${sx+80} ${sy+8}, ${sx+100} ${sy-18}`)
+        .attr("fill", "none")
+        .attr("stroke", ctx.colors.INK)
+        .attr("stroke-width", 1.4)
+        .attr("stroke-linecap", "round")
+        .attr("opacity", 0.85);
+      // Head (small triangle)
+      sG.append("path")
+        .attr("d", `M ${sx+100} ${sy-18} L ${sx+112} ${sy-24} L ${sx+108} ${sy-14} Z`)
+        .attr("fill", ctx.colors.INK)
+        .attr("opacity", 0.85);
+      // Eye dot
+      sG.append("circle")
+        .attr("cx", sx+104).attr("cy", sy-20).attr("r", 0.8)
+        .attr("fill", ctx.colors.PARCHMENT);
+      // Forked tongue
+      sG.append("path")
+        .attr("d", `M ${sx+112} ${sy-22} L ${sx+120} ${sy-26} M ${sx+112} ${sy-22} L ${sx+120} ${sy-20}`)
+        .attr("fill", "none")
+        .attr("stroke", ctx.colors.INK)
+        .attr("stroke-width", 0.6)
+        .attr("opacity", 0.8);
+      // Tail flick
+      sG.append("path")
+        .attr("d", `M ${sx-40} ${sy} L ${sx-55} ${sy+6} M ${sx-40} ${sy} L ${sx-52} ${sy-2}`)
+        .attr("fill", "none")
+        .attr("stroke", ctx.colors.INK)
+        .attr("stroke-width", 0.7)
+        .attr("opacity", 0.8);
+      // Small caption
+      sG.append("text")
+        .attr("x", sx + 30)
+        .attr("y", sy + 22)
+        .attr("text-anchor", "middle")
+        .attr("font-family", ctx.FONT || "Palatino, serif")
+        .attr("font-size", "11px")
+        .attr("font-style", "italic")
+        .attr("fill", ctx.colors.INK_LIGHT)
+        .attr("opacity", 0.80)
+        .text("Here be Basilisks");
+
       // Vertical sea label rotated along the right margin
       const seaLabelText = "ULFSKEPTYR SEA";
       const seaLabelX = seaCenterX + 50;

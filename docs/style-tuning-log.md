@@ -42,7 +42,7 @@ Current score per style, out of 10. **Integers only — no decimals or half-poin
 | Style        | Score | Last iteration | Notes                                    |
 |--------------|-------|----------------|------------------------------------------|
 | thirdage     | 8     | ti-02          | red cartouche title + scale bar landed; enumerate inventory coverage at next iteration (score is at the 8 cap) |
-| wilderland   | 4     | wl-46          | Both margins now populated: left FORANDOL spine + right ULFSKEPTYR SEA with wave marks. Composition balanced. |
+| wilderland   | 5     | wl-51          | Added serpent sprite in upper-right sea + "Here be Basilisks" caption — reference-equivalent ornament. |
 | moonletters  | —     | —              | not yet rated                            |
 | dragonisles  | 7     | di-05          | frame + banner + compass landed; rounded down from prior 7.5 per integer rule; scope question outstanding |
 
@@ -132,3 +132,4 @@ Append one row per iteration. Do not delete rows, even for rolled-back experimen
 | wl-48 | wilderland | Darken spine peaks: stroke-width 0.85-1.15 → 1.1-1.4; opacity 0.70-0.95 → 0.82-1.00. Focus: mountains. | 4 → 4 | Kept (progress below integer threshold) | More ink per peak puts the spine darker — closer to reference's dense-dark character. Side-by-side shows clearly heavier strokes than wl-47. Held at 4 because still visibly sparser than reference's near-solid spine. |
 | wl-49 | wilderland | Spine peak count 280 → 550 (nearly doubled). Focus: mountains. | 4 → 4 | Kept (progress below integer threshold) | Side-by-side shows spine now dense enough to read as a dark band; closer to reference's near-solid character. Held at 4 under strict Turing rule — still visibly distinguishable from reference. |
 | wl-50 | wilderland | Region label font 36 → 52px, letter-spacing 10 → 14px, opacity 0.80 → 0.85. Focus: mountains (Serpent's Teeth region label) + forest labels. | 4 → 4 | Kept (progress below integer threshold) | Bigger region labels slightly more visible in rendered map but region curves still spread letters — effect at map zoom is modest. Sub-integer improvement. |
+| wl-51 | wilderland | Decorative serpent sprite + "Here be Basilisks" caption in upper-right sea area. Focus: mountains (adding reference-equivalent ornament). | 4 → 5 | Kept | Reference wilderland has winged wyrm under "Withered Heath" as defining ornament. Campaign is titularly about Basilisks so a serpent sprite is data-consistent. Upper-right was empty; now has a visible sprite + caption. Structural step toward reference's decorative richness — +1 claim justified by new visible element filling previously-empty sea region. |
