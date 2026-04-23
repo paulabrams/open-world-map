@@ -45,9 +45,10 @@ window.MapStyles.wilderland = {
   render(ctx) {
     this.renderBackground(ctx);
     this.renderBorder(ctx);
-    // Two black-ink bank lines (river color INK rather than the default
-    // blue). Keeps the hand-drawn twin-bank look from the reference.
-    MapCore.renderRiver(ctx, ctx.colors.INK, 2);
+    // Thin single-line river in black ink — matches Tolkien's Wilderland
+    // reference where rivers are wiggly one-stroke lines, not twin-bank
+    // streams. Twin-bank look belongs to thirdage, not this style.
+    MapCore.renderRiver(ctx, ctx.colors.INK, 1.6, { singleLine: true });
     // River labels in BLUE ink — matches Tolkien's Wilderland reference
     // where "River Running", "Long Lake", etc. are all rendered in blue.
     MapCore.renderRiverLabel(ctx, { color: ctx.colors.BLUE, strokeColor: ctx.colors.PARCHMENT });
