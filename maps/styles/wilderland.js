@@ -1755,8 +1755,13 @@ window.MapStyles.wilderland = {
     const spineTop = bounds.minY + 30;
     const spineBottom = bounds.maxY - 30;
     const spineHeight = spineBottom - spineTop;
-    // Pack many small peaks along the vertical column.
-    const peakCount = Math.max(40, Math.floor(spineHeight / 10));
+    // Multi-column packing: reference Misty Mountains spine is 80-120 px
+    // wide with many overlapping peaks. Single column looked like a thin
+    // strip; a 2D region of peaks gives the dense range character.
+    const spineHalfWidth = 55;
+    // Pack many small peaks along the vertical column — 2D density so
+    // the range reads as a thick band, not a thin line.
+    const peakCount = Math.max(140, Math.floor(spineHeight / 3));
 
     const sampleCubic = (P0, P1, P2, P3, steps, includeStart) => {
       const pts = [];
@@ -1774,10 +1779,11 @@ window.MapStyles.wilderland = {
 
     for (let i = 0; i < peakCount; i++) {
       // Distribute vertically along the spine with jitter.
-      const cy = spineTop + (i / peakCount) * spineHeight + (rng() - 0.5) * 8;
-      // Horizontal wobble so the spine isn't a rigid column.
-      const cx = spineCenterX + (rng() - 0.5) * 18;
-      const h = 14 + rng() * 16;
+      const cy = spineTop + (i / peakCount) * spineHeight + (rng() - 0.5) * 10;
+      // Horizontal spread across the spine's full half-width — 2D
+      // packing so the range reads as a dense thick band of peaks.
+      const cx = spineCenterX + (rng() - 0.5) * spineHalfWidth * 2;
+      const h = 12 + rng() * 16;
       const hw = h * 0.42;
       const baseY = cy;
       const baseLX = cx - hw;
