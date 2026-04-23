@@ -374,16 +374,21 @@ window.MapStyles.wilderland = {
       // For each peak compute its apex point with per-peak tilt and
       // cache it — we need apex info for both the skyline and the
       // hatch emission. Width/height ratio tuned to reference (peaks
-      // look more equilateral than narrow triangles).
+      // look more equilateral than narrow triangles). Per-peak width
+      // and apex kind vary so the range has shape variety (reference
+      // Grey Mountains has mixed sharp triangles + wider domes).
       const apexes = sorted.map(p => {
-        const hw = p.h * 0.55;
-        // Most peaks lean right, some lean left — breaks the uniform
-        // shape template and adds natural variability.
+        // Vary hw per peak: some narrow (sharp), some wide (dome).
+        const hwMul = 0.42 + rng() * 0.35;
+        const hw = p.h * hwMul;
         const tiltSign = rng() < 0.80 ? 1 : -1;
         const tiltMag = 0.08 + rng() * 0.22;
         const apX = p.px + hw * tiltMag * tiltSign;
         const apY = p.py - p.h;
-        return { p, hw, apX, apY };
+        // Apex kind: 70% sharp, 30% rounded-shoulder (two sub-apices
+        // at ~0.92h forming a subtle dome on the top).
+        const apexKind = rng() < 0.30 ? "dome" : "sharp";
+        return { p, hw, apX, apY, apexKind };
       });
 
       // Build skyline control points.
@@ -392,8 +397,17 @@ window.MapStyles.wilderland = {
       skyPts.push([apexes[0].p.px - apexes[0].hw, baseY]);
       for (let i = 0; i < apexes.length; i++) {
         const a = apexes[i];
-        // Left slope: push the apex.
-        skyPts.push([a.apX, a.apY]);
+        if (a.apexKind === "dome") {
+          // Two sub-apices at 0.92h forming a rounded shoulder.
+          const domeH = (baseY - a.apY) * 0.92;
+          const domeY = baseY - domeH;
+          const domeSpan = a.hw * 0.28;
+          skyPts.push([a.apX - domeSpan, domeY + (baseY - a.apY) * 0.03]);
+          skyPts.push([a.apX + domeSpan, domeY + (baseY - a.apY) * 0.03]);
+        } else {
+          // Sharp apex.
+          skyPts.push([a.apX, a.apY]);
+        }
         // Right slope: valley to next peak (or base-right if last).
         if (i < apexes.length - 1) {
           const b = apexes[i + 1];
