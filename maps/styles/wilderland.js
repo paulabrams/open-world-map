@@ -1040,11 +1040,12 @@ window.MapStyles.wilderland = {
     // Reference Mirkwood is wall-to-wall trees with no visible gaps — push
     // density high and reduce minDist so canopies sit shoulder-to-shoulder
     // the way they do on Tolkien's hand-drawn Wilderland.
-    // Lower density + bigger minDist so tree glyphs don't overlap
-    // ("bunch of eyes" effect per user feedback 2026-04-23). Larger
-    // size so cloud-puff silhouette actually reads — at the previous
-    // 5-8 px size the glyph looked like a small dark blob.
-    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 1.4, minDist: 9.0, bleedOut: 1.18, treeSizeMul: 1.6 });
+    // Density: reference Mirkwood trees pack tightly like scales.
+    // wl-76's low density (1.4) was set when the old eye-like glyph
+    // couldn't take overlap. The wl-81 canopy+trunk glyph can; bump
+    // toward reference packing while staying short of the chaos
+    // level that triggered the original "looks like eyes" feedback.
+    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 2.2, minDist: 6.5, bleedOut: 1.18, treeSizeMul: 1.6 });
     MapCore.renderFarmlandBiased(ctx, drawFarm);
     // Forest-region outline — inset inside the hex (not on the hex
     // edge) so it reads as a hand-drawn tree-line around the woodland
