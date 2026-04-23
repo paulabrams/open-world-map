@@ -70,9 +70,12 @@ window.MapStyles.wilderland = {
     MapCore.renderRegionLabels(ctx, {
       color: ctx.colors.BLUE,
       strokeColor: ctx.colors.PARCHMENT,
-      fontSize: 22,
-      letterSpacing: "6px",
-      opacity: 0.75,
+      // Reference region labels ("MISTY MOUNTAINS", "MIRKWOOD") dominate
+      // their territories; 22px was too subordinate. Bump to 36px with
+      // wider spacing so region names match reference prominence.
+      fontSize: 36,
+      letterSpacing: "10px",
+      opacity: 0.80,
       fontStyle: "normal",
     });
     this.renderNodes(ctx);
