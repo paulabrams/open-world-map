@@ -949,7 +949,8 @@ window.MapStyles.wilderland = {
     // where ranges form connected ridges with shared bases, not rows of
     // separate triangular stamps.
     MapCore.renderMountainsByRegion(ctx,
-      (tg, peaks, rng, opts) => drawMountainRidge(tg, peaks, rng, opts));
+      (tg, peaks, rng, opts) => drawMountainRidge(tg, peaks, rng, opts),
+      { clusterInset: 0.10 });
     // Dense forest packing to match Mirkwood density in the reference —
     // scattered trees at default density (1.0) read too sparse.
     // Reference Mirkwood is wall-to-wall trees with no visible gaps — push

@@ -1353,6 +1353,11 @@ function renderMountainsWithElevation(ctx, mountainDrawer, hillDrawer, options) 
 function renderMountainsByRegion(ctx, ridgeDrawer, options) {
   const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
   if (!hexTerrain) return;
+  // `clusterInset` in hex-size units controls how far the cluster extent
+  // sits inside the hex. 0.40 (default) leaves a visible gap at hex seams;
+  // 0.10 pushes peaks almost to the edge so adjacent mountain hexes read
+  // as one continuous ridge. Expose so styles can tune cross-hex flow.
+  const clusterInsetRatio = (options && typeof options.clusterInset === "number") ? options.clusterInset : 0.40;
 
   const bcCol = 10, bcRow = 10;
   const size = HINT_SCALE / 2;
@@ -1418,8 +1423,10 @@ function renderMountainsByRegion(ctx, ridgeDrawer, options) {
     run.forEach(hexId => {
       const [hx, hy] = hexCenter(hexId);
       // Tighter cluster extent forces peak bases to overlap — matches
-      // Baynes dense Drúwaith clusters where peaks share bases.
-      const inset = size * 0.40;
+      // Baynes dense Drúwaith clusters where peaks share bases. Styles
+      // can override via options.clusterInset (0.10 = near hex edges,
+      // 0.40 = default with gap at seams).
+      const inset = size * clusterInsetRatio;
       const leftX = hx - size + inset;
       const rightX = hx + size - inset;
       const extent = rightX - leftX;
