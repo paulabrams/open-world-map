@@ -1071,7 +1071,7 @@ window.MapStyles.wilderland = {
     // Reference Mirkwood is wall-to-wall trees with no visible gaps — push
     // density high and reduce minDist so canopies sit shoulder-to-shoulder
     // the way they do on Tolkien's hand-drawn Wilderland.
-    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 2.4, minDist: 4.2 });
+    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 3.2, minDist: 3.2 });
     MapCore.renderFarmlandBiased(ctx, drawFarm);
     // Very soft forest-region outline — traces the outer boundary of the
     // contiguous forest (skips interior hex-to-hex edges) with a wobbly
