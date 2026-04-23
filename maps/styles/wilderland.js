@@ -1884,6 +1884,39 @@ window.MapStyles.wilderland = {
       }
     }
 
+    // --- Right-of-content gap: procedural forest ---
+    // Between the content (bounds.maxX) and the right-margin sea
+    // decoration there's an empty strip. Mirror the left-gap fill so
+    // composition is balanced on both sides of the content.
+    const rGapLeftX = bounds.maxX + 10;
+    const rGapRightX = WIDTH - 200; // leave room for sea decor
+    if (rGapRightX - rGapLeftX > 60) {
+      const rGapGroup = g.append("g").attr("class", "margin-forest-right");
+      const rGapRng = ctx.mulberry32(ctx.seedFromString("wl-margin-right-forest"));
+      const rGapWidth = rGapRightX - rGapLeftX;
+      const rGapHeight = bounds.maxY - bounds.minY;
+      // Sparser than left gap so sea label still reads cleanly
+      const rTreeTarget = Math.max(60, Math.floor((rGapWidth * rGapHeight) / 600));
+      for (let i = 0; i < rTreeTarget; i++) {
+        const tx = rGapLeftX + rGapRng() * rGapWidth;
+        const ty = bounds.minY + rGapRng() * rGapHeight;
+        const ts = 4 + rGapRng() * 3;
+        const tG = rGapGroup.append("g").attr("transform", `translate(${tx}, ${ty})`);
+        tG.append("path")
+          .attr("d", `M ${-ts} 0 q ${ts*0.3} ${-ts*1.4}, ${ts*0.55} ${-ts*0.4} q ${ts*0.4} ${-ts*1.2}, ${ts*1.05} ${-ts*0.2} q ${ts*0.3} ${-ts*0.9}, ${ts*0.95} ${ts*0.25} Z`)
+          .attr("fill", "none")
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.65)
+          .attr("opacity", 0.55 + rGapRng() * 0.30);
+        tG.append("line")
+          .attr("x1", ts*0.4).attr("y1", 0)
+          .attr("x2", ts*0.4).attr("y2", ts*0.8)
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.45)
+          .attr("opacity", 0.65);
+      }
+    }
+
     // --- Right margin: Ulfskeptyr Sea decoration ---
     // Basilisk's E off-map-arrow is the Ulfskeptyr Sea. Reference has
     // varied right-margin content (Iron Hills, Long Lake, labels).
