@@ -1861,6 +1861,32 @@ window.MapStyles.wilderland = {
       const gapRng = ctx.mulberry32(ctx.seedFromString("wl-margin-left-forest"));
       const gapWidth = gapRightX - gapLeftX;
       const gapHeight = spineBottom - spineTop;
+      // Scatter 18 small hill sprites — rolling bumps between mountains
+      // and forest — reference has terrain variety in these gaps.
+      for (let h = 0; h < 18; h++) {
+        const hx = gapLeftX + gapRng() * gapWidth;
+        const hy = spineTop + gapRng() * gapHeight;
+        const hs = 6 + gapRng() * 6;
+        gapGroup.append("path")
+          .attr("d", `M ${hx-hs} ${hy} q ${hs*0.5} ${-hs*0.75}, ${hs} 0 q ${hs*0.5} ${-hs*0.5}, ${hs*0.8} 0`)
+          .attr("fill", "none")
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.7)
+          .attr("opacity", 0.6 + gapRng() * 0.3);
+        // Short hatch on the shaded flank
+        const ticks = 2 + Math.floor(gapRng() * 2);
+        for (let k = 0; k < ticks; k++) {
+          const tk = 0.35 + k * 0.18;
+          gapGroup.append("line")
+            .attr("x1", hx - hs*0.2 + k*hs*0.25)
+            .attr("y1", hy - hs*0.3 + k*1.5)
+            .attr("x2", hx - hs*0.2 + k*hs*0.25 + 2.5)
+            .attr("y2", hy - hs*0.3 + k*1.5 + 2)
+            .attr("stroke", INK)
+            .attr("stroke-width", 0.4)
+            .attr("opacity", 0.5);
+        }
+      }
       const treeTarget = Math.max(180, Math.floor((gapWidth * gapHeight) / 380));
       for (let i = 0; i < treeTarget; i++) {
         const tx = gapLeftX + gapRng() * gapWidth;
