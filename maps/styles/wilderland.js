@@ -1935,6 +1935,44 @@ window.MapStyles.wilderland = {
         .attr("opacity", 0.80)
         .text("Here be Basilisks");
 
+      // Small decorative ship sprites — reference has boat silhouettes
+      // on water. Two ships in the sea, one higher and one lower.
+      const drawShip = (shipX, shipY, size) => {
+        const shipG = seaGroup.append("g")
+          .attr("transform", `translate(${shipX}, ${shipY})`);
+        // Hull (curved u-shape)
+        const hw = size * 0.8;
+        shipG.append("path")
+          .attr("d", `M ${-hw} 0 Q ${-hw*0.5} ${size*0.35}, 0 ${size*0.4} Q ${hw*0.5} ${size*0.35}, ${hw} 0 L ${hw*0.85} ${-size*0.08} L ${-hw*0.85} ${-size*0.08} Z`)
+          .attr("fill", ctx.colors.PARCHMENT)
+          .attr("stroke", ctx.colors.INK)
+          .attr("stroke-width", 0.7)
+          .attr("opacity", 0.9);
+        // Mast
+        shipG.append("line")
+          .attr("x1", 0).attr("y1", 0)
+          .attr("x2", 0).attr("y2", -size * 1.1)
+          .attr("stroke", ctx.colors.INK)
+          .attr("stroke-width", 0.6)
+          .attr("opacity", 0.8);
+        // Sail — triangular flag-like
+        shipG.append("path")
+          .attr("d", `M 1 ${-size * 1.05} L ${size * 0.7} ${-size * 0.55} L 1 ${-size * 0.25} Z`)
+          .attr("fill", "none")
+          .attr("stroke", ctx.colors.INK)
+          .attr("stroke-width", 0.6)
+          .attr("opacity", 0.85);
+        // Small wake ripples
+        shipG.append("path")
+          .attr("d", `M ${-hw-3} ${size*0.25} q 3 -2 6 0 q 3 -2 6 0`)
+          .attr("fill", "none")
+          .attr("stroke", ctx.colors.BLUE)
+          .attr("stroke-width", 0.5)
+          .attr("opacity", 0.45);
+      };
+      drawShip(seaCenterX - 10, seaTop + (seaBottom - seaTop) * 0.35, 7);
+      drawShip(seaCenterX + 15, seaTop + (seaBottom - seaTop) * 0.72, 6);
+
       // Vertical sea label rotated along the right margin
       const seaLabelText = "ULFSKEPTYR SEA";
       const seaLabelX = seaCenterX + 50;
