@@ -1156,27 +1156,31 @@ window.MapStyles.wilderland = {
     // For each polygon, build a smooth path with per-vertex drift
     // and outward scallop bumps along each segment.
     polygons.forEach((poly, polyIdx) => {
-      // Deterministic per-vertex drift: hash the vertex coord so
-      // shared vertices between hexes drift consistently.
+      // Deterministic per-vertex INWARD displacement. Each vertex
+      // is pulled toward the hex center by a seeded random fraction
+      // of hex size, so the tree-line sits INSIDE the forest hex and
+      // doesn't cross into non-forest neighbors. Same seed per-key
+      // so a vertex shared between two hexes receives the same
+      // displacement — polygon stays connected.
       const vertexDrift = {};
       const getDrift = (pt, hexCx, hexCy) => {
         const k = keyOf(pt);
         if (vertexDrift[k] !== undefined) return vertexDrift[k];
-        // Outward direction from this hex's center through the vertex
         const vx = pt[0] - hexCx, vy = pt[1] - hexCy;
         const vLen = Math.sqrt(vx*vx + vy*vy) || 1;
-        // Drift magnitude: ±40% of size, biased slightly outward.
-        // Using a seeded rng based on the vertex key so the same
-        // vertex seen from two adjacent hexes lands on the same
-        // displacement (polygon stays continuous).
         const vrng = mulberry32(seedFromString("v" + k));
-        const mag = size * (0.10 + vrng() * 0.45) * (vrng() < 0.55 ? 1 : -0.6);
-        const d = { dx: (vx / vLen) * mag, dy: (vy / vLen) * mag };
+        // ALWAYS inward (negative outward-direction). Magnitude
+        // 20-45% of size so the line clearly sits inside the hex.
+        const mag = size * (0.20 + vrng() * 0.25);
+        const d = { dx: -(vx / vLen) * mag, dy: -(vy / vLen) * mag };
         vertexDrift[k] = d;
         return d;
       };
 
-      // Build the drifted polygon path with scallops on each segment.
+      // Build the inset polygon path with scallops on each segment.
+      // Scallops bulge OUTWARD (toward the hex boundary) so they
+      // read as tree canopies forming the tree-line, but the bump
+      // magnitude is capped so scallops still sit INSIDE the hex.
       let pathD = "";
       for (let i = 0; i < poly.length; i++) {
         const edge = poly[i];
@@ -1185,24 +1189,29 @@ window.MapStyles.wilderland = {
         const ax = edge.p1[0] + d1.dx, ay = edge.p1[1] + d1.dy;
         const bx = edge.p2[0] + d2.dx, by = edge.p2[1] + d2.dy;
         if (i === 0) pathD += `M ${ax.toFixed(2)} ${ay.toFixed(2)}`;
-        // Emit scallops along (ax,ay) → (bx,by)
         const dx = bx - ax, dy = by - ay;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
         const ux = dx / len, uy = dy / len;
-        // Outward perpendicular — away from hex center
+        // Outward (toward hex boundary) direction at this segment.
         const mid = [(ax + bx) / 2, (ay + by) / 2];
         const toMid = [mid[0] - edge.hexCx, mid[1] - edge.hexCy];
         const toMidLen = Math.sqrt(toMid[0] ** 2 + toMid[1] ** 2) || 1;
         const onx = toMid[0] / toMidLen;
         const ony = toMid[1] / toMidLen;
-        const scallopSize = 5.5;
-        const bumpCount = Math.max(1, Math.round(len / (scallopSize * 1.8)));
+        // Max bulge: remaining distance from segment to hex edge
+        // (minimum of the two endpoint insets) so scallops stay
+        // within the forest hex.
+        const inset1 = Math.sqrt(d1.dx ** 2 + d1.dy ** 2);
+        const inset2 = Math.sqrt(d2.dx ** 2 + d2.dy ** 2);
+        const maxBulge = Math.max(2.0, Math.min(inset1, inset2) * 0.85);
+        const scallopSize = 4.5;
+        const bumpCount = Math.max(1, Math.round(len / (scallopSize * 1.9)));
         for (let b = 0; b < bumpCount; b++) {
           const t2 = (b + 1) / bumpCount;
           const t1 = b / bumpCount;
           const mx = ax + dx * (t1 + t2) / 2;
           const my = ay + dy * (t1 + t2) / 2;
-          const bulge = scallopSize * (0.75 + rng() * 0.50);
+          const bulge = Math.min(maxBulge, scallopSize * (0.7 + rng() * 0.5));
           const lateral = scallopSize * 0.35 * (rng() - 0.5);
           const cpx = mx + onx * bulge + ux * lateral;
           const cpy = my + ony * bulge + uy * lateral;
