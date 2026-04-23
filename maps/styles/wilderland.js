@@ -352,8 +352,9 @@ window.MapStyles.wilderland = {
       // of each peak carries short diagonal shadow-hatch strokes.
       if (!peaks || peaks.length === 0) return;
 
-      // Taller-than-wide silhouettes (0.60-0.90 × height).
-      const halfW = (p) => p.h * 0.375;
+      // Sharp taller-than-wide silhouettes (width ≈ 0.5 × height). Reference
+      // Misty Mountains peaks read as pointed teeth, not squat triangles.
+      const halfW = (p) => p.h * 0.25;
 
       const apexes = [];
       const skyPts = [];
