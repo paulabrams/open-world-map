@@ -1363,6 +1363,11 @@ function renderMountainsByRegion(ctx, ridgeDrawer, options) {
   // bumps for a denser jagged skyline.
   const peakCountMin = (options && typeof options.peakCountMin === "number") ? options.peakCountMin : 7;
   const peakCountRange = (options && typeof options.peakCountRange === "number") ? options.peakCountRange : 5;
+  // `peakSize` scales the mSize base used for all peak heights/widths.
+  // Default matches Baynes Third Age mountains (~18-24); wilderland bumps
+  // so Misty-Mountains-style peaks read at reference prominence.
+  const peakSizeBase = (options && typeof options.peakSize === "number") ? options.peakSize : 18;
+  const peakSizeRange = (options && typeof options.peakSizeRange === "number") ? options.peakSizeRange : 6;
   // `heightProfile(rng, isHero)` → hBase in [0,1]. Default is the hero
   // model (one dominant peak per cluster, ~1.6× the others); styles can
   // pass a continuous distribution for a more evenly-varied ridge.
@@ -1426,7 +1431,7 @@ function renderMountainsByRegion(ctx, ridgeDrawer, options) {
 
   runs.forEach((run, runIdx) => {
     const rng = mulberry32(seedFromString("mountain-run-" + run[0] + "-" + runIdx));
-    const mSize = (18 + rng() * 6) * 0.99;
+    const mSize = (peakSizeBase + rng() * peakSizeRange) * 0.99;
 
     // Each hex in the run becomes its own CLUSTER of peaks, rendered
     // as a separate ridge. Clusters are visually separated by the

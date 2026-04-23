@@ -966,6 +966,10 @@ window.MapStyles.wilderland = {
         // toward taller peaks; range 0.35-1.05 keeps peaks tall enough
         // to read as mountains rather than foothills.
         heightProfile: (rng) => 0.35 + Math.pow(rng(), 0.85) * 0.70,
+        // Larger peak scale than Baynes default — reference Misty Mtns
+        // dominate the map; small peaks read as foothills not mountains.
+        peakSize: 30,
+        peakSizeRange: 8,
       });
     // Dense forest packing to match Mirkwood density in the reference —
     // scattered trees at default density (1.0) read too sparse.
