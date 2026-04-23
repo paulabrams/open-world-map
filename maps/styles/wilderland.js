@@ -381,12 +381,17 @@ window.MapStyles.wilderland = {
           C ${lC1x} ${lC1y}, ${lC2x} ${lC2y}, ${apX} ${apY}
           C ${rC1x} ${rC1y}, ${rC2x} ${rC2y}, ${baseRX} ${baseY}`;
 
+        // Per-peak opacity variation — simulates pen pressure on hand-
+        // drawn ink. Uniform opacity reads as mechanical/printed; small
+        // opacity range 0.70-1.00 gives the range hand-drawn character.
+        const peakOpacity = 0.72 + rng() * 0.28;
         tg.append("path")
           .attr("d", strokeD)
           .attr("fill", "none")
           .attr("stroke", INK)
           .attr("stroke-width", 1.0 + rng() * 0.3)
-          .attr("stroke-linecap", "round");
+          .attr("stroke-linecap", "round")
+          .attr("opacity", peakOpacity);
 
         // Shadow hatches: 2-4 SHORT horizontal ticks on the right flank
         // below the apex. NOT a dense fill — just a few dashes hinting
