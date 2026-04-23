@@ -596,58 +596,71 @@ window.MapStyles.wilderland = {
 
       if (variant < 0.80) {
         // --- Cloud-blob canopy (old-growth look) ---
-        // Biased to 80% of all trees — reference Mirkwood is uniformly
-        // cloud-canopy trees, not a mix of firs/saplings/leafy.
-        // Mapeffects "old-growth" tips: overlap canopies back-to-front, draw
-        // the TOP edge with a slightly heavier stroke so the forest pops off
-        // the ground, and scatter tiny broken-line detail marks nearby for
-        // floor texture.
-        const count = 1 + Math.floor(rng() * 3);
-        const spread = size * 0.6;
+        // Biased to 80% of all trees. Reference Mirkwood is uniformly
+        // cloud-canopy trees. Canopy glyph is an ASYMMETRIC cloud puff
+        // (bumpy arc along the top, flat-ish along the bottom), NOT a
+        // circle — circles with a ground-shadow underneath read as
+        // eyes (user feedback 2026-04-23). No ground shadow; no
+        // interior marks; open-bottom silhouette.
+        const count = 1 + Math.floor(rng() * 2);
+        const spread = size * 0.5;
         const canopies = [];
         for (let i = 0; i < count; i++) {
           canopies.push({
             cx: x + (rng() - 0.5) * spread,
-            cy: y + (rng() - 0.5) * spread * 0.7,
-            cr: size * (0.25 + rng() * 0.18),
+            cy: y + (rng() - 0.5) * spread * 0.6,
+            cr: size * (0.28 + rng() * 0.18),
           });
         }
         canopies.sort((a, b) => a.cy - b.cy);
-        const lineGen = d3.line().curve(d3.curveBasisClosed);
         canopies.forEach(c => {
-          const wobble = c.cr * 0.18;
-          const steps = 12;
-          const points = [];
-          for (let i = 0; i < steps; i++) {
-            const a = (i / steps) * Math.PI * 2;
-            const wr = c.cr + (rng() - 0.5) * wobble * 2;
-            points.push([c.cx + Math.cos(a) * wr, c.cy + Math.sin(a) * wr]);
+          // Build an OPEN cloud-puff silhouette: the top half is a
+          // sequence of 3-5 bumps (varying radii), and the bottom is
+          // a gently wavy line — NOT a closed circle. Reads as a
+          // tree-top canopy profile, not an eye.
+          const bumps = 3 + Math.floor(rng() * 3); // 3-5 bumps along top
+          const topPts = [];
+          const spanL = c.cx - c.cr;
+          const spanR = c.cx + c.cr;
+          const topY0 = c.cy - c.cr * 0.15;
+          // Start at left-base
+          topPts.push([spanL, topY0]);
+          for (let b = 0; b < bumps; b++) {
+            const t0 = b / bumps;
+            const t1 = (b + 0.5) / bumps;
+            const t2 = (b + 1) / bumps;
+            const apexX = spanL + (spanR - spanL) * (t1 + (rng() - 0.5) * 0.12);
+            const apexY = c.cy - c.cr * (0.9 + rng() * 0.25);
+            const valleyX = spanL + (spanR - spanL) * (t2);
+            const valleyY = topY0 - c.cr * (rng() * 0.15);
+            topPts.push([apexX, apexY]);
+            if (b < bumps - 1) topPts.push([valleyX, valleyY]);
           }
-          // Base canopy with medium stroke
-          tg.append("path")
-            .attr("d", lineGen(points))
-            .attr("fill", PARCH).attr("stroke", INK).attr("stroke-width", 0.75).attr("opacity", 0.95);
-          // Thicker TOP-edge arc — overdraws the upper half with a heavier
-          // stroke so the canopy silhouette reads at a glance (key mapeffects
-          // old-growth technique).
-          const topArcPts = [];
-          for (let i = 0; i <= 10; i++) {
-            const a = Math.PI + (i / 10) * Math.PI; // top semicircle
-            const wr = c.cr * 1.02;
-            topArcPts.push([c.cx + Math.cos(a) * wr, c.cy + Math.sin(a) * wr]);
+          topPts.push([spanR, topY0]);
+          // Bottom: slight wavy line back to start
+          const botCount = 3;
+          for (let k = 1; k <= botCount; k++) {
+            const t = k / botCount;
+            const bx = spanR + (spanL - spanR) * t;
+            const by = topY0 + c.cr * (0.05 + rng() * 0.08);
+            topPts.push([bx, by]);
           }
+          // Close path
+          const pathD = "M " + topPts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ") + " Z";
+          // Stroke-only (no fill except parchment to mask anything behind)
           tg.append("path")
-            .attr("d", d3.line().curve(d3.curveBasis)(topArcPts))
-            .attr("fill", "none").attr("stroke", INK)
-            .attr("stroke-width", 1.1).attr("stroke-linecap", "round")
-            .attr("opacity", 0.85);
-          // Ground shadow — keep. Interior tuft crosshair removed
-          // 2026-04-23 per user feedback (trees were reading like
-          // eyes because interior marks looked like pupils).
-          tg.append("line")
-            .attr("x1", c.cx - c.cr * 0.55).attr("y1", c.cy + c.cr * 0.92)
-            .attr("x2", c.cx + c.cr * 0.55).attr("y2", c.cy + c.cr * 0.92)
-            .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.35);
+            .attr("d", pathD)
+            .attr("fill", PARCH).attr("stroke", INK).attr("stroke-width", 0.85)
+            .attr("stroke-linejoin", "round").attr("opacity", 0.92);
+          // Heavy top-edge overdraw for canopy pop — only the top
+          // bumps, not a full semicircle.
+          const topOnlyPts = topPts.slice(0, bumps * 2 + 1);
+          const topD = "M " + topOnlyPts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ");
+          tg.append("path")
+            .attr("d", topD)
+            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.1)
+            .attr("stroke-linejoin", "round").attr("stroke-linecap", "round")
+            .attr("opacity", 0.88);
         });
         // A few scattered forest-floor detail marks around the cluster —
         // tiny broken lines at a slight downward-right angle (mapeffects
