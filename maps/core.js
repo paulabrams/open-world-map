@@ -1373,6 +1373,13 @@ function renderMountainsByRegion(ctx, ridgeDrawer, options) {
   // values stagger peaks vertically so the ridge reads as a taller band
   // of overlapping peaks (matches Wilderland Misty-Mountains density).
   const peakYJitterScale = (options && typeof options.peakYJitter === "number") ? options.peakYJitter : 0.50;
+  // `peakTJitter` — jitter applied to peak x-placement within a cluster,
+  // as a fraction of per-peak slot width. Default 0.35 keeps peaks evenly
+  // spaced with only small deviations; higher values (1.0-1.5) break the
+  // evenly-stamped look and create organic clumping (matches the
+  // reference Grey Mountains where peaks cluster in groups). Preserves
+  // default for thirdage pixel-identity.
+  const peakTJitterScale = (options && typeof options.peakTJitter === "number") ? options.peakTJitter : 0.35;
   // `heightProfile(rng, isHero)` → hBase in [0,1]. Default is the hero
   // model (one dominant peak per cluster, ~1.6× the others); styles can
   // pass a continuous distribution for a more evenly-varied ridge.
@@ -1466,7 +1473,7 @@ function renderMountainsByRegion(ctx, ridgeDrawer, options) {
       const heroIdx = Math.floor(rng() * peakCount);
       const peaks = [];
       for (let i = 0; i < peakCount; i++) {
-        const t = (i + 0.5) / peakCount + (rng() - 0.5) * 0.35 / peakCount;
+        const t = (i + 0.5) / peakCount + (rng() - 0.5) * peakTJitterScale / peakCount;
         const px = leftX + t * extent;
         const isHero = i === heroIdx;
         const hBase = heightProfile(rng, isHero);
@@ -1770,6 +1777,11 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
   if (!hexTerrain || Object.keys(hexTerrain).length === 0) return;
   const density = (options && typeof options.density === "number") ? options.density : 1.0;
   const minDist = (options && typeof options.minDist === "number") ? options.minDist : 6;
+  // bleedOut: fraction of hex size past the hex boundary trees may
+  // extend. 1.0 = no bleed (classic). >1.0 = trees spill into adjacent
+  // non-forest hexes for a ragged organic edge matching hand-drawn
+  // woodland references. Default 1.0 preserves prior behavior.
+  const bleedOut = (options && typeof options.bleedOut === "number") ? options.bleedOut : 1.0;
 
   const bcCol = 10, bcRow = 10;
   const size = HINT_SCALE / 2;
@@ -1944,9 +1956,10 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
     // Border hex — density gradient: sparse near external edges, denser
     // toward the interior. Target count stays roughly the same as an
     // interior hex; the gradient acceptance naturally thins out the
-    // external boundary.
+    // external boundary. Scatter radius can bleed past hex size so the
+    // edge reads organic (trees spill into adjacent non-forest hex).
     const baseN = 22 + Math.floor(rng() * 8);
-    gradientScatter(Math.max(1, Math.round(baseN * density)), size * 0.98, minDist, treeSizeByDepth);
+    gradientScatter(Math.max(1, Math.round(baseN * density)), size * 0.98 * bleedOut, minDist, treeSizeByDepth);
 
     // Forest-bordered edges still get a dense continuous tree line so the
     // canopy flows seamlessly into the neighbouring forest hex.
