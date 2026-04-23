@@ -1752,8 +1752,10 @@ window.MapStyles.wilderland = {
 
     // Spine position: in the middle of the left-of-content empty area.
     const spineCenterX = leftMargin * 0.40 + 40;
-    const spineTop = bounds.minY + 30;
-    const spineBottom = bounds.maxY - 30;
+    // Extend to the frame edges — reference spine spans nearly full page
+    // height. Previous inset (30px each side) made mine look shorter.
+    const spineTop = bounds.minY;
+    const spineBottom = bounds.maxY;
     const spineHeight = spineBottom - spineTop;
     // Multi-column packing: reference Misty Mountains spine is 80-120 px
     // wide with many overlapping peaks. Single column looked like a thin
@@ -1761,7 +1763,7 @@ window.MapStyles.wilderland = {
     const spineHalfWidth = 55;
     // Pack many small peaks along the vertical column — 2D density so
     // the range reads as a thick band, not a thin line.
-    const peakCount = Math.max(140, Math.floor(spineHeight / 3));
+    const peakCount = Math.max(280, Math.floor(spineHeight / 1.8));
 
     const sampleCubic = (P0, P1, P2, P3, steps, includeStart) => {
       const pts = [];
