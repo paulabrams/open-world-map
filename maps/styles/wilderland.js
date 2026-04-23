@@ -385,7 +385,7 @@ window.MapStyles.wilderland = {
           .attr("d", strokeD)
           .attr("fill", "none")
           .attr("stroke", INK)
-          .attr("stroke-width", 0.8 + rng() * 0.2)
+          .attr("stroke-width", 1.0 + rng() * 0.3)
           .attr("stroke-linecap", "round");
 
         // Shadow hatches: 2-4 SHORT horizontal ticks on the right flank
