@@ -1047,24 +1047,178 @@ window.MapStyles.wilderland = {
     // level that triggered the original "looks like eyes" feedback.
     MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 2.2, minDist: 6.5, bleedOut: 1.18, treeSizeMul: 1.6 });
     MapCore.renderFarmlandBiased(ctx, drawFarm);
-    // Forest-region outline — SCALLOPED tree-line. Per user
-    // clarification 2026-04-23: the outline should look like tree
-    // canopies forming the forest edge (bumpy/curvy), NOT a
-    // straight inset line following the hex. Each external edge is
-    // replaced by a chain of outward-bulging arcs (~scallopSize
-    // radius). No inset — scallops naturally push OUT of the hex,
-    // giving an organic perimeter rather than a geometric boundary.
-    MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
-      color: INK, strokeWidth: 1.0, opacity: 0.88,
-      className: "forest-region",
-      scallopSize: 6.5,
-      scallopJitter: 0.30,
-    });
+    // Forest-region tree-line — an ORGANIC boundary that drifts
+    // inward and outward from the hex perimeter, with scallops on
+    // top. Per user feedback 2026-04-23: the line should run in and
+    // out, NOT trace the hex shape. Each hex vertex along the
+    // perimeter is displaced by a random offset (inward or outward
+    // along the vertex's outward-from-hex-center direction) so the
+    // line no longer touches hex corners. Scallops are still emitted
+    // along each now-displaced segment.
+    this.renderForestTreeLine(ctx);
     // Same soft-outline treatment for contiguous mountain regions — reads
     // the range as a unified ridge band rather than loose per-hex peaks.
     MapCore.renderTerrainEdges(ctx, ["mountains"], {
       color: INK, strokeWidth: 0.65, opacity: 0.28, wobble: 2.6,
       className: "mountain-region",
+    });
+  },
+
+  // --- Organic forest tree-line ---
+  // Builds the forest perimeter from external hex edges, walks each
+  // closed loop to form a polygon, then renders it as a single smooth
+  // path with per-vertex inward/outward drift plus outward-bulging
+  // scallops. Result: a hand-drawn tree-line that meanders in and
+  // out of the hex boundary instead of tracing it.
+  renderForestTreeLine(ctx) {
+    const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
+    const { INK } = ctx.colors;
+    if (!hexTerrain) return;
+
+    const bcCol = 10, bcRow = 10;
+    const size = HINT_SCALE / 2;
+    const colStep = size * 2 * 0.75;
+    const rowStep = size * Math.sqrt(3);
+
+    const matchSet = new Set(["forest", "forested-hills"]);
+    const forestHexes = new Set();
+    Object.entries(hexTerrain).forEach(([h, t]) => {
+      if (matchSet.has(t)) forestHexes.add(h);
+    });
+    if (forestHexes.size === 0) return;
+
+    const vOff = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (i * 60) * Math.PI / 180;
+      vOff.push([size * Math.cos(a), size * Math.sin(a)]);
+    }
+    const edgeVerts = [[5, 4], [0, 5], [1, 0], [2, 1], [3, 2], [4, 3]];
+    const neighborsA = [[0, -1], [1, -1], [1, 0], [0, 1], [-1, 0], [-1, -1]];
+    const neighborsB = [[0, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]];
+
+    // Collect all external edges as directed segments (p1 → p2) in
+    // CCW direction around each hex. When neighboring edges on the
+    // same or adjacent hex meet at a shared vertex, they form a
+    // continuous boundary walk.
+    const edges = [];
+    forestHexes.forEach(hex => {
+      const col = parseInt(hex.substring(0, 2));
+      const row = parseInt(hex.substring(2, 4));
+      const isShifted = (col % 2) !== (bcCol % 2);
+      const hx = (col - bcCol) * colStep + WIDTH / 2;
+      const hy = (row - bcRow) * rowStep + (isShifted ? rowStep / 2 : 0) + HEIGHT / 2;
+      const neighbors = isShifted ? neighborsB : neighborsA;
+      for (let i = 0; i < 6; i++) {
+        const [dc, dr] = neighbors[i];
+        const nKey = String(col + dc).padStart(2, "0") + String(row + dr).padStart(2, "0");
+        if (forestHexes.has(nKey)) continue;
+        const [vi1, vi2] = edgeVerts[i];
+        edges.push({
+          p1: [hx + vOff[vi1][0], hy + vOff[vi1][1]],
+          p2: [hx + vOff[vi2][0], hy + vOff[vi2][1]],
+          v1: vi1, v2: vi2, hexCx: hx, hexCy: hy,
+        });
+      }
+    });
+
+    // Walk edges to form closed polygons. Each edge's p2 matches
+    // another edge's p1 (continuous perimeter).
+    const keyOf = p => p[0].toFixed(2) + "," + p[1].toFixed(2);
+    const byStart = new Map();
+    edges.forEach((e, idx) => {
+      const k = keyOf(e.p1);
+      if (!byStart.has(k)) byStart.set(k, []);
+      byStart.get(k).push(idx);
+    });
+    const visited = new Set();
+    const polygons = [];
+    edges.forEach((startEdge, startIdx) => {
+      if (visited.has(startIdx)) return;
+      const poly = [];
+      let currentIdx = startIdx;
+      let safety = 20000;
+      while (safety-- > 0) {
+        if (visited.has(currentIdx)) break;
+        visited.add(currentIdx);
+        const e = edges[currentIdx];
+        poly.push(e);
+        const nextKey = keyOf(e.p2);
+        const next = (byStart.get(nextKey) || []).find(i => !visited.has(i));
+        if (next === undefined) break;
+        currentIdx = next;
+      }
+      if (poly.length >= 3) polygons.push(poly);
+    });
+
+    const rng = mulberry32(seedFromString("forest-tree-line"));
+    const treeLineGroup = g.append("g").attr("class", "forest-tree-line");
+
+    // For each polygon, build a smooth path with per-vertex drift
+    // and outward scallop bumps along each segment.
+    polygons.forEach((poly, polyIdx) => {
+      // Deterministic per-vertex drift: hash the vertex coord so
+      // shared vertices between hexes drift consistently.
+      const vertexDrift = {};
+      const getDrift = (pt, hexCx, hexCy) => {
+        const k = keyOf(pt);
+        if (vertexDrift[k] !== undefined) return vertexDrift[k];
+        // Outward direction from this hex's center through the vertex
+        const vx = pt[0] - hexCx, vy = pt[1] - hexCy;
+        const vLen = Math.sqrt(vx*vx + vy*vy) || 1;
+        // Drift magnitude: ±40% of size, biased slightly outward.
+        // Using a seeded rng based on the vertex key so the same
+        // vertex seen from two adjacent hexes lands on the same
+        // displacement (polygon stays continuous).
+        const vrng = mulberry32(seedFromString("v" + k));
+        const mag = size * (0.10 + vrng() * 0.45) * (vrng() < 0.55 ? 1 : -0.6);
+        const d = { dx: (vx / vLen) * mag, dy: (vy / vLen) * mag };
+        vertexDrift[k] = d;
+        return d;
+      };
+
+      // Build the drifted polygon path with scallops on each segment.
+      let pathD = "";
+      for (let i = 0; i < poly.length; i++) {
+        const edge = poly[i];
+        const d1 = getDrift(edge.p1, edge.hexCx, edge.hexCy);
+        const d2 = getDrift(edge.p2, edge.hexCx, edge.hexCy);
+        const ax = edge.p1[0] + d1.dx, ay = edge.p1[1] + d1.dy;
+        const bx = edge.p2[0] + d2.dx, by = edge.p2[1] + d2.dy;
+        if (i === 0) pathD += `M ${ax.toFixed(2)} ${ay.toFixed(2)}`;
+        // Emit scallops along (ax,ay) → (bx,by)
+        const dx = bx - ax, dy = by - ay;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const ux = dx / len, uy = dy / len;
+        // Outward perpendicular — away from hex center
+        const mid = [(ax + bx) / 2, (ay + by) / 2];
+        const toMid = [mid[0] - edge.hexCx, mid[1] - edge.hexCy];
+        const toMidLen = Math.sqrt(toMid[0] ** 2 + toMid[1] ** 2) || 1;
+        const onx = toMid[0] / toMidLen;
+        const ony = toMid[1] / toMidLen;
+        const scallopSize = 5.5;
+        const bumpCount = Math.max(1, Math.round(len / (scallopSize * 1.8)));
+        for (let b = 0; b < bumpCount; b++) {
+          const t2 = (b + 1) / bumpCount;
+          const t1 = b / bumpCount;
+          const mx = ax + dx * (t1 + t2) / 2;
+          const my = ay + dy * (t1 + t2) / 2;
+          const bulge = scallopSize * (0.75 + rng() * 0.50);
+          const lateral = scallopSize * 0.35 * (rng() - 0.5);
+          const cpx = mx + onx * bulge + ux * lateral;
+          const cpy = my + ony * bulge + uy * lateral;
+          const ex = ax + dx * t2, ey = ay + dy * t2;
+          pathD += ` Q ${cpx.toFixed(2)} ${cpy.toFixed(2)} ${ex.toFixed(2)} ${ey.toFixed(2)}`;
+        }
+      }
+      pathD += " Z";
+      treeLineGroup.append("path")
+        .attr("d", pathD)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 1.0)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round")
+        .attr("opacity", 0.88);
     });
   },
 
