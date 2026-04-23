@@ -407,12 +407,16 @@ window.MapStyles.wilderland = {
           const hx1 = apX + (rightEdgeAtT - apX) * (0.30 + rng() * 0.15) + (rng() - 0.5) * 0.8;
           const hx2 = rightEdgeAtT - 0.6 - rng() * 0.8;
           if (hx2 - hx1 < 1.0) continue;
-          const slant = rng() * 0.5;
+          // Diagonal slant — reference ticks slope ↘ (down-right), not
+          // flat horizontal. Slant 2-4px over a ~5-8px horizontal span
+          // gives a ~30-45° diagonal.
+          const slant = 2.0 + rng() * 2.0;
           tg.append("line")
             .attr("x1", hx1).attr("y1", hy)
             .attr("x2", hx2).attr("y2", hy + slant)
             .attr("stroke", INK)
             .attr("stroke-width", 0.5)
+            .attr("opacity", 0.7 + rng() * 0.25)
             .attr("stroke-linecap", "round");
         }
       });
