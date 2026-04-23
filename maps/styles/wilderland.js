@@ -460,9 +460,11 @@ window.MapStyles.wilderland = {
         // Horizontal hatching — packed densely across the RIGHT flank
         // from apex down to base. Each row starts near the right-side
         // silhouette (inside by ~2px) and ends at the right base edge.
-        // This gives the dark shadow side the reference shows while
-        // keeping the left curve white/unhatched.
-        const hatchCount = Math.max(6, Math.min(22, Math.round(p.h / 1.3)));
+        // Side-by-side with the reference shows the shadow side is
+        // nearly-solid dark; pack hatches tightly (divisor 0.85) and
+        // thicken the stroke so the shadow reads as a dark mass, not
+        // as individual visible lines.
+        const hatchCount = Math.max(8, Math.min(32, Math.round(p.h / 0.85)));
         for (let k = 0; k < hatchCount; k++) {
           const t = 0.08 + (k / (hatchCount - 1 || 1)) * 0.88;
           const hy = apY + (baseY - apY) * t;
@@ -483,8 +485,8 @@ window.MapStyles.wilderland = {
             .attr("x1", hx1).attr("y1", hy)
             .attr("x2", hx2).attr("y2", hy + slant)
             .attr("stroke", INK)
-            .attr("stroke-width", 0.45)
-            .attr("opacity", 0.92)
+            .attr("stroke-width", 0.6)
+            .attr("opacity", 0.95)
             .attr("stroke-linecap", "round");
         }
       });
