@@ -596,66 +596,39 @@ window.MapStyles.wilderland = {
       }
 
       if (variant < 0.92) {
-        // --- Cloud-blob canopy (old-growth look) ---
-        // Biased to 80% of all trees. Reference Mirkwood is uniformly
-        // cloud-canopy trees. Canopy glyph is an ASYMMETRIC cloud puff
-        // (bumpy arc along the top, flat-ish along the bottom), NOT a
-        // circle — circles with a ground-shadow underneath read as
-        // eyes (user feedback 2026-04-23). No ground shadow; no
-        // interior marks; open-bottom silhouette.
-        const count = 1 + Math.floor(rng() * 2);
-        const spread = size * 0.5;
-        const canopies = [];
-        for (let i = 0; i < count; i++) {
-          canopies.push({
-            cx: x + (rng() - 0.5) * spread,
-            cy: y + (rng() - 0.5) * spread * 0.6,
-            cr: size * (0.28 + rng() * 0.18),
-          });
+        // --- Classic tree glyph: rounded bumpy canopy + short trunk.
+        // Reference Mirkwood trees are simple hand-drawn canopies:
+        // a bumpy round silhouette with a short trunk peeking below.
+        // No interior marks (those were the "eyes"). No ground shadow.
+        // Canopy is a CLOSED parchment-filled bumpy circle so the tree
+        // has visible body (the open-curve version from wl-78 read as
+        // spiky bat silhouettes).
+        const cx = x;
+        const cy = y - size * 0.15;
+        const r = size * (0.32 + rng() * 0.12);
+        // Bumpy perimeter — continuous small jitter around a circle
+        // (not alternating outer/inner, which produces a cartoon star).
+        const samples = 14;
+        const canopyPts = [];
+        for (let i = 0; i < samples; i++) {
+          const a = (i / samples) * Math.PI * 2 - Math.PI / 2;
+          const rr = r * (0.94 + rng() * 0.14);
+          canopyPts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]);
         }
-        canopies.sort((a, b) => a.cy - b.cy);
-        canopies.forEach(c => {
-          // OPEN cloud-puff canopy profile — a single curved line of
-          // 3-5 bumps along the top + a short trunk line below. NO
-          // closed path, NO dark filled silhouette, NO ground shadow.
-          // Reads as the kind of individual tree glyph Tolkien /
-          // Baynes drew in the reference Mirkwood.
-          const bumps = 3 + Math.floor(rng() * 2); // 3-4 bumps along top
-          const topPts = [];
-          const spanL = c.cx - c.cr;
-          const spanR = c.cx + c.cr;
-          const topY0 = c.cy - c.cr * 0.10;
-          topPts.push([spanL, topY0]);
-          for (let b = 0; b < bumps; b++) {
-            const t1 = (b + 0.5) / bumps;
-            const t2 = (b + 1) / bumps;
-            const apexX = spanL + (spanR - spanL) * (t1 + (rng() - 0.5) * 0.12);
-            const apexY = c.cy - c.cr * (0.85 + rng() * 0.30);
-            const valleyX = spanL + (spanR - spanL) * t2;
-            const valleyY = topY0 - c.cr * (rng() * 0.10);
-            topPts.push([apexX, apexY]);
-            if (b < bumps - 1) topPts.push([valleyX, valleyY]);
-          }
-          topPts.push([spanR, topY0]);
-          // Smoothed stroke-only canopy line (no closure, no fill).
-          const smoothLine = d3.line().curve(d3.curveCatmullRom.alpha(0.5));
-          tg.append("path")
-            .attr("d", smoothLine(topPts))
-            .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.95)
-            .attr("stroke-linejoin", "round").attr("stroke-linecap", "round")
-            .attr("opacity", 0.92);
-          // Short trunk below the canopy center
-          if (rng() > 0.25) {
-            const trunkX = (spanL + spanR) / 2 + (rng() - 0.5) * c.cr * 0.4;
-            const trunkY0 = topY0 + c.cr * 0.05;
-            const trunkY1 = trunkY0 + c.cr * (0.5 + rng() * 0.3);
-            tg.append("line")
-              .attr("x1", trunkX).attr("y1", trunkY0)
-              .attr("x2", trunkX).attr("y2", trunkY1)
-              .attr("stroke", INK).attr("stroke-width", 0.75)
-              .attr("stroke-linecap", "round").attr("opacity", 0.85);
-          }
-        });
+        const closedLine = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.7));
+        tg.append("path")
+          .attr("d", closedLine(canopyPts))
+          .attr("fill", PARCH).attr("stroke", INK).attr("stroke-width", 0.85)
+          .attr("stroke-linejoin", "round").attr("opacity", 0.95);
+        // Short trunk below canopy
+        const trunkY0 = cy + r * 0.75;
+        const trunkY1 = trunkY0 + r * (0.35 + rng() * 0.25);
+        const trunkX = cx + (rng() - 0.5) * r * 0.15;
+        tg.append("line")
+          .attr("x1", trunkX).attr("y1", trunkY0)
+          .attr("x2", trunkX).attr("y2", trunkY1)
+          .attr("stroke", INK).attr("stroke-width", 0.9)
+          .attr("stroke-linecap", "round").attr("opacity", 0.88);
         // A few scattered forest-floor detail marks around the cluster —
         // tiny broken lines at a slight downward-right angle (mapeffects
         // "isometric scatter detail" technique).
