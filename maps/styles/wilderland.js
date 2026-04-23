@@ -1832,22 +1832,25 @@ window.MapStyles.wilderland = {
         .attr("stroke-linejoin", "round")
         .attr("opacity", 0.82 + rng() * 0.18);
 
-      // Shadow ticks on right flank, diagonal ↘
-      const tickCount = 2 + Math.floor(rng() * 2);
-      for (let k = 0; k < tickCount; k++) {
-        const t = 0.40 + k * 0.18 + (rng() - 0.5) * 0.08;
-        if (t >= 0.92) continue;
+      // DENSE interior hatching — match the hex-mountain drawer (wl-60)
+      // so the left-margin spine reads volumetric like the reference
+      // Misty Mountains, not as skeletal outlines.
+      const hatchCount = Math.max(8, Math.min(20, Math.round(h / 1.1)));
+      for (let k = 0; k < hatchCount; k++) {
+        const t = 0.10 + (k / (hatchCount - 1 || 1)) * 0.85;
         const hy = apY + (baseY - apY) * t;
         const rightEdgeAtT = apX + (baseRX - apX) * t;
-        const tx1 = apX + (rightEdgeAtT - apX) * (0.3 + rng() * 0.15) + (rng()-0.5)*0.6;
-        const tx2 = rightEdgeAtT - 0.4;
-        if (tx2 - tx1 < 1.0) continue;
+        const leftFromApex = apX + (apX - baseLX) * (-t * 0.25);
+        const tx1 = leftFromApex + (rng() - 0.5) * 1.0;
+        const tx2 = rightEdgeAtT - 0.5 - rng() * 0.6;
+        if (tx2 - tx1 < 1.3) continue;
+        const slant = 1.2 + rng() * 1.4;
         group.append("line")
           .attr("x1", tx1).attr("y1", hy)
-          .attr("x2", tx2).attr("y2", hy + 2 + rng() * 1.5)
+          .attr("x2", tx2).attr("y2", hy + slant)
           .attr("stroke", INK)
           .attr("stroke-width", 0.5)
-          .attr("opacity", 0.65 + rng() * 0.25)
+          .attr("opacity", 0.78 + rng() * 0.20)
           .attr("stroke-linecap", "round");
       }
     }
