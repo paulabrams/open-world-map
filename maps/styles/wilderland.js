@@ -2007,7 +2007,7 @@ window.MapStyles.wilderland = {
   // in small-caps hand-lettering.
   renderCartouche(ctx) {
     const { g, bounds, meta, FONT } = ctx;
-    const { INK, INK_LIGHT, PARCHMENT } = ctx.colors;
+    const { INK, INK_LIGHT, BLUE, PARCHMENT } = ctx.colors;
 
     // Reference WILDERLAND cartouche visibly dominates the bottom-right
     // corner. Previous 210×78 read as a small caption on a mostly-empty
@@ -2089,10 +2089,10 @@ window.MapStyles.wilderland = {
       const ux = meanderStartX + i * meanderUnitW;
       g.append("path")
         .attr("d", buildMeanderUnit(ux, meanderTopY, meanderUnitW, meanderStripH, false))
-        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.5);
+        .attr("fill", "none").attr("stroke", BLUE).attr("stroke-width", 0.6).attr("opacity", 0.85);
       g.append("path")
         .attr("d", buildMeanderUnit(ux, meanderBotY, meanderUnitW, meanderStripH, true))
-        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.5);
+        .attr("fill", "none").attr("stroke", BLUE).attr("stroke-width", 0.6).attr("opacity", 0.85);
     }
 
     // Vertical meander strips along left + right edges of the cartouche.
@@ -2107,13 +2107,13 @@ window.MapStyles.wilderland = {
       const leftXStart = bx + 5;
       g.append("path")
         .attr("d", buildMeanderUnit(0, 0, meanderUnitW, meanderStripH, false))
-        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.5)
+        .attr("fill", "none").attr("stroke", BLUE).attr("stroke-width", 0.6).attr("opacity", 0.85)
         .attr("transform", `translate(${leftXStart + meanderStripH}, ${uy}) rotate(90)`);
       // Right strip: spiral opens leftward.
       const rightXStart = bx + boxW - 5;
       g.append("path")
         .attr("d", buildMeanderUnit(0, 0, meanderUnitW, meanderStripH, true))
-        .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.5)
+        .attr("fill", "none").attr("stroke", BLUE).attr("stroke-width", 0.6).attr("opacity", 0.85)
         .attr("transform", `translate(${rightXStart - meanderStripH}, ${uy}) rotate(90)`);
     }
 
@@ -2128,7 +2128,9 @@ window.MapStyles.wilderland = {
       .attr("cx", bx + boxW / 2).attr("cy", flourishY)
       .attr("r", 1.3).attr("fill", INK);
 
-    // Title text — large small-caps in the style's hand-lettered font
+    // Title text — large small-caps in the style's hand-lettered font.
+    // Reference WILDERLAND cartouche title is BLUE, matching the
+    // region-label palette convention (blue ink for place names).
     const titleText = meta.region
       ? meta.region.toUpperCase()
       : (meta.campaign || "").toUpperCase();
@@ -2140,7 +2142,7 @@ window.MapStyles.wilderland = {
       .attr("font-size", "32px")
       .attr("font-weight", "600")
       .attr("letter-spacing", "8px")
-      .attr("fill", INK)
+      .attr("fill", BLUE)
       .text(titleText);
 
     // Matching flourish below the title
