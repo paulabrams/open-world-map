@@ -438,8 +438,60 @@ window.MapStyles.wilderland = {
 
       const skyD = "M " + polyline.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ");
 
-      // Single continuous skyline path — bolder stroke matches the
-      // reference's heavy ink outline around each peak.
+      // BACK-PEAK SKYLINE — second shorter, offset skyline drawn
+      // BEFORE the main one so it gets hidden behind. Reference has
+      // clear z-layering (peaks behind peaks). Back skyline uses the
+      // same apexes but at ~70% height and shifted, with reduced
+      // opacity so it reads as distant/hazy.
+      const backPts = [];
+      const backH = 0.72;
+      const backDx = (rng() - 0.5) * 6; // modest x offset for back layer
+      const a0 = apexes[0], aN = apexes[apexes.length - 1];
+      backPts.push([a0.p.px - a0.hw + backDx, baseY]);
+      for (let i = 0; i < apexes.length; i++) {
+        const a = apexes[i];
+        const apY2 = baseY - (baseY - a.apY) * backH;
+        const apX2 = a.apX + backDx + (rng() - 0.5) * 3;
+        backPts.push([apX2, apY2]);
+        if (i < apexes.length - 1) {
+          const b = apexes[i + 1];
+          const midX = (a.apX + b.apX) / 2 + backDx;
+          const valleyY = baseY - Math.min(a.p.h, b.p.h) * (0.25 + rng() * 0.25) * backH;
+          backPts.push([midX, valleyY]);
+        } else {
+          backPts.push([aN.p.px + aN.hw + backDx, baseY]);
+        }
+      }
+      // Sample wobble for the back skyline too (lighter wobble)
+      const backPoly = [backPts[0]];
+      for (let i = 1; i < backPts.length; i++) {
+        const [x0, y0] = backPts[i - 1];
+        const [x1, y1] = backPts[i];
+        for (let k = 1; k <= 2; k++) {
+          const t = k / 2;
+          let x = x0 + (x1 - x0) * t;
+          let y = y0 + (y1 - y0) * t;
+          if (k < 2) {
+            const edge = Math.min(t, 1 - t) * 2;
+            x += (rng() - 0.5) * 0.5 * edge;
+            y += (rng() - 0.5) * 0.5 * edge;
+          }
+          backPoly.push([x, y]);
+        }
+      }
+      const backD = "M " + backPoly.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ");
+      tg.append("path")
+        .attr("d", backD)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.85 + rng() * 0.25)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round")
+        .attr("opacity", 0.55 + rng() * 0.15);
+
+      // MAIN (foreground) skyline — bolder stroke matches the
+      // reference's heavy ink outline. Drawn AFTER back skyline so
+      // it occludes. Will be followed by hatching on right faces.
       tg.append("path")
         .attr("d", skyD)
         .attr("fill", "none")
