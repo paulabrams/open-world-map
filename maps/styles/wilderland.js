@@ -594,8 +594,10 @@ window.MapStyles.wilderland = {
           .attr("stroke", INK).attr("stroke-width", 0.42).attr("opacity", 0.5);
       }
 
-      if (variant < 0.35) {
+      if (variant < 0.80) {
         // --- Cloud-blob canopy (old-growth look) ---
+        // Biased to 80% of all trees — reference Mirkwood is uniformly
+        // cloud-canopy trees, not a mix of firs/saplings/leafy.
         // Mapeffects "old-growth" tips: overlap canopies back-to-front, draw
         // the TOP edge with a slightly heavier stroke so the forest pops off
         // the ground, and scatter tiny broken-line detail marks nearby for
@@ -667,8 +669,10 @@ window.MapStyles.wilderland = {
             .attr("stroke", INK).attr("stroke-width", 0.4).attr("opacity", 0.45);
         }
       }
-      else if (variant < 0.6) {
+      else if (variant < 0.88) {
         // --- Fir/pine triangle (stacked canopy, trunk below) ---
+        // Reduced to 8% — reference has a few triangular fir shapes but
+        // they're the exception, not a rival variant.
         const th = size * 0.75;
         const tw = size * 0.45;
         const tiers = 2 + Math.floor(rng() * 2);
@@ -692,7 +696,7 @@ window.MapStyles.wilderland = {
           .attr("x1", x).attr("y1", y).attr("x2", x).attr("y2", y + size * 0.15)
           .attr("stroke", INK).attr("stroke-width", 0.7);
       }
-      else if (variant < 0.82) {
+      else if (variant < 0.94) {
         // --- Round leafy tree with visible trunk + heavy top-arc ---
         const r = size * (0.28 + rng() * 0.12);
         const cx = x, cy = y - r * 0.7;
@@ -730,7 +734,7 @@ window.MapStyles.wilderland = {
           .attr("x1", cx - r * 0.4).attr("y1", cy).attr("x2", cx + r * 0.4).attr("y2", cy)
           .attr("stroke", INK).attr("stroke-width", 0.35).attr("opacity", 0.45);
       }
-      else if (variant < 0.93) {
+      else if (variant < 0.98) {
         // --- Tall thin sapling — just a few branches fanning out ---
         const th = size * 0.75;
         // Trunk
