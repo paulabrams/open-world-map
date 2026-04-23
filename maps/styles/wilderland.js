@@ -2176,26 +2176,23 @@ window.MapStyles.wilderland = {
 
     const annotGroup = g.append("g").attr("class", "edge-annotations");
 
-    // Left edge — three stacked labels, matching the Wilderland reference's
-    // "Western Lands / Edge of the Wild / Hobbiton" triplet. When the
-    // campaign provides off_map_arrows (on ctx.offMapArrows) we use them
-    // for NW / W / SW directions; otherwise fall back to generic idiom.
+    // Left edge — up to three stacked labels from campaign data
+    // (NW / W / SW directions in off_map_arrows). If a direction isn't
+    // in the data, SKIP the slot — do NOT invent a label (no
+    // hallucinated map content, per standing directive 2026-04-23).
     const arrows = offMapArrows || [];
     const byDir = {};
     arrows.forEach(a => { byDir[a.direction] = a.label; });
-    const leftLabels = [
-      byDir.NW || "Western Lands",
-      byDir.W  || "Edge of the Wild",
-      byDir.SW || byDir.S || "to Hobbiton and beyond",
+    const leftEntries = [
+      { dir: "NW", frac: 0.22 },
+      { dir: "W",  frac: 0.50 },
+      { dir: "SW", frac: 0.78 },
     ];
     const leftX = bounds.minX - 20;
-    const leftYs = [
-      bounds.minY + (bounds.maxY - bounds.minY) * 0.22,
-      (bounds.minY + bounds.maxY) / 2,
-      bounds.minY + (bounds.maxY - bounds.minY) * 0.78,
-    ];
-    leftLabels.forEach((label, i) => {
-      const ly = leftYs[i];
+    leftEntries.forEach(({ dir, frac }) => {
+      const label = byDir[dir];
+      if (!label) return; // no data for this direction → skip
+      const ly = bounds.minY + (bounds.maxY - bounds.minY) * frac;
       annotGroup.append("text")
         .attr("x", leftX)
         .attr("y", ly)
@@ -2229,7 +2226,8 @@ window.MapStyles.wilderland = {
       .attr("letter-spacing", "10px")
       .text(topLabel);
 
-    // Bottom edge — "to the South..."
+    // Bottom edge — S label, if in data; otherwise omit.
+    if (byDir.S) {
     const botX = (bounds.minX + bounds.maxX) / 2;
     const botY = bounds.maxY + 25;
     annotGroup.append("text")
@@ -2241,23 +2239,21 @@ window.MapStyles.wilderland = {
       .attr("font-style", "italic")
       .attr("fill", ctx.colors.BLUE)
       .attr("opacity", 0.88)
-      .text(byDir.S || "to the South\u2026");
+      .text(byDir.S);
+    }
 
-    // Right edge — three stacked labels mirroring the left edge:
-    // NE / E / SE when present, otherwise generic fallbacks.
-    const rightLabels = [
-      byDir.NE || "Far Reaches",
-      byDir.E  || "Eastern Reaches",
-      byDir.SE || "to the far east",
+    // Right edge — NE / E / SE labels when present in data. Skip any
+    // direction the campaign data does not provide.
+    const rightEntries = [
+      { dir: "NE", frac: 0.22 },
+      { dir: "E",  frac: 0.50 },
+      { dir: "SE", frac: 0.78 },
     ];
     const rightX = bounds.maxX + 20;
-    const rightYs = [
-      bounds.minY + (bounds.maxY - bounds.minY) * 0.22,
-      (bounds.minY + bounds.maxY) / 2,
-      bounds.minY + (bounds.maxY - bounds.minY) * 0.78,
-    ];
-    rightLabels.forEach((label, i) => {
-      const ry = rightYs[i];
+    rightEntries.forEach(({ dir, frac }) => {
+      const label = byDir[dir];
+      if (!label) return;
+      const ry = bounds.minY + (bounds.maxY - bounds.minY) * frac;
       annotGroup.append("text")
         .attr("x", rightX)
         .attr("y", ry)
