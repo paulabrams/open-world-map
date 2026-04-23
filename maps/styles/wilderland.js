@@ -641,15 +641,9 @@ window.MapStyles.wilderland = {
             .attr("fill", "none").attr("stroke", INK)
             .attr("stroke-width", 1.1).attr("stroke-linecap", "round")
             .attr("opacity", 0.85);
-          // Tiny interior tuft mark
-          if (rng() > 0.4) {
-            const m = c.cr * 0.25;
-            tg.append("line").attr("x1", c.cx - m).attr("y1", c.cy).attr("x2", c.cx + m).attr("y2", c.cy)
-              .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.55);
-            tg.append("line").attr("x1", c.cx).attr("y1", c.cy - m * 0.6).attr("x2", c.cx).attr("y2", c.cy + m * 0.6)
-              .attr("stroke", INK).attr("stroke-width", 0.5).attr("opacity", 0.55);
-          }
-          // Ground shadow
+          // Ground shadow — keep. Interior tuft crosshair removed
+          // 2026-04-23 per user feedback (trees were reading like
+          // eyes because interior marks looked like pupils).
           tg.append("line")
             .attr("x1", c.cx - c.cr * 0.55).attr("y1", c.cy + c.cr * 0.92)
             .attr("x2", c.cx + c.cr * 0.55).attr("y2", c.cy + c.cr * 0.92)
@@ -726,13 +720,8 @@ window.MapStyles.wilderland = {
           .attr("d", d3.line().curve(d3.curveBasis)(topArc))
           .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 1.2)
           .attr("stroke-linecap", "round").attr("opacity", 0.9);
-        // Inner vein lines for leafiness
-        tg.append("line")
-          .attr("x1", cx).attr("y1", cy - r * 0.5).attr("x2", cx).attr("y2", cy + r * 0.5)
-          .attr("stroke", INK).attr("stroke-width", 0.35).attr("opacity", 0.45);
-        tg.append("line")
-          .attr("x1", cx - r * 0.4).attr("y1", cy).attr("x2", cx + r * 0.4).attr("y2", cy)
-          .attr("stroke", INK).attr("stroke-width", 0.35).attr("opacity", 0.45);
+        // Interior vein crosshair removed 2026-04-23 per user feedback
+        // (round tree + vertical + horizontal line = eye-shaped glyph).
       }
       else if (variant < 0.98) {
         // --- Tall thin sapling — just a few branches fanning out ---
@@ -1071,15 +1060,20 @@ window.MapStyles.wilderland = {
     // Reference Mirkwood is wall-to-wall trees with no visible gaps — push
     // density high and reduce minDist so canopies sit shoulder-to-shoulder
     // the way they do on Tolkien's hand-drawn Wilderland.
-    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 3.2, minDist: 3.2, bleedOut: 1.18 });
+    // Lower density + bigger minDist so tree glyphs don't overlap
+    // ("bunch of eyes" effect per user feedback 2026-04-23). The
+    // forest now reads as the outline + spaced canopy tops inside.
+    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 1.4, minDist: 7.5, bleedOut: 1.18 });
     MapCore.renderFarmlandBiased(ctx, drawFarm);
-    // Very soft forest-region outline — traces the outer boundary of the
-    // contiguous forest (skips interior hex-to-hex edges) with a wobbly
-    // faint line so the forest reads as a unified ZONE the way Tolkien's
-    // Mirkwood does, without the hard per-hex outline the user rejected.
+    // Forest-region outline — inset inside the hex (not on the hex
+    // edge) so it reads as a hand-drawn tree-line around the woodland
+    // rather than tracing the hex grid. Darker + more opaque than the
+    // previous "very soft" version — user feedback 2026-04-23 was that
+    // the forest needed a clearer defining perimeter.
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
-      color: INK, strokeWidth: 0.9, opacity: 0.55, wobble: 3.8,
+      color: INK, strokeWidth: 1.35, opacity: 0.88, wobble: 4.6,
       className: "forest-region",
+      inset: 0.14,
     });
     // Same soft-outline treatment for contiguous mountain regions — reads
     // the range as a unified ridge band rather than loose per-hex peaks.

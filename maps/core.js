@@ -2274,6 +2274,11 @@ function renderTerrainEdges(ctx, matchTerrains, edgeStyle = {}) {
     opacity = 0.7,
     wobble = 1.5,
     className = "terrain-edges",
+    // inset: how far to pull the edge TOWARD the hex center, as a
+    // fraction of hex size. 0 = on the hex edge (default). 0.15 =
+    // line sits 15% of size inward. Gives a ragged ring-inside-hex
+    // look that reads as a forest boundary rather than a hex gridline.
+    inset = 0,
   } = edgeStyle;
 
   // Flat-top hex vertices (v0 at 0°, v1 at 60°, … CCW in screen-flipped Y)
@@ -2282,6 +2287,7 @@ function renderTerrainEdges(ctx, matchTerrains, edgeStyle = {}) {
     const a = (i * 60) * Math.PI / 180;
     vOff.push([size * Math.cos(a), size * Math.sin(a)]);
   }
+  const insetScale = 1 - inset;
   // Edge endpoints in neighbor order [N, NE, SE, S, SW, NW]
   const edgeVerts = [[5, 4], [0, 5], [1, 0], [2, 1], [3, 2], [4, 3]];
   // Neighbor (col, row) offsets — parity-dependent because odd-q offsets
@@ -2309,8 +2315,10 @@ function renderTerrainEdges(ctx, matchTerrains, edgeStyle = {}) {
       const [vi1, vi2] = edgeVerts[i];
       const [vx1, vy1] = vOff[vi1];
       const [vx2, vy2] = vOff[vi2];
-      const x1 = hx + vx1, y1 = hy + vy1;
-      const x2 = hx + vx2, y2 = hy + vy2;
+      // Inset pulls each vertex toward hex center so the outline sits
+      // inside the hex, matching hand-drawn forest-edge conventions.
+      const x1 = hx + vx1 * insetScale, y1 = hy + vy1 * insetScale;
+      const x2 = hx + vx2 * insetScale, y2 = hy + vy2 * insetScale;
       // Quadratic curve with perpendicular wobble at midpoint for hand-drawn feel
       const mx = (x1 + x2) / 2;
       const my = (y1 + y2) / 2;
