@@ -2200,10 +2200,10 @@ window.MapStyles.wilderland = {
         .attr("y", ly)
         .attr("text-anchor", "middle")
         .attr("font-family", font)
-        .attr("font-size", "10px")
+        .attr("font-size", "14px")
         .attr("font-style", "italic")
-        .attr("fill", INK_LIGHT)
-        .attr("opacity", 0.85)
+        .attr("fill", ctx.colors.BLUE)
+        .attr("opacity", 0.88)
         .attr("transform", `rotate(-90, ${leftX}, ${ly})`)
         .text(label);
     });
@@ -2236,10 +2236,10 @@ window.MapStyles.wilderland = {
       .attr("y", botY)
       .attr("text-anchor", "middle")
       .attr("font-family", font)
-      .attr("font-size", "9px")
+      .attr("font-size", "14px")
       .attr("font-style", "italic")
-      .attr("fill", INK_LIGHT)
-      .attr("opacity", 0.85)
+      .attr("fill", ctx.colors.BLUE)
+      .attr("opacity", 0.88)
       .text(byDir.S || "to the South\u2026");
 
     // Right edge — three stacked labels mirroring the left edge:
@@ -2262,10 +2262,10 @@ window.MapStyles.wilderland = {
         .attr("y", ry)
         .attr("text-anchor", "middle")
         .attr("font-family", font)
-        .attr("font-size", "10px")
+        .attr("font-size", "14px")
         .attr("font-style", "italic")
-        .attr("fill", INK_LIGHT)
-        .attr("opacity", 0.85)
+        .attr("fill", ctx.colors.BLUE)
+        .attr("opacity", 0.88)
         .attr("transform", `rotate(90, ${rightX}, ${ry})`)
         .text(label);
     });
