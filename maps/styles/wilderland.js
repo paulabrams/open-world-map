@@ -1861,26 +1861,26 @@ window.MapStyles.wilderland = {
       const gapRng = ctx.mulberry32(ctx.seedFromString("wl-margin-left-forest"));
       const gapWidth = gapRightX - gapLeftX;
       const gapHeight = spineBottom - spineTop;
-      const treeTarget = Math.max(80, Math.floor((gapWidth * gapHeight) / 900));
+      const treeTarget = Math.max(180, Math.floor((gapWidth * gapHeight) / 380));
       for (let i = 0; i < treeTarget; i++) {
         const tx = gapLeftX + gapRng() * gapWidth;
-        // Bias trees toward content side (away from the spine)
         const ty = spineTop + gapRng() * gapHeight;
-        const ts = 3 + gapRng() * 3;
-        // Simple cloud-canopy tree: a couple of small arcs + trunk
+        const ts = 5 + gapRng() * 4;
         const tG = gapGroup.append("g").attr("transform", `translate(${tx}, ${ty})`);
+        // Cloud canopy — two stacked arcs for a fuller tree
         tG.append("path")
-          .attr("d", `M ${-ts} 0 q ${ts*0.4} ${-ts*1.3}, ${ts} 0 q ${ts*0.6} ${-ts*0.8}, ${ts*1.2} 0`)
+          .attr("d", `M ${-ts} 0 q ${ts*0.3} ${-ts*1.4}, ${ts*0.55} ${-ts*0.4} q ${ts*0.4} ${-ts*1.2}, ${ts*1.05} ${-ts*0.2} q ${ts*0.3} ${-ts*0.9}, ${ts*0.95} ${ts*0.25} Z`)
           .attr("fill", "none")
           .attr("stroke", INK)
-          .attr("stroke-width", 0.55)
-          .attr("opacity", 0.65 + gapRng() * 0.25);
+          .attr("stroke-width", 0.7)
+          .attr("opacity", 0.65 + gapRng() * 0.30);
+        // Trunk
         tG.append("line")
-          .attr("x1", ts*0.2).attr("y1", 0)
-          .attr("x2", ts*0.2).attr("y2", ts*0.6)
+          .attr("x1", ts*0.4).attr("y1", 0)
+          .attr("x2", ts*0.4).attr("y2", ts*0.8)
           .attr("stroke", INK)
-          .attr("stroke-width", 0.4)
-          .attr("opacity", 0.6);
+          .attr("stroke-width", 0.5)
+          .attr("opacity", 0.7);
       }
     }
 
