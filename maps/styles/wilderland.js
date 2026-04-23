@@ -81,7 +81,6 @@ window.MapStyles.wilderland = {
     this.renderNodes(ctx);
     this.renderLabels(ctx);
     this.renderDayLabels(ctx);
-    this.renderMarginSpine(ctx);
     this.renderCompass(ctx);
     this.renderScaleBar(ctx);
     this.renderCartouche(ctx);
@@ -350,127 +349,162 @@ window.MapStyles.wilderland = {
     }
 
     function drawMountainRidge(tg, peaks, rng, opts) {
-      // Wilderland peaks at 5x zoom on the reference are LINE DRAWINGS,
-      // not filled shapes. Each peak is a single curved pen stroke —
-      // wave-crest shape, open at the bottom — with a few short hatch
-      // ticks underneath for shadow. The dark character of the spine in
-      // the reference comes from MANY OVERLAPPING peak strokes, not
-      // from each peak being individually dark.
+      // SKYLINE-FIRST MODEL (wl-66) — per user feedback 2026-04-23:
+      // prior per-peak rendering had three failures: (1) peaks that
+      // overlap don't clip (back peak shows through front), (2) peaks
+      // don't inter-connect (reference has continuous shared-base
+      // ranges), (3) variability is constrained to one template.
+      //
+      // New approach: build a SINGLE continuous zigzag polyline across
+      // the whole cluster (start-base → apex 1 → valley 1 → apex 2 →
+      // valley 2 → ... → end-base), draw as one <path> with wobble.
+      // No overlap issues — only one z-layer. Peaks naturally connect
+      // via shared valleys. Variability comes from varied apex heights,
+      // valley depths, and asymmetric slopes.
+      //
+      // Then emit DIAGONAL HATCH LINES descending from points along the
+      // right-side (descending) slopes of the skyline down to the base.
+      // Taller peaks get more lines (proportional shading).
       if (!peaks || peaks.length === 0) return;
 
-      peaks.forEach(p => {
-        const baseY = p.py;
-        const hw = p.h * 0.42;
-        const baseLX = p.px - hw;
-        const baseRX = p.px + hw;
-        // Strong rightward apex tilt — matches reference's wind-shaped
-        // peaks. Randomize slightly so peaks don't look stamped.
-        const tiltRight = 0.22 + rng() * 0.20;
-        const apX = p.px + hw * tiltRight;
-        const apY = baseY - p.h;
+      // Sort peaks by x so skyline flows left-to-right.
+      const sorted = peaks.slice().sort((a, b) => a.px - b.px);
+      const baseY = sorted[0].py;
 
-        // Single open curve: rise on the left with a subtle belly,
-        // drop on the right more steeply. Two cubic Bezier segments
-        // meeting at the apex — no closure to the baseline.
-        const lC1x = baseLX + hw * (0.35 + rng() * 0.15);
-        const lC1y = baseY - p.h * (0.25 + rng() * 0.12);
-        const lC2x = apX - hw * (0.15 + rng() * 0.10);
-        const lC2y = apY + p.h * (0.10 + rng() * 0.08);
-        const rC1x = apX + hw * (0.08 + rng() * 0.06);
-        const rC1y = apY + p.h * (0.22 + rng() * 0.10);
-        const rC2x = baseRX - hw * (0.08 + rng() * 0.08);
-        const rC2y = baseY - p.h * (0.12 + rng() * 0.08);
-
-        // Sample both cubic Beziers as a polyline with per-point jitter
-        // so the peak line wobbles like a hand-drawn pen stroke instead
-        // of reading as a mathematically smooth curve. Cubic Bezier
-        // parametric form: B(t) = (1-t)^3 P0 + 3(1-t)^2 t P1 + 3(1-t) t^2 P2 + t^3 P3
-        const sampleCubic = (P0, P1, P2, P3, steps, includeStart) => {
-          const pts = [];
-          for (let i = includeStart ? 0 : 1; i <= steps; i++) {
-            const t = i / steps;
-            const it = 1 - t;
-            const b0 = it * it * it;
-            const b1 = 3 * it * it * t;
-            const b2 = 3 * it * t * t;
-            const b3 = t * t * t;
-            const x = b0 * P0[0] + b1 * P1[0] + b2 * P2[0] + b3 * P3[0];
-            const y = b0 * P0[1] + b1 * P1[1] + b2 * P2[1] + b3 * P3[1];
-            // Per-point jitter — endpoints get smaller jitter so the
-            // peak ends connect cleanly to neighbours.
-            const edgeDamp = Math.min(t, 1 - t) * 2;
-            const jx = (rng() - 0.5) * 1.2 * edgeDamp;
-            const jy = (rng() - 0.5) * 1.2 * edgeDamp;
-            pts.push([x + jx, y + jy]);
-          }
-          return pts;
-        };
-        const leftPts  = sampleCubic([baseLX, baseY], [lC1x, lC1y], [lC2x, lC2y], [apX, apY], 10, true);
-        const rightPts = sampleCubic([apX, apY], [rC1x, rC1y], [rC2x, rC2y], [baseRX, baseY], 8, false);
-        const allPts = leftPts.concat(rightPts);
-        const strokeD = "M " + allPts.map(p => p[0].toFixed(2) + " " + p[1].toFixed(2)).join(" L ");
-
-        // Per-peak opacity variation — simulates pen pressure on hand-
-        // drawn ink. Uniform opacity reads as mechanical/printed; small
-        // opacity range 0.70-1.00 gives the range hand-drawn character.
-        const peakOpacity = 0.72 + rng() * 0.28;
-        tg.append("path")
-          .attr("d", strokeD)
-          .attr("fill", "none")
-          .attr("stroke", INK)
-          .attr("stroke-width", 1.0 + rng() * 0.3)
-          .attr("stroke-linecap", "round")
-          .attr("stroke-linejoin", "round")
-          .attr("opacity", peakOpacity);
-
-        // DENSE interior hatching — reference peaks are volumetric 3D
-        // forms with heavy shadow-flank hatching that FILLS the peak
-        // body. User side-by-side (post wl-58) showed my skeletal
-        // zigzag outlines were fundamentally wrong. Pack short diagonal
-        // strokes from apex down to base on the right flank, plus a
-        // lighter set on the left flank near the apex for shading.
-        const hatchCount = Math.max(10, Math.min(24, Math.round(p.h / 1.1)));
-        for (let k = 0; k < hatchCount; k++) {
-          const t = 0.10 + (k / (hatchCount - 1 || 1)) * 0.85;
-          const hy = apY + (baseY - apY) * t;
-          // Right silhouette x at this y (linear approx of the Bezier)
-          const rightEdgeAtT = apX + (baseRX - apX) * t;
-          // Start the hatch just inside the peak apex on the left side
-          // (or near apX at low t, widening as we go down toward base)
-          const leftFromApex = apX + (apX - baseLX) * (-t * 0.25); // slight leftward creep inside peak
-          const hx1 = leftFromApex + (rng() - 0.5) * 1.2;
-          const hx2 = rightEdgeAtT - 0.5 - rng() * 0.8;
-          if (hx2 - hx1 < 1.5) continue;
-          // Diagonal slant ↘ matching reference shadow strokes
-          const slant = 1.4 + rng() * 1.6;
-          tg.append("line")
-            .attr("x1", hx1).attr("y1", hy)
-            .attr("x2", hx2).attr("y2", hy + slant)
-            .attr("stroke", INK)
-            .attr("stroke-width", 0.55)
-            .attr("opacity", 0.82 + rng() * 0.16)
-            .attr("stroke-linecap", "round");
-        }
-        // A few extra short ticks near the left flank at the apex for
-        // shading emphasis — reference peaks often have a small set
-        // of dark strokes right at the peak tip.
-        const apexTicks = 3 + Math.floor(rng() * 2);
-        for (let k = 0; k < apexTicks; k++) {
-          const t = 0.04 + k * 0.08 + rng() * 0.04;
-          const hy = apY + (baseY - apY) * t;
-          const rightEdgeAtT = apX + (baseRX - apX) * t;
-          const hx1 = apX + (rng() - 0.5) * 0.8;
-          const hx2 = rightEdgeAtT - 0.5;
-          if (hx2 - hx1 < 1.0) continue;
-          tg.append("line")
-            .attr("x1", hx1).attr("y1", hy)
-            .attr("x2", hx2).attr("y2", hy + 1.0 + rng() * 0.5)
-            .attr("stroke", INK)
-            .attr("stroke-width", 0.5)
-            .attr("opacity", 0.85)
-            .attr("stroke-linecap", "round");
-        }
+      // For each peak compute its apex point with per-peak tilt and
+      // cache it — we need apex info for both the skyline and the
+      // hatch emission. Width/height ratio tuned to reference (peaks
+      // look more equilateral than narrow triangles).
+      const apexes = sorted.map(p => {
+        const hw = p.h * 0.55;
+        // Most peaks lean right, some lean left — breaks the uniform
+        // shape template and adds natural variability.
+        const tiltSign = rng() < 0.80 ? 1 : -1;
+        const tiltMag = 0.08 + rng() * 0.22;
+        const apX = p.px + hw * tiltMag * tiltSign;
+        const apY = p.py - p.h;
+        return { p, hw, apX, apY };
       });
+
+      // Build skyline control points.
+      const skyPts = [];
+      // Start at leftmost peak's base-left.
+      skyPts.push([apexes[0].p.px - apexes[0].hw, baseY]);
+      for (let i = 0; i < apexes.length; i++) {
+        const a = apexes[i];
+        // Left slope: push the apex.
+        skyPts.push([a.apX, a.apY]);
+        // Right slope: valley to next peak (or base-right if last).
+        if (i < apexes.length - 1) {
+          const b = apexes[i + 1];
+          // Valley X: between the two peaks, roughly at the midpoint
+          // but biased toward the taller peak's side for variability.
+          const midX = (a.apX + b.apX) / 2;
+          const valleyX = midX + (rng() - 0.5) * Math.abs(b.apX - a.apX) * 0.30;
+          // Valley depth varies from 35% to 80% of the shorter peak's
+          // height — dramatic variation gives some peaks deep clefts
+          // between them and others near-connected ridges.
+          const shorterH = Math.min(a.p.h, b.p.h);
+          const valleyDepthFrac = 0.35 + rng() * 0.45;
+          const valleyY = baseY - shorterH * valleyDepthFrac;
+          skyPts.push([valleyX, valleyY]);
+        } else {
+          skyPts.push([a.p.px + a.hw, baseY]);
+        }
+      }
+
+      // Sample additional wobble points along each segment so the line
+      // reads as hand-drawn ink, not mechanical zigzag. Keep the
+      // apex/valley/base control points EXACT (no jitter on them) so
+      // peaks stay sharp and valleys stay as deep as specified.
+      const SAMPLES_PER_SEG = 3;
+      const polyline = [skyPts[0]];
+      for (let i = 1; i < skyPts.length; i++) {
+        const [x0, y0] = skyPts[i - 1];
+        const [x1, y1] = skyPts[i];
+        for (let k = 1; k <= SAMPLES_PER_SEG; k++) {
+          const t = k / SAMPLES_PER_SEG;
+          let x = x0 + (x1 - x0) * t;
+          let y = y0 + (y1 - y0) * t;
+          if (k < SAMPLES_PER_SEG) {
+            // Damped jitter — largest at segment midpoint, zero at ends.
+            const edge = Math.min(t, 1 - t) * 2;
+            x += (rng() - 0.5) * 0.7 * edge;
+            y += (rng() - 0.5) * 0.7 * edge;
+          }
+          polyline.push([x, y]);
+        }
+      }
+
+      const skyD = "M " + polyline.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ");
+
+      // Single continuous skyline path — bolder stroke matches the
+      // reference's heavy ink outline around each peak.
+      tg.append("path")
+        .attr("d", skyD)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 1.35 + rng() * 0.35)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round")
+        .attr("opacity", 0.92 + rng() * 0.06);
+
+      // NEAR-HORIZONTAL CONTOUR HATCHING on each peak's right face.
+      // Reference (Grey Mountains zoom) shows nearly-horizontal strokes
+      // stacked densely on the right face. Each hatch runs from the
+      // right-slope ridge outward by roughly the peak half-width, with
+      // a slight downward slant. Hatches start near the apex (to fill
+      // the peak body) and continue down to the valley/base.
+      for (let i = 0; i < apexes.length; i++) {
+        const a = apexes[i];
+        // Right-face shaded region: from the apex at the top down to
+        // baseY at the bottom. The LEFT edge of the shaded region is
+        // the line from apex down to base-right (a.p.px + a.hw, baseY),
+        // which defines where each hatch row starts. Hatches extend
+        // RIGHTWARD from this edge with a gentle downward slant.
+        const baseR = a.p.px + a.hw;
+        const fsDX = baseR - a.apX;       // full right slope: apex → base-right
+        const fsDY = baseY - a.apY;
+        const vSpan = fsDY;
+        if (vSpan < 1.5) continue;
+
+        // Max horizontal reach: stop before next peak's left slope.
+        let maxExtendX;
+        if (i < apexes.length - 1) {
+          const next = apexes[i + 1];
+          const nextBaseL = next.p.px - next.hw;
+          maxExtendX = baseR + (nextBaseL - baseR) * 0.50;
+        } else {
+          maxExtendX = baseR + a.hw * 0.4;
+        }
+
+        const rowSpacing = 0.80 + rng() * 0.22;
+        const rowCount = Math.max(3, Math.floor(vSpan / rowSpacing));
+        for (let k = 1; k < rowCount; k++) {
+          const t = k / rowCount;
+          if (t < 0.06) continue;
+          // Start: on the apex→baseR line (the "ridge down to base"
+          // silhouette edge of the right face).
+          const sx = a.apX + fsDX * t + (rng() - 0.5) * 0.25;
+          const sy = a.apY + fsDY * t + (rng() - 0.5) * 0.2;
+          // Target length: grows from apex (t=0, short) to base (t=1,
+          // ~peak half-width). Reference peaks have a triangular
+          // shaded face that's widest at the base.
+          const targetLen = a.hw * (0.25 + t * 0.85) * (0.85 + rng() * 0.30);
+          const maxLen = maxExtendX - sx;
+          if (maxLen < 0.8) continue;
+          const dx = Math.min(maxLen, targetLen);
+          const dy = dx * (0.12 + rng() * 0.15); // ~7-15° downward
+          tg.append("line")
+            .attr("x1", sx).attr("y1", sy)
+            .attr("x2", sx + dx).attr("y2", sy + dy)
+            .attr("stroke", INK)
+            .attr("stroke-width", 0.70 + rng() * 0.25)
+            .attr("opacity", 0.80 + rng() * 0.18)
+            .attr("stroke-linecap", "round");
+        }
+      }
+
     }
 
     function drawTreeCanopy(tg, x, y, size, rng) {
@@ -952,21 +986,15 @@ window.MapStyles.wilderland = {
       (tg, peaks, rng, opts) => drawMountainRidge(tg, peaks, rng, opts),
       {
         clusterInset: 0.10,
-        // Side-by-side shows reference peaks pack VERY densely — 30+
-        // overlapping curves per range-length. 20-30 still left visible
-        // gaps between peaks in wl-34. Bumping to 30-45.
-        peakCountMin: 30,
-        peakCountRange: 15,
-        // Continuous height distribution — varied peaks mixed tightly.
-        heightProfile: (rng) => 0.35 + Math.pow(rng(), 0.85) * 0.70,
-        // Smaller peak scale so many peaks fit per hex. Reference peaks
-        // at map zoom are ~10-14 px tall, not 30-40.
-        peakSize: 20,
-        peakSizeRange: 5,
-        // Stagger peaks vertically — reference peaks fill a thick band
-        // with tall ones behind short ones; default 0.5 keeps them too
-        // flatly aligned. 1.2 × mSize = ±12px lets peaks stack.
-        peakYJitter: 1.2,
+        // Fewer, bigger peaks per hex — reference has ~3-5 large
+        // prominent peaks per visual unit, not 11+ small ones.
+        peakCountMin: 7,
+        peakCountRange: 5,
+        heightProfile: (rng) => 0.55 + Math.pow(rng(), 1.2) * 1.05,
+        peakSize: 24,
+        peakSizeRange: 8,
+        peakYJitter: 1.0,
+        peakTJitter: 1.4,
       });
     // Dense forest packing to match Mirkwood density in the reference —
     // scattered trees at default density (1.0) read too sparse.
@@ -1753,452 +1781,6 @@ window.MapStyles.wilderland = {
     });
   },
 
-  // --- Procedural left-margin mountain spine (decoration only) ---
-  // The reference Wilderland map has a dominant vertical Misty Mountains
-  // spine taking up the left quarter of the page. Basilisk's campaign
-  // hex data doesn't place mountains there — Serpent's Teeth runs east-
-  // west at the south. Without data changes the overall composition can
-  // never match. This renders a procedural vertical spine of small peaks
-  // in the empty left margin between the frame border and the hex
-  // content, matching the reference's defining visual element.
-  renderMarginSpine(ctx) {
-    const { g, bounds, WIDTH } = ctx;
-    const { INK } = ctx.colors;
-    // Skip if there's no usable left margin (content fills the page).
-    const leftMargin = bounds.minX;
-    if (leftMargin < 200) return;
-
-    const group = g.append("g").attr("class", "margin-spine");
-    const rng = ctx.mulberry32(ctx.seedFromString("wl-margin-spine"));
-
-    // Spine position: in the middle of the left-of-content empty area.
-    const spineCenterX = leftMargin * 0.40 + 40;
-    // Extend to the frame edges — reference spine spans nearly full page
-    // height. Previous inset (30px each side) made mine look shorter.
-    const spineTop = bounds.minY;
-    const spineBottom = bounds.maxY;
-    const spineHeight = spineBottom - spineTop;
-    // Multi-column packing: reference Misty Mountains spine is 80-120 px
-    // wide with many overlapping peaks. Single column looked like a thin
-    // strip; a 2D region of peaks gives the dense range character.
-    const spineHalfWidth = 55;
-    // Pack many small peaks along the vertical column — 2D density so
-    // the range reads as a thick band, not a thin line.
-    const peakCount = Math.max(550, Math.floor(spineHeight / 0.9));
-
-    const sampleCubic = (P0, P1, P2, P3, steps, includeStart) => {
-      const pts = [];
-      for (let k = includeStart ? 0 : 1; k <= steps; k++) {
-        const t = k / steps;
-        const it = 1 - t;
-        const b0 = it*it*it, b1 = 3*it*it*t, b2 = 3*it*t*t, b3 = t*t*t;
-        const x = b0*P0[0] + b1*P1[0] + b2*P2[0] + b3*P3[0];
-        const y = b0*P0[1] + b1*P1[1] + b2*P2[1] + b3*P3[1];
-        const ed = Math.min(t, 1-t) * 2;
-        pts.push([x + (rng()-0.5)*1.0*ed, y + (rng()-0.5)*1.0*ed]);
-      }
-      return pts;
-    };
-
-    for (let i = 0; i < peakCount; i++) {
-      // Distribute vertically along the spine with jitter.
-      const cy = spineTop + (i / peakCount) * spineHeight + (rng() - 0.5) * 10;
-      // Horizontal spread across the spine's full half-width — 2D
-      // packing so the range reads as a dense thick band of peaks.
-      const cx = spineCenterX + (rng() - 0.5) * spineHalfWidth * 2;
-      const h = 12 + rng() * 16;
-      const hw = h * 0.42;
-      const baseY = cy;
-      const baseLX = cx - hw;
-      const baseRX = cx + hw;
-      // Rightward tilt — reference peaks on the Misty Mountains lean
-      // slightly east (toward the map interior).
-      const apX = cx + hw * (0.22 + rng() * 0.20);
-      const apY = baseY - h;
-      const lC1 = [baseLX + hw*0.4, baseY - h*0.3];
-      const lC2 = [apX - hw*0.2, apY + h*0.15];
-      const rC1 = [apX + hw*0.1, apY + h*0.2];
-      const rC2 = [baseRX - hw*0.1, baseY - h*0.1];
-      const leftPts = sampleCubic([baseLX, baseY], lC1, lC2, [apX, apY], 8, true);
-      const rightPts = sampleCubic([apX, apY], rC1, rC2, [baseRX, baseY], 6, false);
-      const allPts = leftPts.concat(rightPts);
-      const d = "M " + allPts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ");
-      group.append("path")
-        .attr("d", d)
-        .attr("fill", "none")
-        .attr("stroke", INK)
-        .attr("stroke-width", 1.1 + rng() * 0.3)
-        .attr("stroke-linecap", "round")
-        .attr("stroke-linejoin", "round")
-        .attr("opacity", 0.82 + rng() * 0.18);
-
-      // DENSE interior hatching — match the hex-mountain drawer (wl-60)
-      // so the left-margin spine reads volumetric like the reference
-      // Misty Mountains, not as skeletal outlines.
-      const hatchCount = Math.max(8, Math.min(20, Math.round(h / 1.1)));
-      for (let k = 0; k < hatchCount; k++) {
-        const t = 0.10 + (k / (hatchCount - 1 || 1)) * 0.85;
-        const hy = apY + (baseY - apY) * t;
-        const rightEdgeAtT = apX + (baseRX - apX) * t;
-        const leftFromApex = apX + (apX - baseLX) * (-t * 0.25);
-        const tx1 = leftFromApex + (rng() - 0.5) * 1.0;
-        const tx2 = rightEdgeAtT - 0.5 - rng() * 0.6;
-        if (tx2 - tx1 < 1.3) continue;
-        const slant = 1.2 + rng() * 1.4;
-        group.append("line")
-          .attr("x1", tx1).attr("y1", hy)
-          .attr("x2", tx2).attr("y2", hy + slant)
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.5)
-          .attr("opacity", 0.78 + rng() * 0.20)
-          .attr("stroke-linecap", "round");
-      }
-    }
-
-    // Decorative headwater: a thin double-line river ribbon wiggling
-    // from the spine east into the left-gap forest. Pure ornament —
-    // evokes "rivers rise in the mountains" without touching game data.
-    const riverStartX = spineCenterX + spineHalfWidth + 5;
-    const riverStartY = spineTop + spineHeight * 0.3;
-    const riverEndX = bounds.minX - 10;
-    const riverEndY = spineTop + spineHeight * 0.25;
-    const riverDX = riverEndX - riverStartX;
-    const riverDY = riverEndY - riverStartY;
-    const riverPts = [];
-    const riverSegs = 40;
-    const riverRng = ctx.mulberry32(ctx.seedFromString("wl-decor-river"));
-    for (let s = 0; s <= riverSegs; s++) {
-      const t = s / riverSegs;
-      const bx = riverStartX + riverDX * t;
-      const by = riverStartY + riverDY * t;
-      // Perpendicular wiggle (dampened at endpoints)
-      const envelope = Math.sin(t * Math.PI);
-      const wave = Math.sin(t * Math.PI * 3.5 + riverRng() * 0.5) * 8;
-      const wave2 = Math.sin(t * Math.PI * 9) * 2.5;
-      const offset = (wave + wave2) * envelope;
-      // perpendicular to (riverDX, riverDY)
-      const pLen = Math.sqrt(riverDX * riverDX + riverDY * riverDY) || 1;
-      const nx = -riverDY / pLen, ny = riverDX / pLen;
-      riverPts.push([bx + nx * offset, by + ny * offset]);
-    }
-    const riverD = "M " + riverPts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ");
-    const riverBankOffset = 1.8;
-    // Two thin parallel bank lines (ribbon)
-    for (const side of [+1, -1]) {
-      const bankPts = riverPts.map((p, i) => {
-        const prev = riverPts[Math.max(0, i - 1)];
-        const next = riverPts[Math.min(riverPts.length - 1, i + 1)];
-        const tx = next[0] - prev[0];
-        const ty = next[1] - prev[1];
-        const tl = Math.sqrt(tx*tx + ty*ty) || 1;
-        return [p[0] + (-ty/tl) * side * riverBankOffset, p[1] + (tx/tl) * side * riverBankOffset];
-      });
-      const bankD = "M " + bankPts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ");
-      group.append("path")
-        .attr("d", bankD)
-        .attr("fill", "none")
-        .attr("stroke", INK)
-        .attr("stroke-width", 0.7)
-        .attr("opacity", 0.85)
-        .attr("stroke-linecap", "round");
-    }
-
-    // Vertical "MISTY MOUNTAINS"-style label running along the spine
-    const labelText = "FORANDOL MOUNTAINS";
-    const labelCX = spineCenterX - 48;
-    const labelCY = (spineTop + spineBottom) / 2;
-    group.append("text")
-      .attr("x", labelCX)
-      .attr("y", labelCY)
-      .attr("text-anchor", "middle")
-      .attr("font-family", ctx.FONT || "Palatino, serif")
-      .attr("font-size", "26px")
-      .attr("font-weight", "500")
-      .attr("fill", ctx.colors.BLUE)
-      .attr("opacity", 0.75)
-      .attr("letter-spacing", "8px")
-      .attr("transform", `rotate(-90, ${labelCX}, ${labelCY})`)
-      .text(labelText);
-
-    // --- Left-of-content gap: procedural forest ---
-    // Between the spine (x ≈ spineCenterX + halfWidth) and the content
-    // edge (bounds.minX) there's an empty parchment gap. Reference has
-    // forest extending right up to the mountain spine. Fill with
-    // scattered cloud-canopy tree glyphs so the composition reads
-    // page-filling.
-    const gapLeftX = spineCenterX + spineHalfWidth + 10;
-    const gapRightX = bounds.minX - 10;
-    if (gapRightX - gapLeftX > 80) {
-      const gapGroup = g.append("g").attr("class", "margin-forest-left");
-      const gapRng = ctx.mulberry32(ctx.seedFromString("wl-margin-left-forest"));
-      const gapWidth = gapRightX - gapLeftX;
-      const gapHeight = spineBottom - spineTop;
-      // Scatter 18 small hill sprites — rolling bumps between mountains
-      // and forest — reference has terrain variety in these gaps.
-      for (let h = 0; h < 18; h++) {
-        const hx = gapLeftX + gapRng() * gapWidth;
-        const hy = spineTop + gapRng() * gapHeight;
-        const hs = 6 + gapRng() * 6;
-        gapGroup.append("path")
-          .attr("d", `M ${hx-hs} ${hy} q ${hs*0.5} ${-hs*0.75}, ${hs} 0 q ${hs*0.5} ${-hs*0.5}, ${hs*0.8} 0`)
-          .attr("fill", "none")
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.7)
-          .attr("opacity", 0.6 + gapRng() * 0.3);
-        // Short hatch on the shaded flank
-        const ticks = 2 + Math.floor(gapRng() * 2);
-        for (let k = 0; k < ticks; k++) {
-          const tk = 0.35 + k * 0.18;
-          gapGroup.append("line")
-            .attr("x1", hx - hs*0.2 + k*hs*0.25)
-            .attr("y1", hy - hs*0.3 + k*1.5)
-            .attr("x2", hx - hs*0.2 + k*hs*0.25 + 2.5)
-            .attr("y2", hy - hs*0.3 + k*1.5 + 2)
-            .attr("stroke", INK)
-            .attr("stroke-width", 0.4)
-            .attr("opacity", 0.5);
-        }
-      }
-      // Scattered italic annotations — classic Tolkien hand-drawn
-      // captions ("Here dwells...", "West lies..."). Adds period feel
-      // to the gap forest.
-      const leftAnnotations = [
-        { y: 0.12, text: "West lies the Forandol Range" },
-        { y: 0.32, text: "Here dwells the Hermit of Icewine" },
-        { y: 0.58, text: "Old streams from the mountains" },
-        { y: 0.82, text: "Here ride the wardens of the west" },
-      ];
-      leftAnnotations.forEach(a => {
-        gapGroup.append("text")
-          .attr("x", gapLeftX + gapWidth * (0.35 + gapRng() * 0.25))
-          .attr("y", spineTop + gapHeight * a.y)
-          .attr("text-anchor", "middle")
-          .attr("font-family", ctx.FONT || "Palatino, serif")
-          .attr("font-size", "13px")
-          .attr("font-style", "italic")
-          .attr("fill", ctx.colors.BLUE)
-          .attr("opacity", 0.82)
-          .text(a.text);
-      });
-
-      const treeTarget = Math.max(180, Math.floor((gapWidth * gapHeight) / 380));
-      for (let i = 0; i < treeTarget; i++) {
-        const tx = gapLeftX + gapRng() * gapWidth;
-        const ty = spineTop + gapRng() * gapHeight;
-        const ts = 5 + gapRng() * 4;
-        const tG = gapGroup.append("g").attr("transform", `translate(${tx}, ${ty})`);
-        // Cloud canopy — two stacked arcs for a fuller tree
-        tG.append("path")
-          .attr("d", `M ${-ts} 0 q ${ts*0.3} ${-ts*1.4}, ${ts*0.55} ${-ts*0.4} q ${ts*0.4} ${-ts*1.2}, ${ts*1.05} ${-ts*0.2} q ${ts*0.3} ${-ts*0.9}, ${ts*0.95} ${ts*0.25} Z`)
-          .attr("fill", "none")
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.7)
-          .attr("opacity", 0.65 + gapRng() * 0.30);
-        // Trunk
-        tG.append("line")
-          .attr("x1", ts*0.4).attr("y1", 0)
-          .attr("x2", ts*0.4).attr("y2", ts*0.8)
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.5)
-          .attr("opacity", 0.7);
-      }
-    }
-
-    // --- Right-of-content gap: procedural forest ---
-    // Between the content (bounds.maxX) and the right-margin sea
-    // decoration there's an empty strip. Mirror the left-gap fill so
-    // composition is balanced on both sides of the content.
-    const rGapLeftX = bounds.maxX + 10;
-    const rGapRightX = WIDTH - 200; // leave room for sea decor
-    if (rGapRightX - rGapLeftX > 60) {
-      const rGapGroup = g.append("g").attr("class", "margin-forest-right");
-      const rGapRng = ctx.mulberry32(ctx.seedFromString("wl-margin-right-forest"));
-      const rGapWidth = rGapRightX - rGapLeftX;
-      const rGapHeight = bounds.maxY - bounds.minY;
-      // Sparser than left gap so sea label still reads cleanly
-      // Right-gap italic annotations
-      const rightAnnotations = [
-        { y: 0.18, text: "Sighted: Stormsail, year's end" },
-        { y: 0.48, text: "Here the Trade Road meets the Sea" },
-        { y: 0.78, text: "Eastward to Kitania and beyond" },
-      ];
-      rightAnnotations.forEach(a => {
-        rGapGroup.append("text")
-          .attr("x", rGapLeftX + rGapWidth * (0.45 + rGapRng() * 0.20))
-          .attr("y", bounds.minY + rGapHeight * a.y)
-          .attr("text-anchor", "middle")
-          .attr("font-family", ctx.FONT || "Palatino, serif")
-          .attr("font-size", "12px")
-          .attr("font-style", "italic")
-          .attr("fill", ctx.colors.BLUE)
-          .attr("opacity", 0.78)
-          .text(a.text);
-      });
-
-      const rTreeTarget = Math.max(60, Math.floor((rGapWidth * rGapHeight) / 600));
-      for (let i = 0; i < rTreeTarget; i++) {
-        const tx = rGapLeftX + rGapRng() * rGapWidth;
-        const ty = bounds.minY + rGapRng() * rGapHeight;
-        const ts = 4 + rGapRng() * 3;
-        const tG = rGapGroup.append("g").attr("transform", `translate(${tx}, ${ty})`);
-        tG.append("path")
-          .attr("d", `M ${-ts} 0 q ${ts*0.3} ${-ts*1.4}, ${ts*0.55} ${-ts*0.4} q ${ts*0.4} ${-ts*1.2}, ${ts*1.05} ${-ts*0.2} q ${ts*0.3} ${-ts*0.9}, ${ts*0.95} ${ts*0.25} Z`)
-          .attr("fill", "none")
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.65)
-          .attr("opacity", 0.55 + rGapRng() * 0.30);
-        tG.append("line")
-          .attr("x1", ts*0.4).attr("y1", 0)
-          .attr("x2", ts*0.4).attr("y2", ts*0.8)
-          .attr("stroke", INK)
-          .attr("stroke-width", 0.45)
-          .attr("opacity", 0.65);
-      }
-    }
-
-    // --- Right margin: Ulfskeptyr Sea decoration ---
-    // Basilisk's E off-map-arrow is the Ulfskeptyr Sea. Reference has
-    // varied right-margin content (Iron Hills, Long Lake, labels).
-    // Mine is empty. Fill with a rotated blue sea label + subtle wave
-    // marks so the composition is balanced left/right.
-    const rightMargin = WIDTH - bounds.maxX;
-    if (rightMargin > 200) {
-      const seaRng = ctx.mulberry32(ctx.seedFromString("wl-right-sea"));
-      const seaGroup = g.append("g").attr("class", "margin-sea");
-      const seaCenterX = bounds.maxX + rightMargin * 0.40;
-      const seaTop = bounds.minY + 30;
-      const seaBottom = bounds.maxY - 30;
-
-      // Scattered wave marks — short horizontal tildes/zigzags
-      const waveCount = 80;
-      for (let i = 0; i < waveCount; i++) {
-        const wy = seaTop + seaRng() * (seaBottom - seaTop);
-        const wx = seaCenterX + (seaRng() - 0.5) * 70;
-        const wlen = 10 + seaRng() * 12;
-        const amp = 1.5 + seaRng() * 1.0;
-        // Build a small zigzag wave path
-        const segs = 3;
-        let d = `M ${wx} ${wy}`;
-        for (let s = 1; s <= segs; s++) {
-          const t = s / segs;
-          const sy = wy + Math.sin(t * Math.PI * 2 + seaRng()) * amp;
-          d += ` L ${wx + wlen * t} ${sy}`;
-        }
-        seaGroup.append("path")
-          .attr("d", d)
-          .attr("fill", "none")
-          .attr("stroke", ctx.colors.BLUE)
-          .attr("stroke-width", 0.6)
-          .attr("opacity", 0.35 + seaRng() * 0.25)
-          .attr("stroke-linecap", "round");
-      }
-
-      // Decorative serpent/basilisk sprite near the top of the sea —
-      // echoes the reference wilderland's winged wyrm under "Withered
-      // Heath". Basilisk is the campaign's titular creature, so a
-      // small serpent ornament is campaign-consistent.
-      const sx = seaCenterX - 20;
-      const sy = seaTop + 80;
-      const sG = seaGroup.append("g");
-      // Serpentine body — S-shape
-      sG.append("path")
-        .attr("d", `M ${sx-40} ${sy} C ${sx-20} ${sy-25}, ${sx+10} ${sy+15}, ${sx+40} ${sy-10} S ${sx+80} ${sy+8}, ${sx+100} ${sy-18}`)
-        .attr("fill", "none")
-        .attr("stroke", ctx.colors.INK)
-        .attr("stroke-width", 1.4)
-        .attr("stroke-linecap", "round")
-        .attr("opacity", 0.85);
-      // Head (small triangle)
-      sG.append("path")
-        .attr("d", `M ${sx+100} ${sy-18} L ${sx+112} ${sy-24} L ${sx+108} ${sy-14} Z`)
-        .attr("fill", ctx.colors.INK)
-        .attr("opacity", 0.85);
-      // Eye dot
-      sG.append("circle")
-        .attr("cx", sx+104).attr("cy", sy-20).attr("r", 0.8)
-        .attr("fill", ctx.colors.PARCHMENT);
-      // Forked tongue
-      sG.append("path")
-        .attr("d", `M ${sx+112} ${sy-22} L ${sx+120} ${sy-26} M ${sx+112} ${sy-22} L ${sx+120} ${sy-20}`)
-        .attr("fill", "none")
-        .attr("stroke", ctx.colors.INK)
-        .attr("stroke-width", 0.6)
-        .attr("opacity", 0.8);
-      // Tail flick
-      sG.append("path")
-        .attr("d", `M ${sx-40} ${sy} L ${sx-55} ${sy+6} M ${sx-40} ${sy} L ${sx-52} ${sy-2}`)
-        .attr("fill", "none")
-        .attr("stroke", ctx.colors.INK)
-        .attr("stroke-width", 0.7)
-        .attr("opacity", 0.8);
-      // Small caption
-      sG.append("text")
-        .attr("x", sx + 30)
-        .attr("y", sy + 22)
-        .attr("text-anchor", "middle")
-        .attr("font-family", ctx.FONT || "Palatino, serif")
-        .attr("font-size", "11px")
-        .attr("font-style", "italic")
-        .attr("fill", ctx.colors.INK_LIGHT)
-        .attr("opacity", 0.80)
-        .text("Here be Basilisks");
-
-      // Small decorative ship sprites — reference has boat silhouettes
-      // on water. Two ships in the sea, one higher and one lower.
-      const drawShip = (shipX, shipY, size) => {
-        const shipG = seaGroup.append("g")
-          .attr("transform", `translate(${shipX}, ${shipY})`);
-        // Hull (curved u-shape)
-        const hw = size * 0.8;
-        shipG.append("path")
-          .attr("d", `M ${-hw} 0 Q ${-hw*0.5} ${size*0.35}, 0 ${size*0.4} Q ${hw*0.5} ${size*0.35}, ${hw} 0 L ${hw*0.85} ${-size*0.08} L ${-hw*0.85} ${-size*0.08} Z`)
-          .attr("fill", ctx.colors.PARCHMENT)
-          .attr("stroke", ctx.colors.INK)
-          .attr("stroke-width", 0.7)
-          .attr("opacity", 0.9);
-        // Mast
-        shipG.append("line")
-          .attr("x1", 0).attr("y1", 0)
-          .attr("x2", 0).attr("y2", -size * 1.1)
-          .attr("stroke", ctx.colors.INK)
-          .attr("stroke-width", 0.6)
-          .attr("opacity", 0.8);
-        // Sail — triangular flag-like
-        shipG.append("path")
-          .attr("d", `M 1 ${-size * 1.05} L ${size * 0.7} ${-size * 0.55} L 1 ${-size * 0.25} Z`)
-          .attr("fill", "none")
-          .attr("stroke", ctx.colors.INK)
-          .attr("stroke-width", 0.6)
-          .attr("opacity", 0.85);
-        // Small wake ripples
-        shipG.append("path")
-          .attr("d", `M ${-hw-3} ${size*0.25} q 3 -2 6 0 q 3 -2 6 0`)
-          .attr("fill", "none")
-          .attr("stroke", ctx.colors.BLUE)
-          .attr("stroke-width", 0.5)
-          .attr("opacity", 0.45);
-      };
-      drawShip(seaCenterX - 10, seaTop + (seaBottom - seaTop) * 0.35, 7);
-      drawShip(seaCenterX + 15, seaTop + (seaBottom - seaTop) * 0.72, 6);
-
-      // Vertical sea label rotated along the right margin
-      const seaLabelText = "ULFSKEPTYR SEA";
-      const seaLabelX = seaCenterX + 50;
-      const seaLabelY = (seaTop + seaBottom) / 2;
-      seaGroup.append("text")
-        .attr("x", seaLabelX)
-        .attr("y", seaLabelY)
-        .attr("text-anchor", "middle")
-        .attr("font-family", ctx.FONT || "Palatino, serif")
-        .attr("font-size", "26px")
-        .attr("font-weight", "500")
-        .attr("fill", ctx.colors.BLUE)
-        .attr("opacity", 0.70)
-        .attr("letter-spacing", "8px")
-        .attr("transform", `rotate(90, ${seaLabelX}, ${seaLabelY})`)
-        .text(seaLabelText);
-    }
-  },
 
   // --- Compass rose (Wilderland style — small 4-arrow compass with
   // "N" marker at top-LEFT, matching the reference where the compass
@@ -2553,58 +2135,6 @@ window.MapStyles.wilderland = {
         .attr("transform", `rotate(-90, ${leftX}, ${ly})`)
         .text(label);
     });
-
-    // Decorative horizontal peak strip above the banner — reference has
-    // a row of small mountain silhouettes along the top edge, above the
-    // "GREY MOUNTAINS" label. Pure ornament (not data-driven). Small
-    // wobbled open-curve peaks matching the main-mountain drawing model.
-    const peakStripY = bounds.minY - 40;
-    const peakStripLeftX = bounds.minX + (bounds.maxX - bounds.minX) * 0.08;
-    const peakStripRightX = bounds.maxX - (bounds.maxX - bounds.minX) * 0.08;
-    const peakStripWidth = peakStripRightX - peakStripLeftX;
-    const stripRng = ctx.mulberry32(ctx.seedFromString("wilderland-top-peaks"));
-    const stripPeakCount = 25;
-    const stripINK = ctx.colors.INK;
-    for (let i = 0; i < stripPeakCount; i++) {
-      const cx = peakStripLeftX + (i / stripPeakCount) * peakStripWidth + (stripRng() - 0.5) * 6;
-      const h = 16 + stripRng() * 14;
-      const hw = h * 0.55;
-      const baseLX = cx - hw;
-      const baseRX = cx + hw;
-      const apX = cx + hw * (0.15 + stripRng() * 0.2);
-      const apY = peakStripY - h;
-      const baseY = peakStripY;
-      // Same sampled-Bezier wobble model as main peaks
-      const sampleCubic = (P0, P1, P2, P3, steps, includeStart) => {
-        const pts = [];
-        for (let k = includeStart ? 0 : 1; k <= steps; k++) {
-          const t = k / steps;
-          const it = 1 - t;
-          const b0 = it*it*it, b1 = 3*it*it*t, b2 = 3*it*t*t, b3 = t*t*t;
-          const x = b0*P0[0] + b1*P1[0] + b2*P2[0] + b3*P3[0];
-          const y = b0*P0[1] + b1*P1[1] + b2*P2[1] + b3*P3[1];
-          const ed = Math.min(t, 1-t) * 2;
-          pts.push([x + (stripRng()-0.5)*0.8*ed, y + (stripRng()-0.5)*0.8*ed]);
-        }
-        return pts;
-      };
-      const lC1 = [baseLX + hw*0.4, baseY - h*0.3];
-      const lC2 = [apX - hw*0.2, apY + h*0.15];
-      const rC1 = [apX + hw*0.1, apY + h*0.2];
-      const rC2 = [baseRX - hw*0.1, baseY - h*0.1];
-      const leftPts = sampleCubic([baseLX, baseY], lC1, lC2, [apX, apY], 8, true);
-      const rightPts = sampleCubic([apX, apY], rC1, rC2, [baseRX, baseY], 6, false);
-      const allPts = leftPts.concat(rightPts);
-      const d = "M " + allPts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L ");
-      annotGroup.append("path")
-        .attr("d", d)
-        .attr("fill", "none")
-        .attr("stroke", stripINK)
-        .attr("stroke-width", 0.7 + stripRng() * 0.3)
-        .attr("stroke-linecap", "round")
-        .attr("stroke-linejoin", "round")
-        .attr("opacity", 0.65 + stripRng() * 0.3);
-    }
 
     // Top edge — reference shows a large blue spaced-caps "GREY MOUNTAINS"
     // banner stretching across much of the top. Mine was 14px at 4px

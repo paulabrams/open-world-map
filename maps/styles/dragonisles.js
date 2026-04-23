@@ -41,7 +41,6 @@ window.MapStyles.dragonisles = {
   /* ── Master render (called by core) ─────────────────────────── */
   render(ctx) {
     this.renderBackground(ctx);
-    this.renderBorder(ctx);
     this.renderOriginAxes(ctx);
     this.renderTravelRadii(ctx);
     MapCore.renderRiver(ctx, ctx.colors.INK, 3);
