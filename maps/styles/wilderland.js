@@ -1909,10 +1909,11 @@ window.MapStyles.wilderland = {
     const { g, bounds, meta, FONT } = ctx;
     const { INK, INK_LIGHT, PARCHMENT } = ctx.colors;
 
-    const boxW = 210;
-    // Cartouche is taller than before so the subtitle line can sit below
-    // the bottom Greek-key meander strip instead of overlapping it.
-    const boxH = 78;
+    // Reference WILDERLAND cartouche visibly dominates the bottom-right
+    // corner. Previous 210×78 read as a small caption on a mostly-empty
+    // margin. Bump to 360×130 for reference-matching visual weight.
+    const boxW = 360;
+    const boxH = 130;
     const bx = bounds.maxX - boxW + 20;
     const by = bounds.maxY - boxH + 22;
 
@@ -1954,8 +1955,11 @@ window.MapStyles.wilderland = {
     // squared-spiral shape; repeated horizontally it reads as the
     // classic meander ornament used in the reference Wilderland
     // cartouche border.
-    const meanderStripH = 5;
-    const meanderUnitW = 8;
+    // Meander unit scaled up so the ornament reads at arm's length
+    // alongside the larger title text; too-thin ornament on a big box
+    // looks vestigial.
+    const meanderStripH = 8;
+    const meanderUnitW = 12;
     // Top strip sits just inside the middle rule.
     const meanderTopY = by + 5;
     const meanderBotY = by + boxH - 5 - meanderStripH;
@@ -2030,12 +2034,12 @@ window.MapStyles.wilderland = {
       : (meta.campaign || "").toUpperCase();
     g.append("text")
       .attr("x", bx + boxW / 2)
-      .attr("y", by + boxH / 2 + 6)
+      .attr("y", by + boxH / 2 + 10)
       .attr("text-anchor", "middle")
       .attr("font-family", FONT)
-      .attr("font-size", "18px")
+      .attr("font-size", "32px")
       .attr("font-weight", "600")
-      .attr("letter-spacing", "5px")
+      .attr("letter-spacing", "8px")
       .attr("fill", INK)
       .text(titleText);
 
@@ -2051,10 +2055,10 @@ window.MapStyles.wilderland = {
     if (meta.world) {
       g.append("text")
         .attr("x", bx + boxW / 2)
-        .attr("y", by + boxH - 20)
+        .attr("y", by + boxH - 24)
         .attr("text-anchor", "middle")
         .attr("font-family", FONT)
-        .attr("font-size", "9px")
+        .attr("font-size", "14px")
         .attr("font-style", "italic")
         .attr("fill", INK_LIGHT)
         .text(meta.world + (meta.era ? " \u2014 " + meta.era : ""));
