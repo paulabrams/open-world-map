@@ -1845,6 +1845,61 @@ window.MapStyles.wilderland = {
       .attr("letter-spacing", "8px")
       .attr("transform", `rotate(-90, ${labelCX}, ${labelCY})`)
       .text(labelText);
+
+    // --- Right margin: Ulfskeptyr Sea decoration ---
+    // Basilisk's E off-map-arrow is the Ulfskeptyr Sea. Reference has
+    // varied right-margin content (Iron Hills, Long Lake, labels).
+    // Mine is empty. Fill with a rotated blue sea label + subtle wave
+    // marks so the composition is balanced left/right.
+    const rightMargin = WIDTH - bounds.maxX;
+    if (rightMargin > 200) {
+      const seaRng = ctx.mulberry32(ctx.seedFromString("wl-right-sea"));
+      const seaGroup = g.append("g").attr("class", "margin-sea");
+      const seaCenterX = bounds.maxX + rightMargin * 0.40;
+      const seaTop = bounds.minY + 30;
+      const seaBottom = bounds.maxY - 30;
+
+      // Scattered wave marks — short horizontal tildes/zigzags
+      const waveCount = 80;
+      for (let i = 0; i < waveCount; i++) {
+        const wy = seaTop + seaRng() * (seaBottom - seaTop);
+        const wx = seaCenterX + (seaRng() - 0.5) * 70;
+        const wlen = 10 + seaRng() * 12;
+        const amp = 1.5 + seaRng() * 1.0;
+        // Build a small zigzag wave path
+        const segs = 3;
+        let d = `M ${wx} ${wy}`;
+        for (let s = 1; s <= segs; s++) {
+          const t = s / segs;
+          const sy = wy + Math.sin(t * Math.PI * 2 + seaRng()) * amp;
+          d += ` L ${wx + wlen * t} ${sy}`;
+        }
+        seaGroup.append("path")
+          .attr("d", d)
+          .attr("fill", "none")
+          .attr("stroke", ctx.colors.BLUE)
+          .attr("stroke-width", 0.6)
+          .attr("opacity", 0.35 + seaRng() * 0.25)
+          .attr("stroke-linecap", "round");
+      }
+
+      // Vertical sea label rotated along the right margin
+      const seaLabelText = "ULFSKEPTYR SEA";
+      const seaLabelX = seaCenterX + 50;
+      const seaLabelY = (seaTop + seaBottom) / 2;
+      seaGroup.append("text")
+        .attr("x", seaLabelX)
+        .attr("y", seaLabelY)
+        .attr("text-anchor", "middle")
+        .attr("font-family", ctx.FONT || "Palatino, serif")
+        .attr("font-size", "26px")
+        .attr("font-weight", "500")
+        .attr("fill", ctx.colors.BLUE)
+        .attr("opacity", 0.70)
+        .attr("letter-spacing", "8px")
+        .attr("transform", `rotate(90, ${seaLabelX}, ${seaLabelY})`)
+        .text(seaLabelText);
+    }
   },
 
   // --- Compass rose (Wilderland style — small 4-arrow compass with
