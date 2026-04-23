@@ -1848,6 +1848,42 @@ window.MapStyles.wilderland = {
       .attr("transform", `rotate(-90, ${labelCX}, ${labelCY})`)
       .text(labelText);
 
+    // --- Left-of-content gap: procedural forest ---
+    // Between the spine (x ≈ spineCenterX + halfWidth) and the content
+    // edge (bounds.minX) there's an empty parchment gap. Reference has
+    // forest extending right up to the mountain spine. Fill with
+    // scattered cloud-canopy tree glyphs so the composition reads
+    // page-filling.
+    const gapLeftX = spineCenterX + spineHalfWidth + 10;
+    const gapRightX = bounds.minX - 10;
+    if (gapRightX - gapLeftX > 80) {
+      const gapGroup = g.append("g").attr("class", "margin-forest-left");
+      const gapRng = ctx.mulberry32(ctx.seedFromString("wl-margin-left-forest"));
+      const gapWidth = gapRightX - gapLeftX;
+      const gapHeight = spineBottom - spineTop;
+      const treeTarget = Math.max(80, Math.floor((gapWidth * gapHeight) / 900));
+      for (let i = 0; i < treeTarget; i++) {
+        const tx = gapLeftX + gapRng() * gapWidth;
+        // Bias trees toward content side (away from the spine)
+        const ty = spineTop + gapRng() * gapHeight;
+        const ts = 3 + gapRng() * 3;
+        // Simple cloud-canopy tree: a couple of small arcs + trunk
+        const tG = gapGroup.append("g").attr("transform", `translate(${tx}, ${ty})`);
+        tG.append("path")
+          .attr("d", `M ${-ts} 0 q ${ts*0.4} ${-ts*1.3}, ${ts} 0 q ${ts*0.6} ${-ts*0.8}, ${ts*1.2} 0`)
+          .attr("fill", "none")
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.55)
+          .attr("opacity", 0.65 + gapRng() * 0.25);
+        tG.append("line")
+          .attr("x1", ts*0.2).attr("y1", 0)
+          .attr("x2", ts*0.2).attr("y2", ts*0.6)
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.4)
+          .attr("opacity", 0.6);
+      }
+    }
+
     // --- Right margin: Ulfskeptyr Sea decoration ---
     // Basilisk's E off-map-arrow is the Ulfskeptyr Sea. Reference has
     // varied right-margin content (Iron Hills, Long Lake, labels).
