@@ -953,7 +953,20 @@ window.MapStyles.wilderland = {
     // separate triangular stamps.
     MapCore.renderMountainsByRegion(ctx,
       (tg, peaks, rng, opts) => drawMountainRidge(tg, peaks, rng, opts),
-      { clusterInset: 0.10 });
+      {
+        clusterInset: 0.10,
+        // Denser cluster jag — 10-14 peaks per hex instead of 7-11 —
+        // so adjacent hexes form a richer jagged skyline like the
+        // reference Misty Mountains.
+        peakCountMin: 10,
+        peakCountRange: 5,
+        // Continuous height distribution instead of the hero model:
+        // the Wilderland reference has many peaks of varied heights
+        // with no single "hero" dominating the cluster. pow<1 biases
+        // toward taller peaks; range 0.35-1.05 keeps peaks tall enough
+        // to read as mountains rather than foothills.
+        heightProfile: (rng) => 0.35 + Math.pow(rng(), 0.85) * 0.70,
+      });
     // Dense forest packing to match Mirkwood density in the reference —
     // scattered trees at default density (1.0) read too sparse.
     // Reference Mirkwood is wall-to-wall trees with no visible gaps — push

@@ -1358,6 +1358,19 @@ function renderMountainsByRegion(ctx, ridgeDrawer, options) {
   // 0.10 pushes peaks almost to the edge so adjacent mountain hexes read
   // as one continuous ridge. Expose so styles can tune cross-hex flow.
   const clusterInsetRatio = (options && typeof options.clusterInset === "number") ? options.clusterInset : 0.40;
+  // `peakCountMin` / `peakCountRange` — how many peaks populate each hex
+  // cluster. Default 7 + 0..5 matches Baynes Third Age density; wilderland
+  // bumps for a denser jagged skyline.
+  const peakCountMin = (options && typeof options.peakCountMin === "number") ? options.peakCountMin : 7;
+  const peakCountRange = (options && typeof options.peakCountRange === "number") ? options.peakCountRange : 5;
+  // `heightProfile(rng, isHero)` → hBase in [0,1]. Default is the hero
+  // model (one dominant peak per cluster, ~1.6× the others); styles can
+  // pass a continuous distribution for a more evenly-varied ridge.
+  const heightProfile = (options && typeof options.heightProfile === "function")
+    ? options.heightProfile
+    : (rng, isHero) => isHero
+        ? 0.85 + rng() * 0.25
+        : 0.30 + Math.pow(rng(), 1.3) * 0.40;
 
   const bcCol = 10, bcRow = 10;
   const size = HINT_SCALE / 2;
@@ -1430,23 +1443,23 @@ function renderMountainsByRegion(ctx, ridgeDrawer, options) {
       const leftX = hx - size + inset;
       const rightX = hx + size - inset;
       const extent = rightX - leftX;
-      // Per-hex cluster: 7-11 small peaks (Baynes Misty-Mtn density).
-      const peakCount = 7 + Math.floor(rng() * 5);
+      // Per-hex cluster: peakCountMin + 0..peakCountRange peaks. Default
+      // 7-11 (Baynes Misty-Mtn density); styles override for denser or
+      // sparser jag rhythm.
+      const peakCount = peakCountMin + Math.floor(rng() * peakCountRange);
 
-      // Heights: most peaks are similar-sized (small), with just slight
-      // variation. No dominant hero that swallows the hex — reference
-      // clusters feel like a group of similar-size teeth, not 1 giant
-      // peak + foothills.
-      // One hero index per cluster — rises ~1.6× taller than neighbours
-      // to match Baynes reference where heros clearly stand out.
+      // Heights: default "hero" model has one dominant peak per cluster
+      // that rises ~1.6× taller than neighbours — matches Baynes Third
+      // Age where one peak clearly stands out. Styles can pass their own
+      // `heightProfile` (e.g. a continuous distribution) for a more
+      // evenly-varied ridge skyline.
       const heroIdx = Math.floor(rng() * peakCount);
       const peaks = [];
       for (let i = 0; i < peakCount; i++) {
         const t = (i + 0.5) / peakCount + (rng() - 0.5) * 0.35 / peakCount;
         const px = leftX + t * extent;
         const isHero = i === heroIdx;
-        const hBase = isHero ? 0.85 + rng() * 0.25
-                             : 0.30 + Math.pow(rng(), 1.3) * 0.40;
+        const hBase = heightProfile(rng, isHero);
         const pyJitter = (rng() - 0.5) * mSize * 0.50;
         peaks.push({
           px,
