@@ -2082,9 +2082,12 @@ window.MapStyles.wilderland = {
         .text(label);
     });
 
-    // Top edge — campaign's N off-map neighbor, in loose arching style.
+    // Top edge — reference shows a large blue spaced-caps "GREY MOUNTAINS"
+    // banner stretching across much of the top. Mine was 14px at 4px
+    // letter-spacing and barely visible. Bump font to 28px, letter-spacing
+    // to 10px, color to BLUE matching the reference's pale-blue label ink.
     const topX = (bounds.minX + bounds.maxX) / 2;
-    const topY = bounds.minY - 15;
+    const topY = bounds.minY - 18;
     const regionName = meta.region || meta.campaign || "";
     const topLabel = byDir.N || regionName.toUpperCase();
     annotGroup.append("text")
@@ -2092,10 +2095,11 @@ window.MapStyles.wilderland = {
       .attr("y", topY)
       .attr("text-anchor", "middle")
       .attr("font-family", font)
-      .attr("font-size", "14px")
-      .attr("fill", INK_LIGHT)
+      .attr("font-size", "28px")
+      .attr("font-weight", "500")
+      .attr("fill", ctx.colors.BLUE)
       .attr("opacity", 0.85)
-      .attr("letter-spacing", "4px")
+      .attr("letter-spacing", "10px")
       .text(topLabel);
 
     // Bottom edge — "to the South..."
