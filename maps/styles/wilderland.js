@@ -1935,6 +1935,28 @@ window.MapStyles.wilderland = {
             .attr("opacity", 0.5);
         }
       }
+      // Scattered italic annotations — classic Tolkien hand-drawn
+      // captions ("Here dwells...", "West lies..."). Adds period feel
+      // to the gap forest.
+      const leftAnnotations = [
+        { y: 0.12, text: "West lies the Forandol Range" },
+        { y: 0.32, text: "Here dwells the Hermit of Icewine" },
+        { y: 0.58, text: "Old streams from the mountains" },
+        { y: 0.82, text: "Here ride the wardens of the west" },
+      ];
+      leftAnnotations.forEach(a => {
+        gapGroup.append("text")
+          .attr("x", gapLeftX + gapWidth * (0.35 + gapRng() * 0.25))
+          .attr("y", spineTop + gapHeight * a.y)
+          .attr("text-anchor", "middle")
+          .attr("font-family", ctx.FONT || "Palatino, serif")
+          .attr("font-size", "13px")
+          .attr("font-style", "italic")
+          .attr("fill", ctx.colors.BLUE)
+          .attr("opacity", 0.82)
+          .text(a.text);
+      });
+
       const treeTarget = Math.max(180, Math.floor((gapWidth * gapHeight) / 380));
       for (let i = 0; i < treeTarget; i++) {
         const tx = gapLeftX + gapRng() * gapWidth;
@@ -1970,6 +1992,25 @@ window.MapStyles.wilderland = {
       const rGapWidth = rGapRightX - rGapLeftX;
       const rGapHeight = bounds.maxY - bounds.minY;
       // Sparser than left gap so sea label still reads cleanly
+      // Right-gap italic annotations
+      const rightAnnotations = [
+        { y: 0.18, text: "Sighted: Stormsail, year's end" },
+        { y: 0.48, text: "Here the Trade Road meets the Sea" },
+        { y: 0.78, text: "Eastward to Kitania and beyond" },
+      ];
+      rightAnnotations.forEach(a => {
+        rGapGroup.append("text")
+          .attr("x", rGapLeftX + rGapWidth * (0.45 + rGapRng() * 0.20))
+          .attr("y", bounds.minY + rGapHeight * a.y)
+          .attr("text-anchor", "middle")
+          .attr("font-family", ctx.FONT || "Palatino, serif")
+          .attr("font-size", "12px")
+          .attr("font-style", "italic")
+          .attr("fill", ctx.colors.BLUE)
+          .attr("opacity", 0.78)
+          .text(a.text);
+      });
+
       const rTreeTarget = Math.max(60, Math.floor((rGapWidth * rGapHeight) / 600));
       for (let i = 0; i < rTreeTarget; i++) {
         const tx = rGapLeftX + rGapRng() * rGapWidth;
