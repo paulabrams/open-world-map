@@ -453,8 +453,11 @@ window.MapStyles.wilderland = {
         // Perpendicular points INTO the peak interior (see thirdage).
         const perpX = shadowRight ? -uy : uy;
         const perpY = shadowRight ? ux : -ux;
-        // Denser hatching to match reference's heavy-hatched leeward flanks.
-        const hatchCount = Math.max(4, Math.min(12, Math.round(p.h / 2.5)));
+        // Very dense hatching — reference Misty Mountains' leeward flanks
+        // read as nearly-solid shadow from tightly-stacked hatch lines.
+        // Divisor 1.5 (was 2.5); ceiling raised to 16 so taller peaks
+        // don't clamp to the old 12-line limit.
+        const hatchCount = Math.max(4, Math.min(16, Math.round(p.h / 1.5)));
         for (let k = 0; k < hatchCount; k++) {
           const t = 0.18 + (k / (hatchCount - 1 || 1)) * 0.72;
           const sx = apexX + ux * slopeLen * t;
