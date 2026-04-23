@@ -892,14 +892,11 @@ window.MapStyles.wilderland = {
       (tg, peaks, rng, opts) => drawMountainRidge(tg, peaks, rng, opts),
       {
         clusterInset: 0.10,
-        // Side-by-side with the reference shows the Misty Mountains
-        // are a DENSE packing of MANY SMALL peaks — dozens per range-
-        // length, blending into a continuous dark spine at map zoom.
-        // My earlier 10-14 peaks per hex with peakSize 30 produced a
-        // handful of big individual silhouettes with parchment gaps.
-        // Pack 20-30 small peaks per hex instead.
-        peakCountMin: 20,
-        peakCountRange: 10,
+        // Side-by-side shows reference peaks pack VERY densely — 30+
+        // overlapping curves per range-length. 20-30 still left visible
+        // gaps between peaks in wl-34. Bumping to 30-45.
+        peakCountMin: 30,
+        peakCountRange: 15,
         // Continuous height distribution — varied peaks mixed tightly.
         heightProfile: (rng) => 0.35 + Math.pow(rng(), 0.85) * 0.70,
         // Smaller peak scale so many peaks fit per hex. Reference peaks
