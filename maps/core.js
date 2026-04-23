@@ -1739,6 +1739,7 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
   const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString, nodes } = ctx;
   if (!hexTerrain || Object.keys(hexTerrain).length === 0) return;
   const density = (options && typeof options.density === "number") ? options.density : 1.0;
+  const minDist = (options && typeof options.minDist === "number") ? options.minDist : 6;
 
   const bcCol = 10, bcRow = 10;
   const size = HINT_SCALE / 2;
@@ -1906,7 +1907,7 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
       // right out to the hex edges so neighbouring forest hexes never
       // show a gap at shared edges.
       const baseN = 24 + Math.floor(rng() * 10);
-      gradientScatter(Math.max(1, Math.round(baseN * density)), size * 0.98, 6, () => treeSize());
+      gradientScatter(Math.max(1, Math.round(baseN * density)), size * 0.98, minDist, () => treeSize());
       return;
     }
 
@@ -1915,7 +1916,7 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
     // interior hex; the gradient acceptance naturally thins out the
     // external boundary.
     const baseN = 22 + Math.floor(rng() * 8);
-    gradientScatter(Math.max(1, Math.round(baseN * density)), size * 0.98, 6, treeSizeByDepth);
+    gradientScatter(Math.max(1, Math.round(baseN * density)), size * 0.98, minDist, treeSizeByDepth);
 
     // Forest-bordered edges still get a dense continuous tree line so the
     // canopy flows seamlessly into the neighbouring forest hex.
@@ -1937,7 +1938,7 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
         const inwardY = -my / mLen * depthJitter;
         const ox = mxInset + tx * span + jitterX + inwardX;
         const oy = myInset + ty * span + jitterY + inwardY;
-        place(ox, oy, treeSize(), 6);
+        place(ox, oy, treeSize(), minDist);
       }
     });
   });

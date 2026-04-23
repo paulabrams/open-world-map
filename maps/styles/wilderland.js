@@ -949,7 +949,10 @@ window.MapStyles.wilderland = {
       (tg, peaks, rng, opts) => drawMountainRidge(tg, peaks, rng, opts));
     // Dense forest packing to match Mirkwood density in the reference —
     // scattered trees at default density (1.0) read too sparse.
-    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 1.8 });
+    // Reference Mirkwood is wall-to-wall trees with no visible gaps — push
+    // density high and reduce minDist so canopies sit shoulder-to-shoulder
+    // the way they do on Tolkien's hand-drawn Wilderland.
+    MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 2.4, minDist: 4.2 });
     MapCore.renderFarmlandBiased(ctx, drawFarm);
     // Very soft forest-region outline — traces the outer boundary of the
     // contiguous forest (skips interior hex-to-hex edges) with a wobbly
