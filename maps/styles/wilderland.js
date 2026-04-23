@@ -1806,10 +1806,10 @@ window.MapStyles.wilderland = {
         .attr("d", d)
         .attr("fill", "none")
         .attr("stroke", INK)
-        .attr("stroke-width", 0.85 + rng() * 0.3)
+        .attr("stroke-width", 1.1 + rng() * 0.3)
         .attr("stroke-linecap", "round")
         .attr("stroke-linejoin", "round")
-        .attr("opacity", 0.70 + rng() * 0.25);
+        .attr("opacity", 0.82 + rng() * 0.18);
 
       // Shadow ticks on right flank, diagonal ↘
       const tickCount = 2 + Math.floor(rng() * 2);
