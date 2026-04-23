@@ -2,13 +2,33 @@
 
 Persistent, append-only record of every style-tuning experiment — wins AND rollbacks. See [style-tuning.md](style-tuning.md) for the process.
 
-## User Feedback (authoritative — overrides agent self-scores)
+## User Feedback (authoritative — overrides agent self-scores and change priorities)
 
-The user's scores beat the agent's. When a new entry appears here, the agent must (1) reset the scoreboard to match, (2) log an override iteration row, (3) treat the user's score as the new baseline.
+The user's scores and directives beat the agent's. When a new entry appears here, the agent must act on it before the next iteration.
+
+### Score overrides
+
+Reset the scoreboard to match, log an override iteration row, and treat the user's score as the new baseline.
 
 | Date       | Style      | User score | Reason                                                                                                 |
 |------------|------------|------------|--------------------------------------------------------------------------------------------------------|
 | 2026-04-22 | wilderland | 3          | Score inflation: agent climbed 9 → 9.75 in six iterations while skipping rivers/coastlines and the Blackwater River routing through Blackwater Crossing is still wrong. Honest baseline is ~3/10. Integer scoring from here. |
+
+### Focus directives
+
+The user can steer which element category the agent works on. These override the "pick the single highest-leverage next change" default. Log each iteration under the directive as `Focus: {category}` in the target line.
+
+| Date       | Scope      | Directive                                                                                                                    | Duration             |
+|------------|------------|------------------------------------------------------------------------------------------------------------------------------|----------------------|
+| 2026-04-22 | wilderland | **Work on mountains.** Reference Misty Mountains have more ridge-line character, denser hatching, sharper apex silhouettes, and cross-hex range flow than the current render. Push mountains until the user rescinds or scores them ≥ 7. | Until user rescinds  |
+
+### Specific corrections / regressions
+
+Pointed items the user has observed as wrong or regressed. Fix these before declaring a style improved — they block score advancement regardless of other progress. Remove the entry once the user confirms the fix.
+
+| Date       | Scope      | Problem                                                                                                                                                                       | Status |
+|------------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------|
+| 2026-04-22 | wilderland | **River regressed from double-line to single-line.** In the reference, wilderland rivers are drawn with two parallel fine lines (a ribbon), not one. A recent iteration (wl-17 / wl-18 area) flattened them to single-line. Restore the double-line treatment — two parallel strokes, thin, matching the reference ribbon. | Open   |
 
 ## Scoreboard
 
@@ -17,7 +37,7 @@ Current score per style, out of 10. **Integers only — no decimals or half-poin
 | Style        | Score | Last iteration | Notes                                    |
 |--------------|-------|----------------|------------------------------------------|
 | thirdage     | 8     | ti-02          | red cartouche title + scale bar landed; enumerate inventory coverage at next iteration (score is at the 8 cap) |
-| wilderland   | 6     | wl-19          | Dense forests + single-line rivers + BC town routing; ready for user review |
+| wilderland   | 5     | wl-20          | Double-line ribbon rivers restored + dense forests + BC town routing; mountains next per focus directive |
 | moonletters  | —     | —              | not yet rated                            |
 | dragonisles  | 7     | di-05          | frame + banner + compass landed; rounded down from prior 7.5 per integer rule; scope question outstanding |
 
@@ -75,3 +95,4 @@ Append one row per iteration. Do not delete rows, even for rolled-back experimen
 | wl-17 | wilderland | (core.js) Town-interior river routing at BC: enter N-edge, run S, bend E, exit E. Extra above-hex vertex pulls incoming trajectory to come from directly north. | 3 → 4 | Kept | Directly addresses the user-flagged miss from wl-16. River now visibly approaches BC from the north and bends east through the town footprint instead of cutting straight across. Cross-style check: thirdage also improved (L-bend now visible there too); no regressions — routing is universal per spec. |
 | wl-18 | wilderland | Rivers switched from twin-bank to single-line (width 2 → 1.6, `singleLine: true`) | 4 → 5 | Kept | Reference rivers are thin one-stroke wiggly ink lines, not double-banked streams. Twin-bank was a misread — belongs to thirdage. Comment in wilderland.js was factually wrong and has been corrected. |
 | wl-19 | wilderland | (core.js) `minDist` exposed as renderForestEdgeTrees option; wilderland bumped to density 2.4 / minDist 4.2 | 5 → 6 | Kept | Reference Mirkwood is wall-to-wall trees with no visible gaps. Bumping density alone hit the minDist floor (wl-9 takeaway). Exposing minDist as a per-style option lets trees sit shoulder-to-shoulder; the hex-grid pattern that was visible between clusters in wl18 is gone. Other styles keep default minDist=6 (no regression). |
+| wl-20 | wilderland | REGRESSION FIX: restore rivers to double-line ribbon (revert wl-18 singleLine). Focus: rivers-regression. | 6 → 5 | Kept (as revert) | User-flagged regression per 2026-04-22 correction: wilderland rivers are a ribbon (two thin parallel strokes), not a single line. wl-18's single-line claim was a misread of the reference. Rolling the wl-18 score gain (+1) back accounts for the invalid progress claim; the BC routing from wl-17 and the forest density from wl-19 remain. Honest score is 5. |

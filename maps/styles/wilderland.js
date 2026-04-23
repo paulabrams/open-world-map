@@ -45,10 +45,12 @@ window.MapStyles.wilderland = {
   render(ctx) {
     this.renderBackground(ctx);
     this.renderBorder(ctx);
-    // Thin single-line river in black ink — matches Tolkien's Wilderland
-    // reference where rivers are wiggly one-stroke lines, not twin-bank
-    // streams. Twin-bank look belongs to thirdage, not this style.
-    MapCore.renderRiver(ctx, ctx.colors.INK, 1.6, { singleLine: true });
+    // Thin double-line ribbon — two parallel fine ink strokes (width 2
+    // triggers the default twin-bank branch with bankStroke 0.9 and banks
+    // ~2.2 px apart). Matches the Wilderland reference's ribbon rivers.
+    // wl-18 flattened this to singleLine and that was a regression — per
+    // user correction 2026-04-22, the reference is a ribbon, not a stroke.
+    MapCore.renderRiver(ctx, ctx.colors.INK, 2);
     // River labels in BLUE ink — matches Tolkien's Wilderland reference
     // where "River Running", "Long Lake", etc. are all rendered in blue.
     MapCore.renderRiverLabel(ctx, { color: ctx.colors.BLUE, strokeColor: ctx.colors.PARCHMENT });
