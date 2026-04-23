@@ -423,30 +423,51 @@ window.MapStyles.wilderland = {
           .attr("stroke-linejoin", "round")
           .attr("opacity", peakOpacity);
 
-        // Shadow hatches: 2-4 SHORT horizontal ticks on the right flank
-        // below the apex. NOT a dense fill — just a few dashes hinting
-        // at the shadow side. Reference peaks have minimal hatching.
-        const hatchCount = 2 + Math.floor(rng() * 3);
+        // DENSE interior hatching — reference peaks are volumetric 3D
+        // forms with heavy shadow-flank hatching that FILLS the peak
+        // body. User side-by-side (post wl-58) showed my skeletal
+        // zigzag outlines were fundamentally wrong. Pack short diagonal
+        // strokes from apex down to base on the right flank, plus a
+        // lighter set on the left flank near the apex for shading.
+        const hatchCount = Math.max(10, Math.min(24, Math.round(p.h / 1.1)));
         for (let k = 0; k < hatchCount; k++) {
-          const t = 0.35 + k * 0.16 + (rng() - 0.5) * 0.06;
-          if (t >= 0.95) continue;
+          const t = 0.10 + (k / (hatchCount - 1 || 1)) * 0.85;
           const hy = apY + (baseY - apY) * t;
           // Right silhouette x at this y (linear approx of the Bezier)
           const rightEdgeAtT = apX + (baseRX - apX) * t;
-          // Hatch spans from ~30-40% along the flank to just inside the edge
-          const hx1 = apX + (rightEdgeAtT - apX) * (0.30 + rng() * 0.15) + (rng() - 0.5) * 0.8;
-          const hx2 = rightEdgeAtT - 0.6 - rng() * 0.8;
-          if (hx2 - hx1 < 1.0) continue;
-          // Diagonal slant — reference ticks slope ↘ (down-right), not
-          // flat horizontal. Slant 2-4px over a ~5-8px horizontal span
-          // gives a ~30-45° diagonal.
-          const slant = 2.0 + rng() * 2.0;
+          // Start the hatch just inside the peak apex on the left side
+          // (or near apX at low t, widening as we go down toward base)
+          const leftFromApex = apX + (apX - baseLX) * (-t * 0.25); // slight leftward creep inside peak
+          const hx1 = leftFromApex + (rng() - 0.5) * 1.2;
+          const hx2 = rightEdgeAtT - 0.5 - rng() * 0.8;
+          if (hx2 - hx1 < 1.5) continue;
+          // Diagonal slant ↘ matching reference shadow strokes
+          const slant = 1.4 + rng() * 1.6;
           tg.append("line")
             .attr("x1", hx1).attr("y1", hy)
             .attr("x2", hx2).attr("y2", hy + slant)
             .attr("stroke", INK)
+            .attr("stroke-width", 0.55)
+            .attr("opacity", 0.82 + rng() * 0.16)
+            .attr("stroke-linecap", "round");
+        }
+        // A few extra short ticks near the left flank at the apex for
+        // shading emphasis — reference peaks often have a small set
+        // of dark strokes right at the peak tip.
+        const apexTicks = 3 + Math.floor(rng() * 2);
+        for (let k = 0; k < apexTicks; k++) {
+          const t = 0.04 + k * 0.08 + rng() * 0.04;
+          const hy = apY + (baseY - apY) * t;
+          const rightEdgeAtT = apX + (baseRX - apX) * t;
+          const hx1 = apX + (rng() - 0.5) * 0.8;
+          const hx2 = rightEdgeAtT - 0.5;
+          if (hx2 - hx1 < 1.0) continue;
+          tg.append("line")
+            .attr("x1", hx1).attr("y1", hy)
+            .attr("x2", hx2).attr("y2", hy + 1.0 + rng() * 0.5)
+            .attr("stroke", INK)
             .attr("stroke-width", 0.5)
-            .attr("opacity", 0.7 + rng() * 0.25)
+            .attr("opacity", 0.85)
             .attr("stroke-linecap", "round");
         }
       });
