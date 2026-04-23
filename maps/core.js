@@ -2303,6 +2303,14 @@ function renderTerrainEdges(ctx, matchTerrains, edgeStyle = {}) {
     // line sits 15% of size inward. Gives a ragged ring-inside-hex
     // look that reads as a forest boundary rather than a hex gridline.
     inset = 0,
+    // scallopSize: if > 0, replace each external edge with a chain
+    // of outward-bulging arcs (tree-canopy bumps) of this radius.
+    // Produces a hand-drawn scalloped tree-line matching how a
+    // forest edge is drawn in reference wilderland art.
+    scallopSize = 0,
+    // scallopJitter: +/- fraction of scallopSize applied per bump
+    // so the scallops are organic, not perfectly uniform.
+    scallopJitter = 0.35,
   } = edgeStyle;
 
   // Flat-top hex vertices (v0 at 0°, v1 at 60°, … CCW in screen-flipped Y)
@@ -2348,18 +2356,60 @@ function renderTerrainEdges(ctx, matchTerrains, edgeStyle = {}) {
       const my = (y1 + y2) / 2;
       const edgeDx = x2 - x1, edgeDy = y2 - y1;
       const elen = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy) || 1;
+      // Outward perpendicular — for the flat-top hex vertex order
+      // used above, (-edgeDy, edgeDx)/elen points AWAY from the hex
+      // center (verified by hand for N edge). We use this as the
+      // OUTWARD normal for both wobble offset and scallop direction.
       const pnx = -edgeDy / elen, pny = edgeDx / elen;
-      const off = (rng() - 0.5) * 2 * wobble;
-      const cx = mx + pnx * off;
-      const cy = my + pny * off;
 
-      edgeGroup.append("path")
-        .attr("d", `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`)
-        .attr("fill", "none")
-        .attr("stroke", color)
-        .attr("stroke-width", strokeWidth)
-        .attr("stroke-linecap", "round")
-        .attr("opacity", opacity);
+      if (scallopSize > 0) {
+        // Scalloped tree-line: chain of outward-bulging Q-arcs along
+        // the edge. Each arc bulges by scallopSize * (1 ± jitter) in
+        // the outward-normal direction. Endpoint varies slightly so
+        // successive scallops aren't perfectly uniform.
+        const bumpCount = Math.max(1, Math.round(elen / (scallopSize * 1.8)));
+        const ux = edgeDx / elen, uy = edgeDy / elen;
+        let d = `M ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+        let px = x1, py = y1;
+        for (let b = 0; b < bumpCount; b++) {
+          const t1 = b / bumpCount;
+          const t2 = (b + 1) / bumpCount;
+          // Slight per-bump along-edge jitter so ends aren't uniform
+          const tEnd = t2 - (b < bumpCount - 1 ? (rng() - 0.5) * 0.1 / bumpCount : 0);
+          const mx2 = x1 + edgeDx * (t1 + tEnd) / 2;
+          const my2 = y1 + edgeDy * (t1 + tEnd) / 2;
+          const bulge = scallopSize * (1 + (rng() - 0.5) * 2 * scallopJitter);
+          // Lateral (along-edge) control-point offset so the scallop
+          // is a proper rounded arc, not a sharp triangle.
+          const lateral = scallopSize * 0.4 * (rng() - 0.5);
+          const cpx = mx2 + pnx * bulge + ux * lateral;
+          const cpy = my2 + pny * bulge + uy * lateral;
+          const ex = x1 + edgeDx * tEnd;
+          const ey = y1 + edgeDy * tEnd;
+          d += ` Q ${cpx.toFixed(2)} ${cpy.toFixed(2)} ${ex.toFixed(2)} ${ey.toFixed(2)}`;
+          px = ex; py = ey;
+        }
+        edgeGroup.append("path")
+          .attr("d", d)
+          .attr("fill", "none")
+          .attr("stroke", color)
+          .attr("stroke-width", strokeWidth)
+          .attr("stroke-linecap", "round")
+          .attr("stroke-linejoin", "round")
+          .attr("opacity", opacity);
+      } else {
+        // Classic single-Q wobbled edge.
+        const off = (rng() - 0.5) * 2 * wobble;
+        const cx = mx + pnx * off;
+        const cy = my + pny * off;
+        edgeGroup.append("path")
+          .attr("d", `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`)
+          .attr("fill", "none")
+          .attr("stroke", color)
+          .attr("stroke-width", strokeWidth)
+          .attr("stroke-linecap", "round")
+          .attr("opacity", opacity);
+      }
     }
   });
 }

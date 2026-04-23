@@ -1047,15 +1047,18 @@ window.MapStyles.wilderland = {
     // level that triggered the original "looks like eyes" feedback.
     MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 2.2, minDist: 6.5, bleedOut: 1.18, treeSizeMul: 1.6 });
     MapCore.renderFarmlandBiased(ctx, drawFarm);
-    // Forest-region outline — inset inside the hex (not on the hex
-    // edge) so it reads as a hand-drawn tree-line around the woodland
-    // rather than tracing the hex grid. Darker + more opaque than the
-    // previous "very soft" version — user feedback 2026-04-23 was that
-    // the forest needed a clearer defining perimeter.
+    // Forest-region outline — SCALLOPED tree-line. Per user
+    // clarification 2026-04-23: the outline should look like tree
+    // canopies forming the forest edge (bumpy/curvy), NOT a
+    // straight inset line following the hex. Each external edge is
+    // replaced by a chain of outward-bulging arcs (~scallopSize
+    // radius). No inset — scallops naturally push OUT of the hex,
+    // giving an organic perimeter rather than a geometric boundary.
     MapCore.renderTerrainEdges(ctx, ["forest", "forested-hills"], {
-      color: INK, strokeWidth: 1.35, opacity: 0.88, wobble: 4.6,
+      color: INK, strokeWidth: 1.0, opacity: 0.88,
       className: "forest-region",
-      inset: 0.14,
+      scallopSize: 6.5,
+      scallopJitter: 0.30,
     });
     // Same soft-outline treatment for contiguous mountain regions — reads
     // the range as a unified ridge band rather than loose per-hex peaks.
