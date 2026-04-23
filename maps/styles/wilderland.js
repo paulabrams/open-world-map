@@ -56,9 +56,10 @@ window.MapStyles.wilderland = {
     MapCore.renderRiverLabel(ctx, { color: ctx.colors.BLUE, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.0, bridgeLen: 14 });
     MapCore.renderBoats(ctx, { color: ctx.colors.INK, parchment: ctx.colors.PARCHMENT, count: 4 });
-    // Tolkien's Wilderland renders the Old Forest Road in blue ink
-    // (contrast against black-ink rivers).
-    MapCore.renderRoad(ctx, ctx.colors.BLUE, 1.8);
+    // Tolkien's Wilderland renders the Old Forest Road as a DASHED
+    // blue line (not a solid stroke). dashedOnly skips the usual
+    // solid spine and emits just the dashed pattern.
+    MapCore.renderRoad(ctx, ctx.colors.BLUE, 1.8, { dashedOnly: true });
     // Twin-banked gorge: tips meet at points, middle bulges irregularly
     // to read as a crack in the ground instead of a single zig-zag line.
     MapCore.renderCrevasse(ctx, "#2a1f14", 5, { style: "twinbank" });

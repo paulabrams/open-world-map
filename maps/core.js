@@ -472,9 +472,14 @@ function renderRiverLabel(ctx, style) {
 // --- Road rendering ---
 // Draws roads through lists of hex centers with a hand-drawn feel.
 // roadPath can be a single list of hex codes, or a list of lists (multiple roads).
-function renderRoad(ctx, roadColor, roadWidth) {
+function renderRoad(ctx, roadColor, roadWidth, options) {
   const { g, roadPath, HINT_SCALE, WIDTH, HEIGHT } = ctx;
   if (!roadPath || roadPath.length === 0) return;
+  // dashed: if true, render only a dashed stroke (no solid spine) —
+  // matches Tolkien/Baynes Wilderland where roads are drawn as dashed
+  // lines (e.g. "Old Forest Road"). Default false preserves the prior
+  // solid-spine-plus-dashed-overlay rendering for other styles.
+  const dashedOnly = !!(options && options.dashedOnly);
 
   const bcCol = 10, bcRow = 10;
   const size = HINT_SCALE / 2;
@@ -540,27 +545,42 @@ function renderRoad(ctx, roadColor, roadWidth) {
       }
     }
 
-    // Two overlapping hand-drawn strokes, slightly offset, for sketchy feel
+    // Two overlapping hand-drawn strokes, slightly offset, for sketchy feel.
+    // In dashedOnly mode (wilderland), render ONLY the dashed stroke — no
+    // solid spine — matching the reference's dashed-road convention.
     const d = line(wigglePoints);
     const spineId = "road-spine-" + pathIdx + "-" + Math.random().toString(36).slice(2, 8);
-    roadGroup.append("path")
-      .attr("id", spineId)
-      .attr("d", d)
-      .attr("fill", "none")
-      .attr("stroke", roadColor)
-      .attr("stroke-width", roadWidth)
-      .attr("stroke-linecap", "round")
-      .attr("stroke-linejoin", "round")
-      .attr("opacity", 0.75);
-    roadGroup.append("path")
-      .attr("d", d)
-      .attr("fill", "none")
-      .attr("stroke", roadColor)
-      .attr("stroke-width", roadWidth * 0.5)
-      .attr("stroke-linecap", "round")
-      .attr("stroke-dasharray", `${roadWidth * 2.5} ${roadWidth * 1.5}`)
-      .attr("transform", `translate(${(rng() - 0.5) * 1.2}, ${(rng() - 0.5) * 1.2})`)
-      .attr("opacity", 0.35);
+    if (dashedOnly) {
+      roadGroup.append("path")
+        .attr("id", spineId)
+        .attr("d", d)
+        .attr("fill", "none")
+        .attr("stroke", roadColor)
+        .attr("stroke-width", roadWidth)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round")
+        .attr("stroke-dasharray", `${roadWidth * 2.2} ${roadWidth * 1.6}`)
+        .attr("opacity", 0.88);
+    } else {
+      roadGroup.append("path")
+        .attr("id", spineId)
+        .attr("d", d)
+        .attr("fill", "none")
+        .attr("stroke", roadColor)
+        .attr("stroke-width", roadWidth)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round")
+        .attr("opacity", 0.75);
+      roadGroup.append("path")
+        .attr("d", d)
+        .attr("fill", "none")
+        .attr("stroke", roadColor)
+        .attr("stroke-width", roadWidth * 0.5)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-dasharray", `${roadWidth * 2.5} ${roadWidth * 1.5}`)
+        .attr("transform", `translate(${(rng() - 0.5) * 1.2}, ${(rng() - 0.5) * 1.2})`)
+        .attr("opacity", 0.35);
+    }
 
     // Road name along the spine via textPath
     if (pathObj.name) {
