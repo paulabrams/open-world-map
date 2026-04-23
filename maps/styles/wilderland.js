@@ -478,8 +478,8 @@ window.MapStyles.wilderland = {
           maxExtendX = baseR + a.hw * 0.4;
         }
 
-        const rowSpacing = 0.80 + rng() * 0.22;
-        const rowCount = Math.max(3, Math.floor(vSpan / rowSpacing));
+        const rowSpacing = 0.42 + rng() * 0.15;
+        const rowCount = Math.max(4, Math.floor(vSpan / rowSpacing));
         for (let k = 1; k < rowCount; k++) {
           const t = k / rowCount;
           if (t < 0.06) continue;
