@@ -220,6 +220,31 @@ function renderRiver(ctx, riverColor, riverWidth, options = {}) {
     return [x, y];
   });
 
+  // Town-interior river routing. Where the river passes through a settlement
+  // that declares a flow shape (e.g. Blackwater Crossing: enter N, run S,
+  // bend E, exit E), replace the single hex-center waypoint with an L-path
+  // of interior vertices so the river visibly threads the town footprint
+  // instead of cutting straight across it.
+  const townRouting = {
+    // Blackwater Crossing: river enters at the northern edge, runs south
+    // through the town, then bends east and exits at the east edge. An
+    // extra "above the hex" vertex pulls the incoming trajectory so the
+    // final approach reads as coming from directly north.
+    "1010": (x, y) => [
+      [x,                    y - rowStep * 0.85],  // above-hex approach
+      [x,                    y - rowStep * 0.40],  // N-edge entry
+      [x,                    y + rowStep * 0.18],  // south-of-center interior
+      [x + colStep * 0.55,   y + rowStep * 0.25],  // E-edge exit
+    ],
+  };
+  for (let i = points.length - 1; i >= 0; i--) {
+    const route = townRouting[riverPath[i]];
+    if (route) {
+      const [x, y] = points[i];
+      points.splice(i, 1, ...route(x, y));
+    }
+  }
+
   const rng = mulberry32(seedFromString("blackwater-river"));
   const riverGroup = g.append("g").attr("class", "river");
 
