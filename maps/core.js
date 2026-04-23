@@ -1368,6 +1368,11 @@ function renderMountainsByRegion(ctx, ridgeDrawer, options) {
   // so Misty-Mountains-style peaks read at reference prominence.
   const peakSizeBase = (options && typeof options.peakSize === "number") ? options.peakSize : 18;
   const peakSizeRange = (options && typeof options.peakSizeRange === "number") ? options.peakSizeRange : 6;
+  // `peakYJitter` — per-peak vertical offset as a fraction of mSize. 0.50
+  // (default) keeps peaks on one baseline with light variation; higher
+  // values stagger peaks vertically so the ridge reads as a taller band
+  // of overlapping peaks (matches Wilderland Misty-Mountains density).
+  const peakYJitterScale = (options && typeof options.peakYJitter === "number") ? options.peakYJitter : 0.50;
   // `heightProfile(rng, isHero)` → hBase in [0,1]. Default is the hero
   // model (one dominant peak per cluster, ~1.6× the others); styles can
   // pass a continuous distribution for a more evenly-varied ridge.
@@ -1465,7 +1470,7 @@ function renderMountainsByRegion(ctx, ridgeDrawer, options) {
         const px = leftX + t * extent;
         const isHero = i === heroIdx;
         const hBase = heightProfile(rng, isHero);
-        const pyJitter = (rng() - 0.5) * mSize * 0.50;
+        const pyJitter = (rng() - 0.5) * mSize * peakYJitterScale;
         peaks.push({
           px,
           py: hy + pyJitter,

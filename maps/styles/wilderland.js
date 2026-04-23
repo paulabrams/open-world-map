@@ -903,6 +903,10 @@ window.MapStyles.wilderland = {
         // at map zoom are ~10-14 px tall, not 30-40.
         peakSize: 20,
         peakSizeRange: 5,
+        // Stagger peaks vertically — reference peaks fill a thick band
+        // with tall ones behind short ones; default 0.5 keeps them too
+        // flatly aligned. 1.2 × mSize = ±12px lets peaks stack.
+        peakYJitter: 1.2,
       });
     // Dense forest packing to match Mirkwood density in the reference —
     // scattered trees at default density (1.0) read too sparse.
