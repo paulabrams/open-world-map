@@ -377,9 +377,34 @@ window.MapStyles.wilderland = {
         const rC2x = baseRX - hw * (0.08 + rng() * 0.08);
         const rC2y = baseY - p.h * (0.12 + rng() * 0.08);
 
-        const strokeD = `M ${baseLX} ${baseY}
-          C ${lC1x} ${lC1y}, ${lC2x} ${lC2y}, ${apX} ${apY}
-          C ${rC1x} ${rC1y}, ${rC2x} ${rC2y}, ${baseRX} ${baseY}`;
+        // Sample both cubic Beziers as a polyline with per-point jitter
+        // so the peak line wobbles like a hand-drawn pen stroke instead
+        // of reading as a mathematically smooth curve. Cubic Bezier
+        // parametric form: B(t) = (1-t)^3 P0 + 3(1-t)^2 t P1 + 3(1-t) t^2 P2 + t^3 P3
+        const sampleCubic = (P0, P1, P2, P3, steps, includeStart) => {
+          const pts = [];
+          for (let i = includeStart ? 0 : 1; i <= steps; i++) {
+            const t = i / steps;
+            const it = 1 - t;
+            const b0 = it * it * it;
+            const b1 = 3 * it * it * t;
+            const b2 = 3 * it * t * t;
+            const b3 = t * t * t;
+            const x = b0 * P0[0] + b1 * P1[0] + b2 * P2[0] + b3 * P3[0];
+            const y = b0 * P0[1] + b1 * P1[1] + b2 * P2[1] + b3 * P3[1];
+            // Per-point jitter — endpoints get smaller jitter so the
+            // peak ends connect cleanly to neighbours.
+            const edgeDamp = Math.min(t, 1 - t) * 2;
+            const jx = (rng() - 0.5) * 1.2 * edgeDamp;
+            const jy = (rng() - 0.5) * 1.2 * edgeDamp;
+            pts.push([x + jx, y + jy]);
+          }
+          return pts;
+        };
+        const leftPts  = sampleCubic([baseLX, baseY], [lC1x, lC1y], [lC2x, lC2y], [apX, apY], 10, true);
+        const rightPts = sampleCubic([apX, apY], [rC1x, rC1y], [rC2x, rC2y], [baseRX, baseY], 8, false);
+        const allPts = leftPts.concat(rightPts);
+        const strokeD = "M " + allPts.map(p => p[0].toFixed(2) + " " + p[1].toFixed(2)).join(" L ");
 
         // Per-peak opacity variation — simulates pen pressure on hand-
         // drawn ink. Uniform opacity reads as mechanical/printed; small
@@ -391,6 +416,7 @@ window.MapStyles.wilderland = {
           .attr("stroke", INK)
           .attr("stroke-width", 1.0 + rng() * 0.3)
           .attr("stroke-linecap", "round")
+          .attr("stroke-linejoin", "round")
           .attr("opacity", peakOpacity);
 
         // Shadow hatches: 2-4 SHORT horizontal ticks on the right flank
