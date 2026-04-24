@@ -27,6 +27,52 @@ Match the Baynes/Tolkien source art across **every map element** in maps/styles/
 
 **Done** means every in-scope element on the rendered map looks identical to the original hand-drawn style reference — a score of 10/10. Every element cataloged in the source inventory (below) must have a rendered counterpart that matches. Anything less is not done; keep iterating.
 
+## Scope boundary — IRON-CLAD: style from reference, content from graph JSON
+
+**The reference images are a STYLE guide, not a CONTENT guide.** This distinction is not negotiable.
+
+- **What you match from the reference:** the *visual style* — line character, palette, stroke weight, hatching patterns, cartouche shape, compass style, how mountains are drawn, how forests are drawn, how rivers are drawn, label typography, paper tone, frame ornament (where in scope).
+- **What you do NOT match from the reference:** the *content* — which hexes have mountains, where rivers flow, where settlements are, which place names appear, where forests are. None of that comes from the reference image. All of it comes from `maps/{campaign}/{campaign}.json` (e.g. `maps/Basilisk/Basilisk.json`).
+
+**If the reference shows a mountain range along its left edge but the graph JSON has no mountain hexes along the left edge of the Basilisk map, you DO NOT draw mountains there.** The job is to render the graph data *authentically to both its structure and to the source art's style*, not to recreate the reference's geography. A mountain that appears in the render without a corresponding mountain hex in the JSON is a hallucination and must be removed.
+
+Before adding any map element (mountain, forest, river, road, settlement, ship, decorative flourish inside the map body), ask:
+
+1. Is this element's presence driven by the graph JSON? (hex_terrain, nodes, river_path, road_path, region_labels, off_map_arrows, etc.)
+2. Or is it driven by what I see in the reference?
+
+If the answer is (2), do not add it. The reference informs *how* to render elements the JSON specifies; it does not add elements.
+
+**Out-of-scope content categories (never render, even if the reference has them):**
+
+- Mountains, hills, ridges not present in `hex_terrain` as mountains/hills/crags.
+- Rivers, streams, lakes that are not in `river_path` or its data equivalents.
+- Roads, trails, paths not in `road_path` or the `links` array.
+- Settlements, towns, keeps, ruins, towers not in `nodes`.
+- Place names / region names / sea names not in `nodes`, `region_labels`, `off_map_arrows`, or `river_name`.
+- Forests, swamps, etc. not in `hex_terrain`.
+- Decorative content inside the map body (ships, sea serpents, creatures) unless the campaign data specifies them. Frame/corner decorations are a separate in-scope-or-not question handled per-style.
+
+If in doubt, **open the campaign JSON** (`maps/Basilisk/Basilisk.json` for the Basilisk campaign) and grep/inspect it for the element you're about to render. If the data isn't there, the element isn't either.
+
+This rule overrides any per-style convention. If a per-style convention says "render sea serpents" but the campaign JSON has no sea serpent data, the serpents don't appear. Style conventions describe *how* to draw campaign-data-driven elements, not which elements exist.
+
+## Element priority ranking
+
+When picking the "single highest-leverage next change" (and when deciding which inventory gaps to close first), work through the in-scope element categories in this order of importance:
+
+1. **Mountains**
+2. **Forests**
+3. **Rivers**
+4. **Roads**
+5. **Farms**
+6. **Houses** (settlement icons — taverns, towns, keeps, ruins, towers)
+7. **Labels**
+
+This ranking reflects what most defines the map's character. A wilderland render with poor mountains and perfect labels is a lower-scoring map than one with good mountains and rough labels. Use this ordering as a tiebreaker when several gaps are visible: fix the higher-priority category first.
+
+Element categories not on this list (frames, cartouches, compass roses, coastlines, stipple, scale bars, sea decorations, off-map arrows, etc.) are still in-scope where the per-style conventions say they are — but they rank below the seven above. Active focus directives override this ranking for their duration.
+
 ## Step 0 — source inventory (do this before iterating)
 
 Before touching any style code, **read each reference image carefully and catalog every distinct visual element it contains.** Write the inventory to `docs/style-references/inventory.md` (one section per reference) so it can be referenced during iterations. Expect to find things you don't think of in the abstract — the category list in the Goal is a starting point, not exhaustive.
@@ -121,15 +167,21 @@ User overrides are the primary corrective for the "err low" failure mode — whe
 
 ### User focus directives
 
-The User Feedback section may also contain **focus directives** — entries that tell you which element category to work on (e.g. "work on mountains" or "fix BC river routing"). When a focus directive is active for the style you're iterating on, it overrides the default "pick the single highest-leverage next change" rule: you MUST pick changes within the directive's category until the user rescinds the directive or the stated completion condition is met (e.g. "until mountains score ≥ 7").
+The User Feedback section may also contain **focus directives** — entries that tell you which element category to work on (e.g. "work on mountains" or "fix BC river routing"). Directives are organized as a **priority queue** with two statuses: `Active` (exactly one at a time per style) and `Queued` (zero or more waiting behind Active).
 
-When a focus directive is active:
+**Queue semantics — strict order, no fallback to default while queue is non-empty:**
 
-1. State it in each iteration's target line: `Target this iteration: wilderland (current score 3/10). Focus: mountains (user directive 2026-04-22).`
-2. Every change for the directive's duration must address the focused category. Other gaps (labels, forests, etc.) are deferred, even if they look higher-leverage.
-3. If you genuinely cannot find a meaningful mountain change to try — you've exhausted the category — say so explicitly in the log and pause for the user to rescind or redirect. Do NOT silently switch categories.
+1. At the start of each iteration, read the Focus directives table for the target style. Identify the **Active** directive.
+2. Every change this iteration must address the Active directive's category. Other gaps are deferred even if they look higher-leverage.
+3. State the Active directive in each iteration's target line: `Target this iteration: wilderland (current score 3/10). Focus: mountains (Active, user directive 2026-04-22).`
+4. When the Active directive's stop condition is met (e.g. mountains ≥ 7 per Turing-test standard, or user rescinds), do NOT revert to the default "highest-leverage" rule. Instead:
+   - Edit the Focus directives table: mark the completed directive as `Done` with the iteration id that closed it, and promote the next `Queued` directive in date order to `Active`.
+   - Log an iteration row announcing the handoff (change = "promote {next-category} directive to Active", outcome = "Queue advance").
+   - The next iteration works on the newly-Active directive.
+5. Only when the queue is empty does the default "highest-leverage next change" rule resume — and even then, notify the user in the log row that the queue has drained so they can add more directives if they want.
+6. If you genuinely cannot find a meaningful change to try in the Active category — you've exhausted it before the stop condition is met — say so explicitly in the log and pause for the user to rescind, redirect, or lower the bar. Do NOT silently switch to a different category or promote a Queued entry ahead of schedule.
 
-Focus directives are how the user steers the loop when they see a specific weakness the agent isn't prioritizing.
+Focus directives are how the user steers the loop when they see a specific weakness the agent isn't prioritizing. The queue lets them schedule several weaknesses in order without having to babysit the handoffs.
 
 ### User-reported specific corrections / regressions
 
@@ -150,21 +202,82 @@ Open corrections are the user's way of saying "this is broken right now, don't k
 
 1. Confirm the working tree is clean (`git status` shows no uncommitted changes from the previous iteration).
 2. Pick the target style per the rule above. State it: `Target this iteration: {style} (current score {N}/10).`
-3. Make ONE focused code change (normally in the target style's module; if in `maps/core.js`, flag it explicitly — scoring rule below).
-4. `--headless --screenshot` the target style. If the change was to `maps/core.js`, screenshot all four.
-5. Read the screenshot crop AND the reference crop in the same response (two Read calls back-to-back so both render in context). For a core.js change, read each of the four affected screenshots against its reference.
-6. Write a concrete diff: "Mine has X; reference has Y; gap is Z." Name specific features — apex sharpness, base-to-height ratio, cluster density, fill vs outline, shadow direction.
-7. Rate 1-10 based on what I see, not what I hope I did. Err low.
+3. **BEFORE** the code change, capture a "before" screenshot of the current render (see Verification Protocol below). This is the baseline for the comparison.
+4. Make ONE focused code change (normally in the target style's module; if in `maps/core.js`, flag it explicitly — scoring rule below).
+5. Capture an "after" screenshot of the render per the Verification Protocol.
+6. **Execute the full Verification Protocol** (next section) — NO exceptions, NO shortcuts. If any step is skipped, the iteration is void and must be redone. The protocol's output is the input to scoring.
+7. Rate 1-10 based on what the **Verification Protocol** surfaced, not what you think the code should produce. Err low.
 8. **Decide:**
    - **Style-module change:** target style's score strictly higher than prior → `git commit` the change and merge it into the main branch. Equal or lower → `git stash` to roll back (ties count as rollback).
    - **core.js change:** target style must strictly improve AND no other style may regress. If any style drops, roll back. This is how we prevent shared-code fixes from silently breaking other styles.
    - Drop the stash before the next iteration so the tree is clean.
 9. **Append to `docs/style-tuning-log.md`** — one row per iteration, kept OR rolled back. Template:
    `| N | target-style | brief change description | score before → after | Kept / Rolled | one-sentence takeaway |`
-   The takeaway is the critical part: what did you *learn* from this experiment? Rolled-back rows must be logged too — that's what prevents the next iteration (or next session) from re-trying a failed experiment.
+   Include the screenshot file paths (before + after + reference) in the takeaway so the user can spot-check. The takeaway is the critical part: what did you *learn* from this experiment? Rolled-back rows must be logged too — that's what prevents the next iteration (or next session) from re-trying a failed experiment.
 10. Update the running scoreboard at the top of `style-tuning-log.md` with the new score(s). This is the input to step 2 of the next iteration.
 11. Every 10 iterations, distill the takeaways into the **Patterns** section at the top of `style-tuning-log.md` — heuristics like "hatching density ≤ 0.6 for all styles; thirdage peaks need base-to-height ratio near 1:2; wilderland trees lose character below 3 foliage scribbles per trunk." This is what turns the loop from grinding into learning.
 12. Pick the single highest-leverage next change for the *next* iteration's target style. No bundled changes.
+
+## Verification Protocol — IRON-CLAD, NO EXCEPTIONS
+
+**This is the single most-violated rule in the spec.** The agent will try to skip it by visually inspecting the code, reasoning about what the SVG should look like, or recalling the reference image from context. All three are failure modes that lead to false scoring and user overrides. The protocol below is mechanical and checkable — deviation is an iteration-voiding error.
+
+### Required artifacts per iteration
+
+Every iteration MUST produce three image files, all referenced by path in the iteration's log row:
+
+1. `tmp/screenshots/{iter-id}-before.png` — the render before this iteration's change (e.g. `tmp/screenshots/wl-30-before.png`).
+2. `tmp/screenshots/{iter-id}-after.png` — the render after this iteration's change.
+3. A reference-image path — the source art file for the target style (e.g. `maps/style-references/wilderland.jpg`), usually cropped to the element being worked on and saved as `tmp/screenshots/{iter-id}-ref-crop.png`.
+
+If focused on a specific element (e.g. mountains), crop all three images to that element's region so the comparison is apples-to-apples. Use PIL for cropping (sips has surfaced as unreliable — see Patterns).
+
+### Required tool calls per iteration, in order
+
+These are the exact tool calls. Do not substitute, do not reorder, do not skip.
+
+1. Start a headless render: `python3 -m http.server 8787` (or confirm it's running).
+2. Capture the before image with Playwright/Puppeteer to `tmp/screenshots/{iter-id}-before.png`.
+3. Make the code change.
+4. Capture the after image the same way, to `tmp/screenshots/{iter-id}-after.png`.
+5. Crop the reference image to the region being compared (PIL).
+6. **Read all three images into context in a single assistant turn:**
+   - Read `tmp/screenshots/{iter-id}-before.png`
+   - Read `tmp/screenshots/{iter-id}-after.png`
+   - Read the reference crop image
+   All three Read calls must appear in the same assistant turn. "I'll check the reference later" is a protocol violation.
+7. Only AFTER all three images are in context, write the verification observations.
+
+### Required observation output (must appear in the iteration's log row takeaway)
+
+After the three Reads, you MUST produce this block — copy the template literally, fill in the bracketed parts:
+
+```
+Verification (iter {iter-id}):
+- before image: tmp/screenshots/{iter-id}-before.png — [describe what you see, two features minimum]
+- after image:  tmp/screenshots/{iter-id}-after.png  — [describe what you see, two features minimum]
+- reference:    {reference path} — [describe what you see at the same features]
+- Concrete pixel-level diff between after and reference: [named feature] — mine: [observation], reference: [observation], gap: [measurable]
+- Change from before to after: [what visibly changed; must be describable in a single sentence]
+- Could an independent reader looking at these three images reach the same score I did? [yes + why / no + what I'm inferring]
+```
+
+If any bracketed section says "I think" or "probably" or "should be" without citing a specific pixel-level observation, the verification is incomplete and the iteration is void.
+
+### What voids an iteration (must be redone)
+
+- Writing observations before reading all three images in the same turn.
+- Describing the reference from memory instead of reading the file in the current turn.
+- Skipping the before image and comparing only after vs reference (can't tell if the change did anything).
+- Claiming "the SVG code now does X, so the render must look like X" without capturing the actual screenshot.
+- Saying "visually inspected" without the three image Reads being present in the transcript for that iteration.
+- Deferring the reference read to "next iteration."
+
+If you catch yourself about to do any of these, stop and redo. A voided iteration does NOT count toward the score; do not log it as a kept change.
+
+### Why this is written this way
+
+The agent has historically skipped verification by reasoning about the code instead of looking at the render. When pushed, it admits the skip and acknowledges the self-score was wrong. This protocol removes the ability to skip: the iteration cannot progress to scoring without the three image Reads in the current turn, and the log must name all three file paths for user spot-check. "I looked at it" is not evidence; the file paths in the log are evidence.
 
 ## Anti-patterns I have caught myself doing
 
@@ -240,7 +353,7 @@ Each style has its own palette, title cartouche, and compass treatment. Getting 
 This is a **world-scale map** (the whole Dragon Isles), not a regional hex crawl. The Basilisk campaign sits inside Belerion, one of the named regions on this map. Scale, density, and framing are very different from the three Tolkien-lineage styles.
 
 - **Palette:** black/sepia line art on parchment with **red accents** for named regions, prominent settlements, and sails/banners on ships. Two-color. Unlike thirdage's bright vermilion, the red here leans more toward a dried-blood / oxide red; match the reference crop for exact hue.
-- **Frame:** ornate **Celtic interlace border** running around all four edges — knotwork bands with corner medallions. This is a defining visual and must be present; a dragon-isles render without the knotwork frame is fundamentally wrong.
+- **Frame:** ~~ornate Celtic interlace border running around all four edges~~ **OUT OF SCOPE per user directive 2026-04-23.** Do NOT iterate on the Celtic knot border, the corner interlace bands, or any other external frame decoration. Any existing frame code can remain if it's harmless, or be removed if it simplifies the render — but no iteration effort goes here. The user's priority is the **map body**, not the external decoration.
 - **Compass rose:** top-left corner, elaborate — a sword-and-dagger motif inside a circular knotwork medallion. Not a simple star; it reads as a piece of heraldry. No N/E/S/W letters.
 - **Title cartouche:** top-right, scroll-banner style with serifed all-caps: "LEGENDS of the DRAGON ISLES". The Basilisk subtitle, if used, sits below the main title in smaller italic caps.
 - **Region labels:** red, large, spaced small-caps, curving with territory shape: SEPULCHRE, BELERION, HRIVLYGGDOR, ULFSKEPTYR, ALGLÖNDER, KITANIA, ROCHIR PLAINS, HARADJIA, DÖRRAZUM, SURUINEN, plus sea names (THE DRAGON SEA, THE TRACKLESS SEA). These names are canonical and appear in the Basilisk off-map arrows.
@@ -252,6 +365,8 @@ This is a **world-scale map** (the whole Dragon Isles), not a regional hex crawl
 - **Compass-rose ray lines:** faint radial lines fanning from the compass rose across the open-sea areas — a distinctive Celtic-map device. Easy to miss; include them.
 
 Because dragonisles is a world map and Basilisk is a regional map, the dragonisles style rendering of the Basilisk data should either (a) zoom out to show where Belerion/Blackwater Crossing sits inside the Dragon Isles and name neighboring regions that currently appear as off-map arrows, or (b) render the Basilisk region with dragon-isles styling but at world-map density conventions. Confirm which with the user before iterating heavily.
+
+**User scope directive (2026-04-23):** on dragonisles, focus iteration on the **map body** — terrain (mountains, forests, rivers, coastlines), settlements, place names, sea decorations, region labels. **External/frame elements are deprioritized.** That means the Celtic border is out of scope (above), and any work on the corner compass medallion or scroll cartouche should be secondary to map-body fixes. When picking the "single highest-leverage next change," restrict the candidate set to map-body elements until the user changes this directive.
 
 #### Moon-letter behavior (moonletters.js only)
 
@@ -265,7 +380,22 @@ Moon-letters are the defining feature of this style. They are **mirrored/inverte
 
 ## Reporting template per turn
 
-"Iter N: changed X. Observed: [specific feature diff]. Score: Y/10 (prior: Z/10). Kept | Rolled back.
-Gap to 10: [highest-leverage miss].
-Audit: I [did | did not] look at the reference screenshot. I [did | did not] look at the actual pixels.
-Next change: [one thing]."
+```
+Iter {iter-id} ({target-style}, prior score {Z}/10)
+Active directives: [score overrides | open corrections | focus directives — or "none"]
+Change: [what you did, one sentence]
+
+Verification (from Verification Protocol):
+- before image: tmp/screenshots/{iter-id}-before.png — [two features you see]
+- after image:  tmp/screenshots/{iter-id}-after.png  — [two features you see]
+- reference:    {reference-path} — [same two features, described]
+- Concrete pixel-level diff (after vs reference): [named feature] mine [observation], reference [observation], gap [measurable]
+- Change visible in before→after: [one sentence]
+- Independent reader would reach my score: [yes + why / no + what I'm inferring]
+
+Score: {Y}/10 (integer). Decision: Kept | Rolled back | Voided (verification incomplete).
+Gap to 10: [highest-leverage miss, one sentence].
+Next change: [one thing, to be executed in the next iteration — not this one].
+```
+
+**The verification block is mandatory.** A report without it is a protocol violation and the iteration is voided. No score advancement, no commit — redo with the images in context.
