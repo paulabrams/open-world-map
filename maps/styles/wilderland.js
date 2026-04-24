@@ -504,17 +504,30 @@ window.MapStyles.wilderland = {
         .attr("stroke-linejoin", "round")
         .attr("opacity", 0.55 + rng() * 0.15);
 
-      // MAIN (foreground) skyline — bolder stroke matches the
-      // reference's heavy ink outline. Drawn AFTER back skyline so
-      // it occludes. Will be followed by hatching on right faces.
+      // MAIN (foreground) peak body — parchment fill under the
+      // skyline so peaks read as proper triangle BODIES (reference
+      // Grey Mountains has solid-silhouette peaks with heavy
+      // outlines, not just a zigzag line). Close the polyline at
+      // baseY so the fill covers the peak interior.
+      const firstSky = polyline[0];
+      const lastSky = polyline[polyline.length - 1];
+      const filledD = skyD +
+        ` L ${lastSky[0].toFixed(2)} ${baseY.toFixed(2)}` +
+        ` L ${firstSky[0].toFixed(2)} ${baseY.toFixed(2)} Z`;
+      tg.append("path")
+        .attr("d", filledD)
+        .attr("fill", ctx.colors.PARCHMENT)
+        .attr("stroke", "none")
+        .attr("opacity", 1.0);
+      // Heavier outline stroke on top of fill — bold silhouette.
       tg.append("path")
         .attr("d", skyD)
         .attr("fill", "none")
         .attr("stroke", INK)
-        .attr("stroke-width", 1.35 + rng() * 0.35)
+        .attr("stroke-width", 1.75 + rng() * 0.45)
         .attr("stroke-linecap", "round")
         .attr("stroke-linejoin", "round")
-        .attr("opacity", 0.92 + rng() * 0.06);
+        .attr("opacity", 0.95 + rng() * 0.04);
 
       // NEAR-HORIZONTAL CONTOUR HATCHING on each peak's right face.
       // Reference (Grey Mountains zoom) shows nearly-horizontal strokes
