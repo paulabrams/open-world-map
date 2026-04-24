@@ -1360,11 +1360,10 @@ window.MapStyles.wilderland = {
         const vLen = Math.sqrt(vx*vx + vy*vy) || 1;
         const vrng = mulberry32(seedFromString("v" + k));
         // ALWAYS inward (negative outward-direction). Magnitude
-        // wl-94: bumped inward drift to 40-80% of size (was 35-75%)
-        // per user feedback — pulls the canopy row ~4% more into the
-        // hex so feathered clumps have room to extend outward toward
-        // the edge without crossing into non-forest neighbours.
-        const mag = size * (0.40 + vrng() * 0.40);
+        // wl-95: pull the canopy row another 5% toward the hex
+        // centre (45-85% of size) — user feedback: feather clumps
+        // were still bleeding into neighbouring non-forest hexes.
+        const mag = size * (0.45 + vrng() * 0.40);
         const d = { dx: -(vx / vLen) * mag, dy: -(vy / vLen) * mag };
         vertexDrift[k] = d;
         return d;
@@ -1476,23 +1475,24 @@ window.MapStyles.wilderland = {
       bumps.forEach(b => {
         const rMain = b.size * (0.8 + rng() * 0.9);
         canopyEmits.push({ cx: b.cx, cy: b.cy, r: rMain, onx: b.onx, ony: b.ony });
-        // wl-94: more feathered clumps per bump (2-5 vs 1-3). The
-        // extra inward drift gives each bump more outward-budget
-        // room, so additional clumps have somewhere to sit between
-        // the canopy row and the hex edge.
+        // wl-94: more feathered clumps per bump (2-5 vs 1-3).
+        // wl-95: tighten outward reach and bias inward so clumps
+        // don't bleed into neighbouring non-forest hexes.
         const featherCount = 2 + Math.floor(rng() * 4);
         const tx = -b.ony, ty = b.onx; // along-edge tangent
         for (let f = 0; f < featherCount; f++) {
-          // Bias more toward OUTWARD clumps now that the scalloped
-          // line sits deeper inside the hex — we want the feather
-          // trees to ring the outer side toward the hex edge.
-          const dir = rng() < 0.55 ? -1 : 1;
-          const maxRad = dir < 0 ? b.inwardBudget * 0.9 : b.outwardBudget * 0.85;
-          const rad = (0.3 + rng() * 1.2) * Math.min(maxRad, b.size * 2.2) * dir;
-          const lat = (rng() - 0.5) * b.size * 2.6;
+          // 70% inward / 30% outward (was 55/45) so most clumps
+          // land safely inside the hex.
+          const dir = rng() < 0.70 ? -1 : 1;
+          // Outward clumps limited to ~55% of the budget (was 85%)
+          // and capped by canopy radius so they can't run to the
+          // hex edge even when the budget is large.
+          const maxRad = dir < 0 ? b.inwardBudget * 0.9 : b.outwardBudget * 0.55;
+          const rad = (0.3 + rng() * 1.0) * Math.min(maxRad, b.size * 1.6) * dir;
+          const lat = (rng() - 0.5) * b.size * 2.2;
           const fx = b.cx + b.onx * rad + tx * lat;
           const fy = b.cy + b.ony * rad + ty * lat;
-          const fr = b.size * (0.50 + rng() * 0.60);
+          const fr = b.size * (0.50 + rng() * 0.55);
           canopyEmits.push({ cx: fx, cy: fy, r: fr, onx: b.onx, ony: b.ony });
         }
       });
