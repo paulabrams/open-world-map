@@ -1496,7 +1496,10 @@ function renderMountainsByRegion(ctx, ridgeDrawer, options) {
         const t = (i + 0.5) / peakCount + (rng() - 0.5) * peakTJitterScale / peakCount;
         const px = leftX + t * extent;
         const isHero = i === heroIdx;
-        const hBase = heightProfile(rng, isHero);
+        // heightProfile now receives t and peakCount so styles can
+        // shape each cluster as a positional mini-range (low hills
+        // → peaks → low hills) rather than scattering random heights.
+        const hBase = heightProfile(rng, isHero, t, peakCount);
         const pyJitter = (rng() - 0.5) * mSize * peakYJitterScale;
         peaks.push({
           px,
