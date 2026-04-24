@@ -453,7 +453,56 @@ window.MapStyles.wilderland = {
         pts.push([x1, y1]);
         return pts;
       };
+      // --- wl-91 BACKGROUND PASS ---
+      // Between pairs of adjacent main peaks, occasionally emit a
+      // BACKGROUND peak: a partial inverted V whose left leg starts
+      // partway up the LEFT neighbour's right leg, whose apex sits
+      // ABOVE both neighbours' apexes, and whose right leg ends
+      // partway up the RIGHT neighbour's left leg. Only the TOP of
+      // the ∧ is drawn (never reaches the baseline) so it reads as a
+      // peak "peeking out" from behind the main range. Drawn FIRST
+      // with a thinner/faded stroke so it visually recedes.
+      for (let i = 0; i < apexes.length - 1; i++) {
+        if (rng() < 0.55) continue; // not every gap gets a back peak
+        const a = apexes[i], b = apexes[i + 1];
+        const baseR_a = a.p.px + a.hw;
+        const baseL_b = b.p.px - b.hw;
+        // Start: 30-50% up A's right leg (from apex toward baseR_a).
+        const tLeft = 0.30 + rng() * 0.20;
+        const sx = a.apX + (baseR_a - a.apX) * tLeft;
+        const sy = a.apY + (baseY - a.apY) * tLeft;
+        // End: 30-50% up B's left leg (from apex toward baseL_b).
+        const tRight = 0.30 + rng() * 0.20;
+        const ex = b.apX + (baseL_b - b.apX) * tRight;
+        const ey = b.apY + (baseY - b.apY) * tRight;
+        if (ex <= sx + 1) continue; // ill-formed — skip
+        // Back-peak apex sits ABOVE both neighbour apexes (lower y).
+        const higherApY = Math.min(a.apY, b.apY);
+        const lift = 4 + rng() * 10;
+        const apY_bg = higherApY - lift;
+        const apX_bg = (sx + ex) / 2 + (rng() - 0.5) * (ex - sx) * 0.25;
+        // Build wobbled ∧.
+        const bgL = wobbledSegment(sx, sy, apX_bg, apY_bg, 0.35);
+        const bgR = wobbledSegment(apX_bg, apY_bg, ex, ey, 0.35);
+        const bgPts = bgL.concat(bgR.slice(1));
+        const bgD = "M " + bgPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ");
+        roughPath(tg, bgD, {
+          stroke: INK,
+          strokeWidth: 0.7 + rng() * 0.15,
+          fill: "none",
+          roughness: 0.5,
+          bowing: 0.3,
+          disableMultiStroke: true,
+          seed: Math.floor(rng() * 2 ** 31),
+          opacity: 0.55 + rng() * 0.15,
+        });
+      }
+
+      // --- MAIN PEAKS (wl-90 overlap model) ---
       let prevRightLeg = null; // {apX, apY, baseR, baseY}
+      // Track each main peak's legs for the foreground pass to pick
+      // an overlap position.
+      const mainLegs = [];
       for (let i = 0; i < apexes.length; i++) {
         const a = apexes[i];
         const baseR = a.p.px + a.hw;
@@ -475,8 +524,6 @@ window.MapStyles.wilderland = {
           if (sx < a.apX - 1) {
             leftStart = [sx, sy];
           } else {
-            // Fall back to baseL if geometry would produce a flat/
-            // descending left leg — keeps the ∧ shape intact.
             leftStart = [baseL, baseY];
           }
         }
@@ -485,13 +532,86 @@ window.MapStyles.wilderland = {
         const legR = wobbledSegment(a.apX, a.apY, baseR, baseY);
         const peakPts = legL.concat(legR.slice(1));
         const peakD = "M " + peakPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ");
-        // Taller peaks get slightly heavier stroke, like an ink pen
-        // lingering on prominent features.
         const hBoost = a.p.h > 18 ? 0.15 : 0;
         drawStroke(peakD, hBoost);
         prevRightLeg = { apX: a.apX, apY: a.apY, baseR, baseY };
+        mainLegs.push({ leftStart, apX: a.apX, apY: a.apY, baseR, baseL });
       }
-      // (Legacy continuous-skyline path removed wl-90.)
+
+      // --- wl-91 FOREGROUND PASS ---
+      // 0-2 extra peaks per cluster drawn IN FRONT of the main range
+      // (larger, base pushed a few pixels below the main baseY so
+      // they read as closer). Filled with the parchment gradient so
+      // they occlude the main-peak lines behind them, giving the
+      // range visible depth. Drawn LAST so their fill sits on top.
+      const fgCount = Math.floor(rng() * 2) + (apexes.length >= 4 ? 1 : 0);
+      for (let f = 0; f < fgCount; f++) {
+        // Anchor x near one of the main peaks, biased toward the
+        // middle of the cluster where the tallest peaks live so the
+        // foreground peak doesn't poke out at the cluster ends.
+        const anchorIdx = Math.floor(apexes.length * (0.25 + rng() * 0.50));
+        const host = apexes[Math.max(0, Math.min(apexes.length - 1, anchorIdx))];
+        const fgApX = host.apX + (rng() - 0.5) * host.hw * 0.8;
+        const fgH = host.p.h * (1.05 + rng() * 0.40);
+        const fgBaseShift = 5 + rng() * 8;           // push below main baseY
+        const fgBaseY = baseY + fgBaseShift;
+        const fgApY = fgBaseY - fgH;
+        const fgHw = host.hw * (1.05 + rng() * 0.35);
+        const fgBaseL = fgApX - fgHw;
+        const fgBaseR = fgApX + fgHw;
+        const legLF = wobbledSegment(fgBaseL, fgBaseY, fgApX, fgApY, 0.55);
+        const legRF = wobbledSegment(fgApX, fgApY, fgBaseR, fgBaseY, 0.55);
+        const fgPts = legLF.concat(legRF.slice(1));
+        // Closed polygon so we can fill the foreground peak interior
+        // with the parchment gradient — this occludes the back-peak
+        // and main-peak lines behind it, creating the depth illusion.
+        const fillPts = fgPts.slice();
+        fillPts.push([fgBaseL, fgBaseY]);
+        const fillD = "M " + fillPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ") + " Z";
+        tg.append("path")
+          .attr("d", fillD)
+          .attr("fill", "url(#parchment-grad)")
+          .attr("stroke", "none");
+        // Then draw the outline ∧ on top.
+        const fgD = "M " + fgPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ");
+        roughPath(tg, fgD, {
+          stroke: INK,
+          strokeWidth: 1.25 + rng() * 0.30,
+          fill: "none",
+          roughness: 0.55,
+          bowing: 0.35,
+          disableMultiStroke: true,
+          seed: Math.floor(rng() * 2 ** 31),
+        });
+        // Foreground peaks get a touch of right-face hatching so
+        // they don't read as bare silhouettes.
+        const fsDX_f = fgBaseR - fgApX;
+        const fsDY_f = fgBaseY - fgApY;
+        const rows = Math.max(3, Math.floor(fsDY_f / 2.2));
+        for (let k = 1; k < rows; k++) {
+          const t = k / rows;
+          if (t < 0.18) continue;
+          const sx = fgApX + fsDX_f * t + (rng() - 0.5) * 0.2;
+          const sy = fgApY + fsDY_f * t + (rng() - 0.5) * 0.15;
+          const targetLen = fgHw * (0.30 + t * 0.70) * (0.85 + rng() * 0.25);
+          const maxLen = (fgBaseR - 0.5) - sx;
+          if (maxLen < 0.8) continue;
+          const dx = Math.min(maxLen, targetLen);
+          const faceSlope = fsDY_f / fsDX_f;
+          const dy = dx * Math.max(0.08, faceSlope * 0.55);
+          const endT = (sx + dx - fgApX) / fsDX_f;
+          const faceYAtEnd = fgApY + fsDY_f * endT;
+          const finalEndY = Math.max(sy + dy, faceYAtEnd + 0.25);
+          tg.append("line")
+            .attr("x1", sx).attr("y1", sy)
+            .attr("x2", sx + dx).attr("y2", finalEndY)
+            .attr("stroke", INK)
+            .attr("stroke-width", 0.55 + rng() * 0.15)
+            .attr("opacity", 0.78 + rng() * 0.12)
+            .attr("stroke-linecap", "round");
+        }
+      }
+      void mainLegs; // reserved for future z-ordering tweaks
 
       // NEAR-HORIZONTAL CONTOUR HATCHING on each peak's right face.
       // Reference (Grey Mountains zoom) shows nearly-horizontal strokes
