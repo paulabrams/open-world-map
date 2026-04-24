@@ -32,6 +32,13 @@ window.MapStyles.wilderland = {
     INK_LIGHT:      "#6b5d4d",
     BLUE:           "#3a6090",
     BLUE_LIGHT:     "#7a9ab8",
+    // wl-96: PAPER is the page-background colour (slightly darker
+    // parchment, between the old PARCHMENT and PARCHMENT_DARK). All
+    // terrain silhouette FILLS (hills, mountain peaks, tree canopies)
+    // use PAPER so they blend seamlessly with the page. PARCHMENT is
+    // retained for label strokes / legacy callers that need the old
+    // lighter cream.
+    PAPER:          "#e9ddbd",
     PARCHMENT:      "#f5edd6",
     PARCHMENT_DARK: "#ddd0b4",
   },
@@ -94,7 +101,7 @@ window.MapStyles.wilderland = {
   // --- Parchment background ---
   renderBackground(ctx) {
     const { g, defs, WIDTH, HEIGHT } = ctx;
-    const { PARCHMENT, PARCHMENT_DARK } = ctx.colors;
+    const { PAPER, PARCHMENT, PARCHMENT_DARK } = ctx.colors;
 
     // Paper texture filter — warmer, slightly more visible grain
     const filter = defs.append("filter")
@@ -124,16 +131,17 @@ window.MapStyles.wilderland = {
       .attr("in2", "colored")
       .attr("mode", "multiply");
 
-    // wl-93: solid lighter-cream parchment — drop the PARCHMENT_DARK
-    // radial gradient so peak and canopy fills (which use this same
-    // id) blend seamlessly with the page. User wants the Wilderland
-    // paper to be the uniform lighter cream that matches the
-    // hand-drawn source.
+    // wl-96: solid PAPER (slightly darker parchment). Terrain fills
+    // also use PAPER so mountain/tree/hill silhouettes blend into
+    // the page exactly. Kept PARCHMENT_DARK in the palette but
+    // unused on the background now.
+    void PARCHMENT_DARK;
     const grad = defs.append("radialGradient")
       .attr("id", "parchment-grad")
       .attr("cx", "50%").attr("cy", "50%").attr("r", "70%");
-    grad.append("stop").attr("offset", "0%").attr("stop-color", PARCHMENT);
-    grad.append("stop").attr("offset", "100%").attr("stop-color", PARCHMENT);
+    grad.append("stop").attr("offset", "0%").attr("stop-color", PAPER);
+    grad.append("stop").attr("offset", "100%").attr("stop-color", PAPER);
+    void PARCHMENT;
 
     g.append("rect")
       .attr("width", WIDTH * 3)
@@ -276,7 +284,7 @@ window.MapStyles.wilderland = {
   // --- Terrain symbol placement ---
   renderTerrainSymbols(ctx) {
     const { g, nodes, links } = ctx;
-    const { INK, BLUE, PARCHMENT } = ctx.colors;
+    const { INK, BLUE, PARCHMENT, PAPER } = ctx.colors;
     const mulberry32 = ctx.mulberry32;
     const seedFromString = ctx.seedFromString;
 
@@ -354,7 +362,7 @@ window.MapStyles.wilderland = {
         const rightBaseX = p.px + p.pw / 2;
         tg.append("path")
           .attr("d", `M ${leftBaseX} ${p.baseY} L ${p.px} ${peakY} L ${rightBaseX} ${p.baseY} Z`)
-          .attr("fill", PARCHMENT).attr("stroke", "none");
+          .attr("fill", PAPER).attr("stroke", "none");
         tg.append("path")
           .attr("d", `M ${leftBaseX} ${p.baseY} L ${p.px} ${peakY} L ${rightBaseX} ${p.baseY}`)
           .attr("fill", "none").attr("stroke", INK)
@@ -573,7 +581,7 @@ window.MapStyles.wilderland = {
         const fillD = "M " + fillPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ") + " Z";
         tg.append("path")
           .attr("d", fillD)
-          .attr("fill", PARCHMENT)
+          .attr("fill", PAPER)
           .attr("stroke", "none");
         const peakD = "M " + peakPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ");
         const hBoost = a.p.h > 18 ? 0.15 : 0;
@@ -679,7 +687,7 @@ window.MapStyles.wilderland = {
         const fillD = "M " + fillPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ") + " Z";
         tg.append("path")
           .attr("d", fillD)
-          .attr("fill", PARCHMENT)
+          .attr("fill", PAPER)
           .attr("stroke", "none");
         const fgD = "M " + fgPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ");
         roughPath(tg, fgD, {
@@ -761,7 +769,9 @@ window.MapStyles.wilderland = {
       // the hand-drawn source's mix of round-leaf trees, fir/pine peaks,
       // thin saplings, and clumpy bushes.
       const variant = rng();
-      const PARCH = ctx.colors.PARCHMENT;
+      // wl-96: tree canopies use PAPER (the page background colour)
+      // so silhouettes blend with the paper. Legacy name retained.
+      const PARCH = ctx.colors.PAPER;
 
       // Mapeffects old-growth technique: scatter a few short detail ticks
       // on the forest floor around every tree (downward-right isometric
@@ -924,44 +934,171 @@ window.MapStyles.wilderland = {
     }
 
     function drawSwampReeds(tg, x, y, size, rng) {
-      // Subtle water-tint ellipse beneath the ripples — suggests wetland pool
+      // wl-96: Wilderland swamp composed of four elements, matching
+      // the hand-drawn reference's Mirkwood-lake style — a horizontal
+      // pool outline with wavy water-lines inside, a couple scraggly
+      // bare/dead trees, one or two small live trees, reed tufts,
+      // and occasional rivulets.
+
+      // --- Central pool ---
+      // Horizontal elongated oval with clear ink outline (no fill so
+      // the parchment shows through). Water is suggested by wavy
+      // horizontal lines INSIDE. Pool sits in the lower half of the
+      // hex so trees/reeds above it read as standing on the bank.
+      const poolCx = x + (rng() - 0.5) * size * 0.15;
+      const poolCy = y + size * (0.15 + rng() * 0.10);
+      const poolRX = size * (0.55 + rng() * 0.15);
+      const poolRY = size * (0.18 + rng() * 0.06);
+      // Outline — thin ink ellipse (slightly wobbled via rough-ish
+      // effect by using stroke-dasharray with small jitter? simpler
+      // to just use a plain ellipse with slight opacity).
       tg.append("ellipse")
-        .attr("cx", x).attr("cy", y)
-        .attr("rx", size * 0.85).attr("ry", size * 0.5)
-        .attr("fill", BLUE).attr("opacity", 0.08);
-      // Layered wavy blue water lines
-      const ripples = 4 + Math.floor(rng() * 2);
+        .attr("cx", poolCx).attr("cy", poolCy)
+        .attr("rx", poolRX).attr("ry", poolRY)
+        .attr("fill", "none")
+        .attr("stroke", INK)
+        .attr("stroke-width", 0.85)
+        .attr("opacity", 0.85);
+      // Interior water ripples — 3-5 horizontal wavy lines, each
+      // shorter than the last toward the edges of the oval.
+      const ripples = 3 + Math.floor(rng() * 3);
       for (let i = 0; i < ripples; i++) {
-        const ly = y - size * 0.3 + i * size * 0.22 + (rng() - 0.5) * 1.5;
-        const w = size * (0.75 + rng() * 0.4);
-        const lx = x - w / 2 + (rng() - 0.5) * 2;
-        const amp = size * (0.08 + rng() * 0.05);
-        const d = `M ${lx} ${ly} Q ${lx + w * 0.25} ${ly - amp} ${lx + w * 0.5} ${ly} Q ${lx + w * 0.75} ${ly + amp} ${lx + w} ${ly}`;
+        const rowT = (i + 0.5) / ripples;
+        const ly = (poolCy - poolRY * 0.7) + rowT * poolRY * 1.4 + (rng() - 0.5) * 0.7;
+        // Line length tapers at the top and bottom of the pool.
+        const taper = Math.sin(rowT * Math.PI);
+        const w = poolRX * (1.15 + rng() * 0.2) * taper * 1.1;
+        const lx = poolCx - w / 2 + (rng() - 0.5) * 1.5;
+        const amp = poolRY * (0.10 + rng() * 0.08);
+        const q1x = lx + w * 0.25, q1y = ly - amp;
+        const mx = lx + w * 0.5, my = ly + (rng() - 0.5) * 0.5;
+        const q2x = lx + w * 0.75, q2y = ly + amp;
+        const ex = lx + w, ey = ly + (rng() - 0.5) * 0.5;
         tg.append("path")
-          .attr("d", d)
+          .attr("d", `M ${lx.toFixed(2)} ${ly.toFixed(2)} Q ${q1x.toFixed(2)} ${q1y.toFixed(2)} ${mx.toFixed(2)} ${my.toFixed(2)} Q ${q2x.toFixed(2)} ${q2y.toFixed(2)} ${ex.toFixed(2)} ${ey.toFixed(2)}`)
           .attr("fill", "none")
-          .attr("stroke", BLUE)
-          .attr("stroke-width", 0.7)
-          .attr("opacity", 0.6);
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.55)
+          .attr("opacity", 0.75);
       }
-      // Reed tufts with cattails
+
+      // --- Rivulets (small blue wavy streams near the pool) ---
+      if (rng() < 0.55) {
+        const rivCount = 1 + Math.floor(rng() * 2);
+        for (let r = 0; r < rivCount; r++) {
+          // Start near the pool edge, meander outward toward the
+          // upper-left or upper-right of the hex.
+          const sideSign = rng() < 0.5 ? -1 : 1;
+          const sx = poolCx + sideSign * poolRX * (0.6 + rng() * 0.25);
+          const sy = poolCy - poolRY * (0.1 + rng() * 0.3);
+          const ex2 = sx + sideSign * size * (0.25 + rng() * 0.25);
+          const ey2 = sy - size * (0.20 + rng() * 0.20);
+          const cp1x = sx + sideSign * size * 0.08;
+          const cp1y = sy - size * 0.08 + (rng() - 0.5) * 2;
+          const cp2x = ex2 - sideSign * size * 0.08 + (rng() - 0.5) * 2;
+          const cp2y = ey2 + size * 0.05 + (rng() - 0.5) * 2;
+          tg.append("path")
+            .attr("d", `M ${sx.toFixed(2)} ${sy.toFixed(2)} C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${ex2.toFixed(2)} ${ey2.toFixed(2)}`)
+            .attr("fill", "none")
+            .attr("stroke", INK)
+            .attr("stroke-width", 0.6)
+            .attr("opacity", 0.7);
+        }
+      }
+
+      // --- Scraggly dead trees — bare trunk with jagged branches ---
+      // Vertical trunk, a few short bent branches forking off, no
+      // canopy. Reference shows these as "skeletal" silhouettes.
+      const closedLine = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.7));
+      const deadCount = 1 + Math.floor(rng() * 2);
+      for (let d = 0; d < deadCount; d++) {
+        // Place dead tree on the BANK (above or to the side of pool).
+        const dx = x + (rng() - 0.5) * size * 1.2;
+        const dy = y - size * (0.05 + rng() * 0.25);
+        const th = size * (0.45 + rng() * 0.20);
+        // Trunk
+        tg.append("line")
+          .attr("x1", dx).attr("y1", dy)
+          .attr("x2", dx + (rng() - 0.5) * 0.6).attr("y2", dy - th)
+          .attr("stroke", INK).attr("stroke-width", 0.9)
+          .attr("stroke-linecap", "round").attr("opacity", 0.9);
+        // 3-5 jagged branches at varying heights, each a short line
+        // angling up-and-out from the trunk.
+        const branchCount = 3 + Math.floor(rng() * 3);
+        for (let b = 0; b < branchCount; b++) {
+          const bt = 0.2 + (b / branchCount) * 0.75;
+          const bx = dx + (rng() - 0.5) * 0.5;
+          const by = dy - th * bt;
+          const bSide = rng() < 0.5 ? -1 : 1;
+          const bLen = size * (0.08 + rng() * 0.12);
+          const bAngle = (Math.PI / 2) + bSide * (0.35 + rng() * 0.35); // upward-outward
+          const bEndX = bx + Math.cos(bAngle) * bLen * -bSide;
+          const bEndY = by - Math.sin(bAngle) * bLen;
+          tg.append("line")
+            .attr("x1", bx).attr("y1", by)
+            .attr("x2", bEndX).attr("y2", bEndY)
+            .attr("stroke", INK).attr("stroke-width", 0.65)
+            .attr("stroke-linecap", "round").attr("opacity", 0.85);
+          // Occasional tiny twig on the branch tip
+          if (rng() < 0.4) {
+            const tAngle = bAngle + (rng() - 0.5) * 0.6;
+            const tLen = bLen * (0.3 + rng() * 0.25);
+            tg.append("line")
+              .attr("x1", bEndX).attr("y1", bEndY)
+              .attr("x2", bEndX + Math.cos(tAngle) * tLen * -bSide)
+              .attr("y2", bEndY - Math.sin(tAngle) * tLen)
+              .attr("stroke", INK).attr("stroke-width", 0.5)
+              .attr("stroke-linecap", "round").attr("opacity", 0.75);
+          }
+        }
+      }
+
+      // --- A live tree or two — small bumpy canopy on a vertical trunk ---
+      const liveCount = Math.floor(rng() * 2); // 0 or 1
+      for (let l = 0; l < liveCount; l++) {
+        const lx = x + (rng() - 0.5) * size * 1.1;
+        const ly = y - size * (0.10 + rng() * 0.25);
+        const lr = size * (0.13 + rng() * 0.06);
+        // Trunk first, strictly vertical.
+        tg.append("line")
+          .attr("x1", lx).attr("y1", ly)
+          .attr("x2", lx).attr("y2", ly + lr * 1.2)
+          .attr("stroke", INK).attr("stroke-width", 0.9)
+          .attr("stroke-linecap", "round").attr("opacity", 0.9);
+        // Bumpy canopy on top.
+        const samples = 10;
+        const pts = [];
+        for (let s = 0; s < samples; s++) {
+          const a = (s / samples) * Math.PI * 2 - Math.PI / 2;
+          const rr = lr * (0.92 + rng() * 0.16);
+          pts.push([lx + Math.cos(a) * rr, ly + Math.sin(a) * rr]);
+        }
+        tg.append("path")
+          .attr("d", closedLine(pts))
+          .attr("fill", PAPER).attr("stroke", INK).attr("stroke-width", 0.85)
+          .attr("stroke-linejoin", "round").attr("opacity", 0.95);
+      }
+
+      // --- Reed tufts (the fens) — small clumps of vertical stalks
+      // with occasional cattail heads, scattered around the pool banks.
       const tufts = 2 + Math.floor(rng() * 2);
       for (let t = 0; t < tufts; t++) {
-        const cx = x + (rng() - 0.5) * size * 0.9;
-        const baseY = y - size * 0.1;
+        // Bias tufts to the upper half of the hex (above the pool).
+        const cx = x + (rng() - 0.5) * size * 1.4;
+        const baseY = y - size * (0.10 + rng() * 0.25);
         const stalks = 2 + Math.floor(rng() * 3);
         for (let i = 0; i < stalks; i++) {
           const rx = cx + (i - (stalks - 1) / 2) * 1.4 + (rng() - 0.5) * 0.6;
-          const topLean = (rng() - 0.5) * 1.5;
-          const topY = baseY - size * (0.4 + rng() * 0.2);
+          const topLean = (rng() - 0.5) * 1.2;
+          const topY = baseY - size * (0.20 + rng() * 0.12);
           tg.append("line")
             .attr("x1", rx).attr("y1", baseY)
             .attr("x2", rx + topLean).attr("y2", topY)
-            .attr("stroke", INK).attr("stroke-width", 0.6).attr("opacity", 0.75);
-          if (rng() > 0.4) {
+            .attr("stroke", INK).attr("stroke-width", 0.55).attr("opacity", 0.75);
+          if (rng() > 0.5) {
             tg.append("ellipse")
-              .attr("cx", rx + topLean).attr("cy", topY - 1.5)
-              .attr("rx", 0.8).attr("ry", 1.6)
+              .attr("cx", rx + topLean).attr("cy", topY - 1.2)
+              .attr("rx", 0.7).attr("ry", 1.3)
               .attr("fill", INK).attr("opacity", 0.75);
           }
         }
@@ -1067,46 +1204,43 @@ window.MapStyles.wilderland = {
     // --- Terrain drawing helpers for hills and farms ---
 
     function drawHill(tg, x, y, size, rng) {
-      // Hand-drawn hills with variety. Three variants:
-      //   - single rounded hump (⌒) — the basic hill
-      //   - rolling double hump (⌒⌒) — linked small hills
-      //   - rocky/crested — hump with a small stone bump on top
+      // wl-96: each hump now draws a PAPER-filled closed polygon
+      // UNDER the outline so hills occlude the grid overlay and
+      // match the page background exactly.
       const variant = rng();
       if (variant < 0.55) {
-        // Simple hump, 1-2 per cluster
         const count = 1 + Math.floor(rng() * 2);
         const spacing = size * 0.65;
         for (let i = 0; i < count; i++) {
           const cx = x + (i - (count - 1) / 2) * spacing + (rng() - 0.5) * size * 0.1;
           const w = size * (0.75 + rng() * 0.25);
           const h = size * (0.35 + rng() * 0.2);
+          const fillD = `M ${cx - w / 2} ${y} Q ${cx} ${y - h * 1.2} ${cx + w / 2} ${y} L ${cx - w / 2} ${y} Z`;
+          tg.append("path").attr("d", fillD).attr("fill", PAPER).attr("stroke", "none");
           tg.append("path")
             .attr("d", `M ${cx - w / 2} ${y} Q ${cx} ${y - h * 1.2} ${cx + w / 2} ${y}`)
             .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.85)
             .attr("stroke-linecap", "round").attr("opacity", 0.7);
         }
       } else if (variant < 0.85) {
-        // Rolling double-hump — linked arcs making a continuous hilly shape
         const w = size * (0.95 + rng() * 0.25);
         const h = size * (0.35 + rng() * 0.18);
         const mid = x + (rng() - 0.5) * size * 0.08;
         const midY = y - h * 0.4;
-        tg.append("path")
-          .attr("d", `M ${x - w / 2} ${y}
-                      Q ${x - w / 4} ${y - h * 1.2} ${mid} ${midY}
-                      Q ${x + w / 4} ${y - h * 1.3} ${x + w / 2} ${y}`)
+        const outlineD = `M ${x - w / 2} ${y} Q ${x - w / 4} ${y - h * 1.2} ${mid} ${midY} Q ${x + w / 4} ${y - h * 1.3} ${x + w / 2} ${y}`;
+        tg.append("path").attr("d", outlineD + ` L ${x - w / 2} ${y} Z`).attr("fill", PAPER).attr("stroke", "none");
+        tg.append("path").attr("d", outlineD)
           .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.85)
           .attr("stroke-linecap", "round").attr("opacity", 0.7);
       } else {
-        // Crested hill — a hump with a small stone / rocky crest on top
         const w = size * (0.7 + rng() * 0.2);
         const h = size * (0.4 + rng() * 0.15);
         const cx = x + (rng() - 0.5) * size * 0.08;
-        tg.append("path")
-          .attr("d", `M ${cx - w / 2} ${y} Q ${cx} ${y - h * 1.2} ${cx + w / 2} ${y}`)
+        const outlineD = `M ${cx - w / 2} ${y} Q ${cx} ${y - h * 1.2} ${cx + w / 2} ${y}`;
+        tg.append("path").attr("d", outlineD + ` L ${cx - w / 2} ${y} Z`).attr("fill", PAPER).attr("stroke", "none");
+        tg.append("path").attr("d", outlineD)
           .attr("fill", "none").attr("stroke", INK).attr("stroke-width", 0.85)
           .attr("stroke-linecap", "round").attr("opacity", 0.7);
-        // Small rock on the crest
         const rx = cx + (rng() - 0.5) * w * 0.15;
         const ry = y - h * 1.05;
         tg.append("ellipse")
@@ -1238,6 +1372,12 @@ window.MapStyles.wilderland = {
     // couldn't take overlap. The wl-81 canopy+trunk glyph can; bump
     // toward reference packing while staying short of the chaos
     // level that triggered the original "looks like eyes" feedback.
+    // wl-96: sparse dark-patch crosshatch inside forest hexes,
+    // drawn BEFORE trees so canopies occlude the crosshatch where
+    // they overlap. Patches represent "deeper darker parts of the
+    // forest" — only a few per hex, kept away from hex edges, and
+    // no full-hex coverage.
+    this.renderForestDarkPatches(ctx);
     MapCore.renderForestEdgeTrees(ctx, drawTreeCanopy, ["forest", "forested-hills"], { density: 2.2, minDist: 6.5, bleedOut: 1.18, treeSizeMul: 1.6 });
     MapCore.renderFarmlandBiased(ctx, drawFarm);
     // Forest-region tree-line — an ORGANIC boundary that drifts
@@ -1252,6 +1392,111 @@ window.MapStyles.wilderland = {
     // wl-93: removed the mountain-region hex outline. The hex grid
     // overlay alone already shows hex boundaries uniformly — mountain
     // hexes shouldn't get an extra stronger outline.
+  },
+
+  // --- wl-96: Dark-patch crosshatch inside forest hexes ---
+  // Small crosshatched blobs scattered inside some forest hexes,
+  // drawn BEFORE the tree scatter so canopies cover parts of them.
+  // Patches represent "deeper darker parts of the forest" visible
+  // between trees in the hand-drawn reference.
+  renderForestDarkPatches(ctx) {
+    const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
+    const { INK } = ctx.colors;
+    if (!hexTerrain) return;
+
+    const bcCol = 10, bcRow = 10;
+    const size = HINT_SCALE / 2;
+    const colStep = size * 2 * 0.75;
+    const rowStep = size * Math.sqrt(3);
+    const matchSet = new Set(["forest", "forested-hills"]);
+
+    const forestHexes = [];
+    Object.entries(hexTerrain).forEach(([h, t]) => {
+      if (matchSet.has(t)) forestHexes.push(h);
+    });
+    if (forestHexes.length === 0) return;
+
+    const group = g.append("g").attr("class", "terrain forest-dark-patches");
+
+    forestHexes.forEach(hex => {
+      const col = parseInt(hex.substring(0, 2));
+      const row = parseInt(hex.substring(2, 4));
+      const isShifted = (col % 2) !== (bcCol % 2);
+      const hx = (col - bcCol) * colStep + WIDTH / 2;
+      const hy = (row - bcRow) * rowStep + (isShifted ? rowStep / 2 : 0) + HEIGHT / 2;
+      const rng = mulberry32(seedFromString("forest-dark-" + hex));
+      // ~45% of forest hexes get at least one dark patch.
+      if (rng() > 0.55) return;
+      const patchCount = 1 + Math.floor(rng() * 2);
+      for (let p = 0; p < patchCount; p++) {
+        // Patch centre kept WELL inside the hex so crosshatch
+        // lines can't cross into neighbours. Offset up to 40% of
+        // hex size from the centre.
+        const angle = rng() * Math.PI * 2;
+        const dist = rng() * size * 0.40;
+        const pcx = hx + Math.cos(angle) * dist;
+        const pcy = hy + Math.sin(angle) * dist;
+        // Patch shape: small ellipse, axis-aligned with mild
+        // rotation. Radii kept ≤ 0.28*size so the outer edge of
+        // the patch stays >0.25*size from the hex edge.
+        const rxP = size * (0.18 + rng() * 0.10);
+        const ryP = size * (0.13 + rng() * 0.08);
+        const rot = (rng() - 0.5) * 0.4; // radians
+        // Draw crosshatch inside the ellipse — two diagonal
+        // families clipped to the ellipse. Approach: emit
+        // parallel lines over the ellipse's bounding box, then
+        // clip each segment against the ellipse analytically.
+        const spacing = 2.2;
+        const diag = [Math.PI * 0.25, -Math.PI * 0.25];
+        // Rotation from axis-aligned ellipse to the tilted one.
+        const cosR = Math.cos(rot), sinR = Math.sin(rot);
+        // For each family, sweep along the perpendicular direction.
+        diag.forEach(theta => {
+          const dirX = Math.cos(theta), dirY = Math.sin(theta);
+          const perpX = -dirY, perpY = dirX;
+          // Extent along perp direction: diagonal of bounding box.
+          const maxExt = Math.max(rxP, ryP) * 1.2;
+          const nLines = Math.ceil((maxExt * 2) / spacing);
+          for (let k = 0; k <= nLines; k++) {
+            const t = -maxExt + k * spacing;
+            // Clip line {pcx+perpX*t + dirX*s, pcy+perpY*t + dirY*s}
+            // against ellipse centred at (pcx,pcy), radii rxP, ryP,
+            // rotated by rot. Work in the ellipse's local frame.
+            // Point P(s) in local frame:
+            //   Px = cosR*(perpX*t + dirX*s) + sinR*(perpY*t + dirY*s)
+            //   Py = -sinR*(perpX*t + dirX*s) + cosR*(perpY*t + dirY*s)
+            // and (Px/rxP)^2 + (Py/ryP)^2 = 1 on the boundary.
+            const A0 = cosR * perpX + sinR * perpY;
+            const A1 = cosR * dirX + sinR * dirY;
+            const B0 = -sinR * perpX + cosR * perpY;
+            const B1 = -sinR * dirX + cosR * dirY;
+            const Px0 = A0 * t, Py0 = B0 * t;
+            // Quadratic: ((Px0+A1*s)/rxP)^2 + ((Py0+B1*s)/ryP)^2 = 1
+            const a = (A1 * A1) / (rxP * rxP) + (B1 * B1) / (ryP * ryP);
+            const b = 2 * ((Px0 * A1) / (rxP * rxP) + (Py0 * B1) / (ryP * ryP));
+            const c = (Px0 * Px0) / (rxP * rxP) + (Py0 * Py0) / (ryP * ryP) - 1;
+            const disc = b * b - 4 * a * c;
+            if (disc <= 0) continue;
+            const sqrtD = Math.sqrt(disc);
+            const s1 = (-b - sqrtD) / (2 * a);
+            const s2 = (-b + sqrtD) / (2 * a);
+            const x1 = pcx + perpX * t + dirX * s1;
+            const y1 = pcy + perpY * t + dirY * s1;
+            const x2 = pcx + perpX * t + dirX * s2;
+            const y2 = pcy + perpY * t + dirY * s2;
+            const len = Math.hypot(x2 - x1, y2 - y1);
+            if (len < 1.0) continue;
+            group.append("line")
+              .attr("x1", x1.toFixed(2)).attr("y1", y1.toFixed(2))
+              .attr("x2", x2.toFixed(2)).attr("y2", y2.toFixed(2))
+              .attr("stroke", INK)
+              .attr("stroke-width", 0.40 + rng() * 0.15)
+              .attr("opacity", 0.32 + rng() * 0.15)
+              .attr("stroke-linecap", "round");
+          }
+        });
+      }
+    });
   },
 
   // --- Organic forest tree-line ---
@@ -1463,7 +1708,7 @@ window.MapStyles.wilderland = {
         }
         treeLineGroup.append("path")
           .attr("d", closedLine(canopyPts))
-          .attr("fill", ctx.colors.PARCHMENT).attr("stroke", INK).attr("stroke-width", 0.8)
+          .attr("fill", ctx.colors.PAPER).attr("stroke", INK).attr("stroke-width", 0.8)
           .attr("stroke-linejoin", "round").attr("opacity", 0.95);
         void onx; void ony; // retained for signature compatibility
       };
