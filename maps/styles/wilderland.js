@@ -518,22 +518,55 @@ window.MapStyles.wilderland = {
       }
 
       // Draw each peak. The right leg ends at peak i+1's leftStart
-      // (when it lives on peak i's right leg) rather than extending
-      // all the way to baseR — this removes the visual artifact
-      // where peak i's right leg continued past peak i+1's left leg.
+      // when it lies on peak i's right leg (otherwise baseR).
+      //
+      // wl-98: each main peak now bakes a SMALLER foothill peak into
+      // the left and right legs of its ∧ — the whole silhouette
+      // reads as ∧₋∧₋∧ (a central peak flanked by two foothills),
+      // drawn as a single continuous stroke. Foothill height is
+      // ~30-50% of the main peak's height, placed 25-40% of the way
+      // along the leg. The foothill apex pokes ABOVE the straight
+      // leg-line; a mini valley between the foothill and the main
+      // apex dips slightly BELOW the straight line.
       const mainLegs = [];
+      const buildLeg = (start, apex, outward, rand) => {
+        // Builds a sub-path from `start` to `apex` with a small
+        // foothill ∧ pre-pended (before climbing to the main apex).
+        // `outward` is -1 for left leg (foothill sits on left half),
+        // +1 for right leg (foothill sits on right half). Returns
+        // an array of points [start, foothillApex, miniValley, apex].
+        const [sx, sy] = start;
+        const [ax, ay] = apex;
+        const dx = ax - sx, dy = ay - sy;
+        const length = Math.hypot(dx, dy);
+        if (length < 6) {
+          // Too short for a foothill — return straight segment.
+          return [[sx, sy], [ax, ay]];
+        }
+        const apexHeight = Math.abs(ay - sy);
+        const foothillT = 0.28 + rand() * 0.18; // 28-46% along leg
+        const valleyT  = foothillT + 0.18 + rand() * 0.10;
+        const lineX_at = (t) => sx + dx * t;
+        const lineY_at = (t) => sy + dy * t;
+        // Foothill apex pokes ABOVE (smaller y) the straight line by
+        // a fraction of apex height.
+        const fhX = lineX_at(foothillT);
+        const fhY = lineY_at(foothillT) - apexHeight * (0.25 + rand() * 0.20);
+        // Mini valley dips BELOW (larger y) by a smaller amount.
+        const mvX = lineX_at(valleyT);
+        const mvY = lineY_at(valleyT) + apexHeight * (0.08 + rand() * 0.08);
+        void outward;
+        return [[sx, sy], [fhX, fhY], [mvX, mvY], [ax, ay]];
+      };
+
       for (let i = 0; i < apexes.length; i++) {
         const a = apexes[i];
         const baseR = a.p.px + a.hw;
         const baseL = a.p.px - a.hw;
         const leftStart = leftStarts[i];
-        // Determine right-leg endpoint.
         let rightEnd;
         if (i + 1 < apexes.length) {
           const nextLS = leftStarts[i + 1];
-          // nextLS lies on this peak's right leg iff its x is between
-          // apex and baseR and it wasn't the baseL fallback (in which
-          // case nextLS[0] equals next peak's baseL, which is different).
           if (nextLS[0] > a.apX && nextLS[0] <= baseR) {
             rightEnd = nextLS;
           } else {
@@ -542,13 +575,13 @@ window.MapStyles.wilderland = {
         } else {
           rightEnd = [baseR, baseY];
         }
-        const legL = wobbledSegment(leftStart[0], leftStart[1], a.apX, a.apY);
-        const legR = wobbledSegment(a.apX, a.apY, rightEnd[0], rightEnd[1]);
-        const peakPts = legL.concat(legR.slice(1));
-        // wl-93: fill each main peak with solid PARCHMENT so it
-        // occludes whatever sits behind it (back peaks, neighbouring
-        // right-legs clipped off). The fill is the page colour so it
-        // reads as opaque paper rather than a visible cream patch.
+        // Foothill legs. Small peaks have a low apex height budget
+        // so the foothill bump stays proportional.
+        const legLpts = buildLeg(leftStart, [a.apX, a.apY], -1, rng);
+        const legRpts = buildLeg([a.apX, a.apY], rightEnd, +1, rng);
+        // Concatenate (drop the duplicated apex vertex in legR[0]).
+        const peakPts = legLpts.concat(legRpts.slice(1));
+        // wl-93: fill with solid PAPER so it occludes content behind.
         const fillPts = peakPts.slice();
         fillPts.push([rightEnd[0], baseY]);
         fillPts.push([leftStart[0], baseY]);
@@ -572,9 +605,10 @@ window.MapStyles.wilderland = {
         const peakT = (typeof a.p.t === "number") ? a.p.t : 0.5;
         const isWest = peakT < 0.45;
         const isEast = peakT > 0.55;
-        // wl-97: east peaks ALWAYS hatch (light from west → east face
-        // is in shadow → denser shading).
-        const hatchSkip = isEast ? 0.00 : (isWest ? 0.20 : 0.45);
+        // wl-98: all peaks hatch more aggressively per user —
+        // middle/west peaks used to skip frequently (0.45, 0.20),
+        // now drop to (0.10, 0.05). East still always hatches.
+        const hatchSkip = isEast ? 0.00 : (isWest ? 0.05 : 0.10);
         if (rng() < hatchSkip) continue;
         const baseR = a.p.px + a.hw;
         const baseL = a.p.px - a.hw;
@@ -585,8 +619,9 @@ window.MapStyles.wilderland = {
         if (vSpan < 1.5) continue;
         const legEndX = (mainLegs[i] && mainLegs[i].rightEnd) ? mainLegs[i].rightEnd[0] : baseR;
         const maxExtendX = legEndX - 0.5;
-        // wl-97: east peaks get tighter row spacing for heavier shadow.
-        const rowSpacing = isEast ? (1.1 + rng() * 0.3) : (2.2 + rng() * 0.5);
+        // wl-98: tighter spacing across the board so the whole range
+        // reads as shaded, not just east faces.
+        const rowSpacing = isEast ? (1.1 + rng() * 0.3) : (1.6 + rng() * 0.4);
         const rowCount = Math.max(3, Math.floor(vSpan / rowSpacing));
         const faceSlope = fsDY / fsDX;
         for (let k = 1; k < rowCount; k++) {
@@ -991,39 +1026,52 @@ window.MapStyles.wilderland = {
           .attr("opacity", 0.75);
       }
 
-      // --- Rivulets (small blue wavy streams near the pool) ---
-      if (rng() < 0.55) {
-        const rivCount = 1 + Math.floor(rng() * 2);
-        for (let r = 0; r < rivCount; r++) {
-          // Start near the pool edge, meander outward toward the
-          // upper-left or upper-right of the hex.
+      // --- Rivulets / little streams scattered around the hex ---
+      // wl-98: streams are more numerous (3-5) and scatter all
+      // around the hex — not just emerging from the pool. Some
+      // connect to the pool, some wander independently.
+      const rivCount = 3 + Math.floor(rng() * 3);
+      for (let r = 0; r < rivCount; r++) {
+        let sx, sy, ex2, ey2;
+        if (r < 2 && rng() < 0.7) {
+          // 1-2 of the streams emerge FROM the pool edge.
           const sideSign = rng() < 0.5 ? -1 : 1;
-          const sx = poolCx + sideSign * poolRX * (0.6 + rng() * 0.25);
-          const sy = poolCy - poolRY * (0.1 + rng() * 0.3);
-          const ex2 = sx + sideSign * size * (0.25 + rng() * 0.25);
-          const ey2 = sy - size * (0.20 + rng() * 0.20);
-          const cp1x = sx + sideSign * size * 0.08;
-          const cp1y = sy - size * 0.08 + (rng() - 0.5) * 2;
-          const cp2x = ex2 - sideSign * size * 0.08 + (rng() - 0.5) * 2;
-          const cp2y = ey2 + size * 0.05 + (rng() - 0.5) * 2;
-          tg.append("path")
-            .attr("d", `M ${sx.toFixed(2)} ${sy.toFixed(2)} C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${ex2.toFixed(2)} ${ey2.toFixed(2)}`)
-            .attr("fill", "none")
-            .attr("stroke", INK)
-            .attr("stroke-width", 0.6)
-            .attr("opacity", 0.7);
+          sx = poolCx + sideSign * poolRX * (0.6 + rng() * 0.25);
+          sy = poolCy + (rng() - 0.5) * poolRY * 0.6;
+          ex2 = sx + sideSign * size * (0.20 + rng() * 0.30);
+          ey2 = sy + (rng() - 0.5) * size * 0.40;
+        } else {
+          // Independent stream somewhere else in the hex.
+          const ang = rng() * Math.PI * 2;
+          const rad = size * (0.4 + rng() * 0.4);
+          sx = x + Math.cos(ang) * rad;
+          sy = y + Math.sin(ang) * rad * 0.7;
+          const endAng = ang + (rng() - 0.5) * 0.8;
+          const endRad = size * (0.15 + rng() * 0.35);
+          ex2 = sx + Math.cos(endAng) * endRad;
+          ey2 = sy + Math.sin(endAng) * endRad * 0.7;
         }
+        const mx2 = (sx + ex2) / 2 + (rng() - 0.5) * size * 0.12;
+        const my2 = (sy + ey2) / 2 + (rng() - 0.5) * size * 0.10;
+        const cp1x = sx + (mx2 - sx) * 0.5 + (rng() - 0.5) * 2;
+        const cp1y = sy + (my2 - sy) * 0.5 + (rng() - 0.5) * 2;
+        const cp2x = ex2 + (mx2 - ex2) * 0.5 + (rng() - 0.5) * 2;
+        const cp2y = ey2 + (my2 - ey2) * 0.5 + (rng() - 0.5) * 2;
+        tg.append("path")
+          .attr("d", `M ${sx.toFixed(2)} ${sy.toFixed(2)} Q ${cp1x.toFixed(2)} ${cp1y.toFixed(2)} ${mx2.toFixed(2)} ${my2.toFixed(2)} Q ${cp2x.toFixed(2)} ${cp2y.toFixed(2)} ${ex2.toFixed(2)} ${ey2.toFixed(2)}`)
+          .attr("fill", "none")
+          .attr("stroke", INK)
+          .attr("stroke-width", 0.55)
+          .attr("opacity", 0.65);
       }
 
       // --- Scraggly dead trees — bare trunk with jagged branches ---
-      // Vertical trunk, a few short bent branches forking off, no
-      // canopy. Reference shows these as "skeletal" silhouettes.
+      // wl-98: more dead trees (2-4) scattered across the whole hex.
       const closedLine = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.7));
-      const deadCount = 1 + Math.floor(rng() * 2);
+      const deadCount = 2 + Math.floor(rng() * 3);
       for (let d = 0; d < deadCount; d++) {
-        // Place dead tree on the BANK (above or to the side of pool).
-        const dx = x + (rng() - 0.5) * size * 1.2;
-        const dy = y - size * (0.05 + rng() * 0.25);
+        const dx = x + (rng() - 0.5) * size * 1.5;
+        const dy = y + (rng() - 0.5) * size * 0.9 - size * 0.1;
         const th = size * (0.45 + rng() * 0.20);
         // Trunk
         tg.append("line")
@@ -1063,10 +1111,11 @@ window.MapStyles.wilderland = {
       }
 
       // --- A live tree or two — small bumpy canopy on a vertical trunk ---
-      const liveCount = Math.floor(rng() * 2); // 0 or 1
+      // wl-98: 1-2 live trees scattered around the hex.
+      const liveCount = 1 + Math.floor(rng() * 2);
       for (let l = 0; l < liveCount; l++) {
-        const lx = x + (rng() - 0.5) * size * 1.1;
-        const ly = y - size * (0.10 + rng() * 0.25);
+        const lx = x + (rng() - 0.5) * size * 1.5;
+        const ly = y + (rng() - 0.5) * size * 0.9 - size * 0.05;
         const lr = size * (0.13 + rng() * 0.06);
         // Trunk first, strictly vertical.
         tg.append("line")
@@ -1088,23 +1137,38 @@ window.MapStyles.wilderland = {
           .attr("stroke-linejoin", "round").attr("opacity", 0.95);
       }
 
-      // --- Reed tufts (the fens) — small clumps of vertical stalks
-      // with occasional cattail heads, scattered around the pool banks.
-      const tufts = 2 + Math.floor(rng() * 2);
+      // --- Reed tufts & grass clumps ---
+      // wl-98: more tufts (5-9) scattered throughout the whole hex,
+      // not just near the pool banks, so white-space between the
+      // pool/trees/reeds is filled with ground-cover texture. Small
+      // "grass clump" variant (just a few short stalks, no cattail)
+      // mixed in with the full reed tufts.
+      const tufts = 5 + Math.floor(rng() * 5);
       for (let t = 0; t < tufts; t++) {
-        // Bias tufts to the upper half of the hex (above the pool).
-        const cx = x + (rng() - 0.5) * size * 1.4;
-        const baseY = y - size * (0.10 + rng() * 0.25);
-        const stalks = 2 + Math.floor(rng() * 3);
+        // Scatter across the whole hex, avoiding the pool interior.
+        let tx, tyBase;
+        let tries = 0;
+        do {
+          tx = x + (rng() - 0.5) * size * 1.6;
+          tyBase = y + (rng() - 0.5) * size * 1.1;
+          tries++;
+          // Reject if inside pool ellipse
+          const ndx = (tx - poolCx) / (poolRX + 1);
+          const ndy = (tyBase - poolCy) / (poolRY + 1);
+          if (ndx * ndx + ndy * ndy > 1) break;
+        } while (tries < 6);
+        const isGrass = rng() < 0.45; // 45% grass clumps, 55% reeds
+        const stalks = isGrass ? (2 + Math.floor(rng() * 2)) : (2 + Math.floor(rng() * 3));
+        const stalkHeight = isGrass ? size * (0.08 + rng() * 0.06) : size * (0.20 + rng() * 0.12);
         for (let i = 0; i < stalks; i++) {
-          const rx = cx + (i - (stalks - 1) / 2) * 1.4 + (rng() - 0.5) * 0.6;
-          const topLean = (rng() - 0.5) * 1.2;
-          const topY = baseY - size * (0.20 + rng() * 0.12);
+          const rx = tx + (i - (stalks - 1) / 2) * 1.2 + (rng() - 0.5) * 0.5;
+          const topLean = (rng() - 0.5) * (isGrass ? 0.8 : 1.2);
+          const topY = tyBase - stalkHeight;
           tg.append("line")
-            .attr("x1", rx).attr("y1", baseY)
+            .attr("x1", rx).attr("y1", tyBase)
             .attr("x2", rx + topLean).attr("y2", topY)
-            .attr("stroke", INK).attr("stroke-width", 0.55).attr("opacity", 0.75);
-          if (rng() > 0.5) {
+            .attr("stroke", INK).attr("stroke-width", 0.5 + rng() * 0.15).attr("opacity", 0.7);
+          if (!isGrass && rng() > 0.5) {
             tg.append("ellipse")
               .attr("cx", rx + topLean).attr("cy", topY - 1.2)
               .attr("rx", 0.7).attr("ry", 1.3)
@@ -1350,7 +1414,10 @@ window.MapStyles.wilderland = {
     MapCore.renderMountainsByRegion(ctx,
       (tg, peaks, rng, opts) => drawMountainRidge(tg, peaks, rng, opts),
       {
-        clusterInset: 0.10,
+        // wl-98: negative inset (peaks extend 10% past the hex edges)
+        // so adjacent mountain clusters OVERLAP — no gap at hex
+        // seams, the ranges flow together as one band.
+        clusterInset: -0.10,
         peakCountMin: 6,
         peakCountRange: 3,
         // wl-89: each cluster is a MINI-RANGE, not a random bag.
@@ -1434,9 +1501,10 @@ window.MapStyles.wilderland = {
       const hx = (col - bcCol) * colStep + WIDTH / 2;
       const hy = (row - bcRow) * rowStep + (isShifted ? rowStep / 2 : 0) + HEIGHT / 2;
       const rng = mulberry32(seedFromString("forest-dark-" + hex));
-      // ~45% of forest hexes get at least one dark patch.
-      if (rng() > 0.55) return;
-      const patchCount = 1 + Math.floor(rng() * 2);
+      // wl-98: ~70% of forest hexes get dark patches (was ~45%),
+      // up to 3 patches each (was 2) — user wanted ~50% more.
+      if (rng() > 0.70) return;
+      const patchCount = 1 + Math.floor(rng() * 3);
       for (let p = 0; p < patchCount; p++) {
         // Patch centre kept WELL inside the hex so crosshatch
         // lines can't cross into neighbours. Offset up to 40% of
