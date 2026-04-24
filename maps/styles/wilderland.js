@@ -467,20 +467,24 @@ window.MapStyles.wilderland = {
         const a = apexes[i], b = apexes[i + 1];
         const baseR_a = a.p.px + a.hw;
         const baseL_b = b.p.px - b.hw;
-        // Start: 30-50% up A's right leg (from apex toward baseR_a).
-        const tLeft = 0.30 + rng() * 0.20;
+        // wl-92: broaden back-peak bases — start further DOWN the
+        // neighbours' legs (closer to their baselines) so the ∧ span
+        // widens, and lower the apex lift so the peak isn't spiky.
+        // Start: 50-75% down A's right leg from apex (wider foot).
+        const tLeft = 0.50 + rng() * 0.25;
         const sx = a.apX + (baseR_a - a.apX) * tLeft;
         const sy = a.apY + (baseY - a.apY) * tLeft;
-        // End: 30-50% up B's left leg (from apex toward baseL_b).
-        const tRight = 0.30 + rng() * 0.20;
+        // End: 50-75% down B's left leg from apex.
+        const tRight = 0.50 + rng() * 0.25;
         const ex = b.apX + (baseL_b - b.apX) * tRight;
         const ey = b.apY + (baseY - b.apY) * tRight;
         if (ex <= sx + 1) continue; // ill-formed — skip
-        // Back-peak apex sits ABOVE both neighbour apexes (lower y).
+        // Back-peak apex sits ABOVE both neighbour apexes. Less lift
+        // (2-7px vs prior 4-14) so the ∧ is wider and gentler.
         const higherApY = Math.min(a.apY, b.apY);
-        const lift = 4 + rng() * 10;
+        const lift = 2 + rng() * 5;
         const apY_bg = higherApY - lift;
-        const apX_bg = (sx + ex) / 2 + (rng() - 0.5) * (ex - sx) * 0.25;
+        const apX_bg = (sx + ex) / 2 + (rng() - 0.5) * (ex - sx) * 0.20;
         // Build wobbled ∧.
         const bgL = wobbledSegment(sx, sy, apX_bg, apY_bg, 0.35);
         const bgR = wobbledSegment(apX_bg, apY_bg, ex, ey, 0.35);
@@ -498,73 +502,88 @@ window.MapStyles.wilderland = {
         });
       }
 
-      // --- MAIN PEAKS (wl-90 overlap model) ---
-      let prevRightLeg = null; // {apX, apY, baseR, baseY}
-      // Track each main peak's legs for the foreground pass to pick
-      // an overlap position.
+      // --- MAIN PEAKS (wl-90 overlap + wl-92 right-leg clip) ---
+      // Pre-pass: compute leftStart for each peak. Each peak i > 0
+      // may start its left leg partway up peak i-1's right leg. We
+      // need these positions BEFORE drawing, so that peak i-1's
+      // right leg can be truncated at peak i's leftStart (avoiding
+      // the X-shaped crossing artifact where both lines extended
+      // through each other).
+      const leftStarts = new Array(apexes.length);
+      for (let i = 0; i < apexes.length; i++) {
+        const a = apexes[i];
+        const baseL = a.p.px - a.hw;
+        if (i === 0) {
+          leftStarts[i] = [baseL, baseY];
+          continue;
+        }
+        const prev = apexes[i - 1];
+        const prevBaseR = prev.p.px + prev.hw;
+        const tOverlap = 0.30 + rng() * 0.35;
+        const sx = prev.apX + (prevBaseR - prev.apX) * tOverlap;
+        const sy = prev.apY + (baseY - prev.apY) * tOverlap;
+        if (sx < a.apX - 1) {
+          leftStarts[i] = [sx, sy];
+        } else {
+          leftStarts[i] = [baseL, baseY];
+        }
+      }
+
+      // Draw each peak. The right leg ends at peak i+1's leftStart
+      // (when it lives on peak i's right leg) rather than extending
+      // all the way to baseR — this removes the visual artifact
+      // where peak i's right leg continued past peak i+1's left leg.
       const mainLegs = [];
       for (let i = 0; i < apexes.length; i++) {
         const a = apexes[i];
         const baseR = a.p.px + a.hw;
         const baseL = a.p.px - a.hw;
-        // Where does the LEFT LEG start?
-        let leftStart;
-        if (!prevRightLeg) {
-          leftStart = [baseL, baseY];
-        } else {
-          // Interpolate along the previous peak's right leg at a
-          // random fraction — "partway up" ranges 30-65% from apex.
-          const tOverlap = 0.30 + rng() * 0.35;
-          const pax = prevRightLeg.apX, pay = prevRightLeg.apY;
-          const pbx = prevRightLeg.baseR, pby = baseY;
-          const sx = pax + (pbx - pax) * tOverlap;
-          const sy = pay + (pby - pay) * tOverlap;
-          // Ensure the start sits to the LEFT of this peak's apex so
-          // the left leg climbs (rather than descending backwards).
-          if (sx < a.apX - 1) {
-            leftStart = [sx, sy];
+        const leftStart = leftStarts[i];
+        // Determine right-leg endpoint.
+        let rightEnd;
+        if (i + 1 < apexes.length) {
+          const nextLS = leftStarts[i + 1];
+          // nextLS lies on this peak's right leg iff its x is between
+          // apex and baseR and it wasn't the baseL fallback (in which
+          // case nextLS[0] equals next peak's baseL, which is different).
+          if (nextLS[0] > a.apX && nextLS[0] <= baseR) {
+            rightEnd = nextLS;
           } else {
-            leftStart = [baseL, baseY];
+            rightEnd = [baseR, baseY];
           }
+        } else {
+          rightEnd = [baseR, baseY];
         }
-        // Build the ∧ as two wobbled segments joined at the apex.
         const legL = wobbledSegment(leftStart[0], leftStart[1], a.apX, a.apY);
-        const legR = wobbledSegment(a.apX, a.apY, baseR, baseY);
+        const legR = wobbledSegment(a.apX, a.apY, rightEnd[0], rightEnd[1]);
         const peakPts = legL.concat(legR.slice(1));
         const peakD = "M " + peakPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ");
         const hBoost = a.p.h > 18 ? 0.15 : 0;
         drawStroke(peakD, hBoost);
-        prevRightLeg = { apX: a.apX, apY: a.apY, baseR, baseY };
-        mainLegs.push({ leftStart, apX: a.apX, apY: a.apY, baseR, baseL });
+        mainLegs.push({ leftStart, apX: a.apX, apY: a.apY, baseR, baseL, rightEnd });
       }
 
-      // --- wl-91 FOREGROUND PASS ---
-      // 0-2 extra peaks per cluster drawn IN FRONT of the main range
-      // (larger, base pushed a few pixels below the main baseY so
-      // they read as closer). Filled with the parchment gradient so
-      // they occlude the main-peak lines behind them, giving the
-      // range visible depth. Drawn LAST so their fill sits on top.
-      const fgCount = Math.floor(rng() * 2) + (apexes.length >= 4 ? 1 : 0);
-      for (let f = 0; f < fgCount; f++) {
-        // Anchor x near one of the main peaks, biased toward the
-        // middle of the cluster where the tallest peaks live so the
-        // foreground peak doesn't poke out at the cluster ends.
-        const anchorIdx = Math.floor(apexes.length * (0.25 + rng() * 0.50));
-        const host = apexes[Math.max(0, Math.min(apexes.length - 1, anchorIdx))];
+      // --- wl-91/wl-92 FOREGROUND PASSES (TWO LAYERS) ---
+      // Two foreground layers per cluster. Each progressive layer
+      // sits LOWER on the y-axis (base pushed further below the main
+      // baseY) and is SMALLER than the layer behind it, creating the
+      // illusion that we're stacking closer mountains in front. Each
+      // layer fills its body with the parchment gradient so it
+      // occludes the range behind it.
+      const drawFgPeak = (host, sizeMul, baseShift, strokeBump) => {
         const fgApX = host.apX + (rng() - 0.5) * host.hw * 0.8;
-        const fgH = host.p.h * (1.05 + rng() * 0.40);
-        const fgBaseShift = 5 + rng() * 8;           // push below main baseY
-        const fgBaseY = baseY + fgBaseShift;
+        const fgH = host.p.h * sizeMul;
+        const fgBaseY = baseY + baseShift;
         const fgApY = fgBaseY - fgH;
-        const fgHw = host.hw * (1.05 + rng() * 0.35);
+        const fgHw = host.hw * (sizeMul * 0.95 + rng() * 0.15);
         const fgBaseL = fgApX - fgHw;
         const fgBaseR = fgApX + fgHw;
         const legLF = wobbledSegment(fgBaseL, fgBaseY, fgApX, fgApY, 0.55);
         const legRF = wobbledSegment(fgApX, fgApY, fgBaseR, fgBaseY, 0.55);
         const fgPts = legLF.concat(legRF.slice(1));
         // Closed polygon so we can fill the foreground peak interior
-        // with the parchment gradient — this occludes the back-peak
-        // and main-peak lines behind it, creating the depth illusion.
+        // with the parchment gradient — this occludes the main and
+        // back peak lines behind it.
         const fillPts = fgPts.slice();
         fillPts.push([fgBaseL, fgBaseY]);
         const fillD = "M " + fillPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ") + " Z";
@@ -572,19 +591,17 @@ window.MapStyles.wilderland = {
           .attr("d", fillD)
           .attr("fill", "url(#parchment-grad)")
           .attr("stroke", "none");
-        // Then draw the outline ∧ on top.
         const fgD = "M " + fgPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ");
         roughPath(tg, fgD, {
           stroke: INK,
-          strokeWidth: 1.25 + rng() * 0.30,
+          strokeWidth: 1.15 + rng() * 0.25 + strokeBump,
           fill: "none",
           roughness: 0.55,
           bowing: 0.35,
           disableMultiStroke: true,
           seed: Math.floor(rng() * 2 ** 31),
         });
-        // Foreground peaks get a touch of right-face hatching so
-        // they don't read as bare silhouettes.
+        // Right-face hatching.
         const fsDX_f = fgBaseR - fgApX;
         const fsDY_f = fgBaseY - fgApY;
         const rows = Math.max(3, Math.floor(fsDY_f / 2.2));
@@ -610,6 +627,28 @@ window.MapStyles.wilderland = {
             .attr("opacity", 0.78 + rng() * 0.12)
             .attr("stroke-linecap", "round");
         }
+      };
+
+      // Layer 1 — behind layer 2 but in front of the main range.
+      const fg1Count = Math.floor(rng() * 2) + (apexes.length >= 4 ? 1 : 0);
+      for (let f = 0; f < fg1Count; f++) {
+        const anchorIdx = Math.floor(apexes.length * (0.25 + rng() * 0.50));
+        const host = apexes[Math.max(0, Math.min(apexes.length - 1, anchorIdx))];
+        const sizeMul = 1.00 + rng() * 0.35;
+        const baseShift = 5 + rng() * 7;
+        drawFgPeak(host, sizeMul, baseShift, 0);
+      }
+
+      // Layer 2 — closer still: smaller, lower on the y-axis. Drawn
+      // AFTER layer 1 so its parchment fill occludes layer 1 where
+      // they overlap.
+      const fg2Count = Math.max(1, fg1Count);
+      for (let f = 0; f < fg2Count; f++) {
+        const anchorIdx = Math.floor(apexes.length * (0.20 + rng() * 0.60));
+        const host = apexes[Math.max(0, Math.min(apexes.length - 1, anchorIdx))];
+        const sizeMul = 0.70 + rng() * 0.25;           // smaller than layer 1
+        const baseShift = 15 + rng() * 10;             // lower on y-axis
+        drawFgPeak(host, sizeMul, baseShift, 0.05);
       }
       void mainLegs; // reserved for future z-ordering tweaks
 
@@ -642,8 +681,11 @@ window.MapStyles.wilderland = {
         const vSpan = fsDY;
         if (vSpan < 1.5) continue;
 
-        // wl-89: hatch no further than this peak's own base-right.
-        const maxExtendX = baseR - 0.5;
+        // wl-92: hatch no further than where the RIGHT LEG was
+        // actually drawn — the leg is clipped at the next peak's
+        // leftStart so the face visually ends there, not at baseR.
+        const legEndX = (mainLegs[i] && mainLegs[i].rightEnd) ? mainLegs[i].rightEnd[0] : baseR;
+        const maxExtendX = legEndX - 0.5;
 
         // East peaks: tighter spacing (denser shading). West/mid: wider.
         const rowSpacing = isEast ? (1.5 + rng() * 0.4) : (2.2 + rng() * 0.5);
