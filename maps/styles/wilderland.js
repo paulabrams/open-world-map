@@ -1178,10 +1178,11 @@ window.MapStyles.wilderland = {
       };
 
       // Build the inset polygon path with scallops on each segment.
-      // Scallops bulge OUTWARD (toward the hex boundary) so they
-      // read as tree canopies forming the tree-line, but the bump
-      // magnitude is capped so scallops still sit INSIDE the hex.
+      // Also collect the bump centers so we can draw a tree canopy
+      // glyph at each bump — visually the tree-line IS a row of
+      // trees along the perimeter.
       let pathD = "";
+      const bumps = [];
       for (let i = 0; i < poly.length; i++) {
         const edge = poly[i];
         const d1 = getDrift(edge.p1, edge.hexCx, edge.hexCy);
@@ -1192,15 +1193,11 @@ window.MapStyles.wilderland = {
         const dx = bx - ax, dy = by - ay;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
         const ux = dx / len, uy = dy / len;
-        // Outward (toward hex boundary) direction at this segment.
         const mid = [(ax + bx) / 2, (ay + by) / 2];
         const toMid = [mid[0] - edge.hexCx, mid[1] - edge.hexCy];
         const toMidLen = Math.sqrt(toMid[0] ** 2 + toMid[1] ** 2) || 1;
         const onx = toMid[0] / toMidLen;
         const ony = toMid[1] / toMidLen;
-        // Max bulge: remaining distance from segment to hex edge
-        // (minimum of the two endpoint insets) so scallops stay
-        // within the forest hex.
         const inset1 = Math.sqrt(d1.dx ** 2 + d1.dy ** 2);
         const inset2 = Math.sqrt(d2.dx ** 2 + d2.dy ** 2);
         const maxBulge = Math.max(2.0, Math.min(inset1, inset2) * 0.85);
@@ -1217,9 +1214,12 @@ window.MapStyles.wilderland = {
           const cpy = my + ony * bulge + uy * lateral;
           const ex = ax + dx * t2, ey = ay + dy * t2;
           pathD += ` Q ${cpx.toFixed(2)} ${cpy.toFixed(2)} ${ex.toFixed(2)} ${ey.toFixed(2)}`;
+          // Record bump peak so we can drop a tree canopy there.
+          bumps.push({ cx: cpx, cy: cpy, onx, ony, size: scallopSize });
         }
       }
       pathD += " Z";
+      // Scallop path — drawn first so tree canopies sit on top.
       treeLineGroup.append("path")
         .attr("d", pathD)
         .attr("fill", "none")
@@ -1228,6 +1228,34 @@ window.MapStyles.wilderland = {
         .attr("stroke-linecap", "round")
         .attr("stroke-linejoin", "round")
         .attr("opacity", 0.88);
+      // Per user feedback 2026-04-23: align trees with the wavy line.
+      // Emit a round bumpy canopy + short inward trunk at every bump.
+      const closedLine = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.7));
+      bumps.forEach(b => {
+        const r = b.size * (1.05 + rng() * 0.3);
+        const samples = 12;
+        const canopyPts = [];
+        for (let s = 0; s < samples; s++) {
+          const a = (s / samples) * Math.PI * 2 - Math.PI / 2;
+          const rr = r * (0.92 + rng() * 0.14);
+          canopyPts.push([b.cx + Math.cos(a) * rr, b.cy + Math.sin(a) * rr]);
+        }
+        treeLineGroup.append("path")
+          .attr("d", closedLine(canopyPts))
+          .attr("fill", ctx.colors.PARCHMENT).attr("stroke", INK).attr("stroke-width", 0.85)
+          .attr("stroke-linejoin", "round").attr("opacity", 0.95);
+        // Trunk goes INWARD (-onx, -ony) from the canopy base.
+        const trunkX0 = b.cx - b.onx * r * 0.15;
+        const trunkY0 = b.cy - b.ony * r * 0.15;
+        const trunkLen = r * (0.7 + rng() * 0.3);
+        const trunkX1 = trunkX0 - b.onx * trunkLen;
+        const trunkY1 = trunkY0 - b.ony * trunkLen;
+        treeLineGroup.append("line")
+          .attr("x1", trunkX0).attr("y1", trunkY0)
+          .attr("x2", trunkX1).attr("y2", trunkY1)
+          .attr("stroke", INK).attr("stroke-width", 0.85)
+          .attr("stroke-linecap", "round").attr("opacity", 0.88);
+      });
     });
   },
 
