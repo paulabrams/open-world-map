@@ -45,15 +45,11 @@ window.MapStyles.wilderland = {
   render(ctx) {
     this.renderBackground(ctx);
     this.renderBorder(ctx);
+    // --- Graphics pass (no text) ---
     // Thin double-line ribbon — two parallel fine ink strokes (width 2
     // triggers the default twin-bank branch with bankStroke 0.9 and banks
     // ~2.2 px apart). Matches the Wilderland reference's ribbon rivers.
-    // wl-18 flattened this to singleLine and that was a regression — per
-    // user correction 2026-04-22, the reference is a ribbon, not a stroke.
     MapCore.renderRiver(ctx, ctx.colors.INK, 2);
-    // River labels in BLUE ink — matches Tolkien's Wilderland reference
-    // where "River Running", "Long Lake", etc. are all rendered in blue.
-    MapCore.renderRiverLabel(ctx, { color: ctx.colors.BLUE, strokeColor: ctx.colors.PARCHMENT });
     MapCore.renderBridges(ctx, { color: ctx.colors.INK, strokeWidth: 1.0, bridgeLen: 14 });
     MapCore.renderBoats(ctx, { color: ctx.colors.INK, parchment: ctx.colors.PARCHMENT, count: 4 });
     // Tolkien's Wilderland renders the Old Forest Road as a DASHED
@@ -65,21 +61,23 @@ window.MapStyles.wilderland = {
     MapCore.renderCrevasse(ctx, "#2a1f14", 5, { style: "twinbank" });
     this.renderLinks(ctx);
     this.renderTerrainSymbols(ctx);
-    // Wilderland reference uses BLUE ink for region labels ("GREY
-    // MOUNTAINS", "Mirkwood", etc.), not black/brown. Matches Tolkien's
-    // two-ink convention (black line art + blue label text).
+    this.renderNodes(ctx);
+
+    // --- Text pass (wl-94: all labels rendered AFTER all graphics) ---
+    // Region labels, place names, river names, travel times, scale bar,
+    // cartouche, and edge annotations all float above the graphics
+    // layer so terrain/mountain fills can never occlude them.
     MapCore.renderRegionLabels(ctx, {
       color: ctx.colors.BLUE,
       strokeColor: ctx.colors.PARCHMENT,
-      // Reference region labels ("MISTY MOUNTAINS", "MIRKWOOD") dominate
-      // their territories; 22px was too subordinate. Bump to 36px with
-      // wider spacing so region names match reference prominence.
       fontSize: 52,
       letterSpacing: "14px",
       opacity: 0.85,
       fontStyle: "normal",
     });
-    this.renderNodes(ctx);
+    // River labels in BLUE ink — matches Tolkien's Wilderland reference
+    // where "River Running", "Long Lake", etc. are all rendered in blue.
+    MapCore.renderRiverLabel(ctx, { color: ctx.colors.BLUE, strokeColor: ctx.colors.PARCHMENT });
     this.renderLabels(ctx);
     this.renderDayLabels(ctx);
     this.renderCompass(ctx);
@@ -466,27 +464,31 @@ window.MapStyles.wilderland = {
       // the ∧ is drawn (never reaches the baseline) so it reads as a
       // peak "peeking out" from behind the main range. Drawn FIRST
       // with a thinner/faded stroke so it visually recedes.
-      for (let i = 0; i < apexes.length - 1; i++) {
-        if (rng() < 0.55) continue; // not every gap gets a back peak
-        const a = apexes[i], b = apexes[i + 1];
+      // wl-94: span TWO peaks apart (peak[i] to peak[i+2]) so the
+      // background ∧ has a wide base rooted on different mountains.
+      // Prior adjacent-pair anchor produced narrow spike-shaped peaks
+      // that looked like "radio antennas" poking up between their
+      // immediate neighbours.
+      for (let i = 0; i < apexes.length - 2; i++) {
+        if (rng() < 0.50) continue;
+        const a = apexes[i], b = apexes[i + 2];
         const baseR_a = a.p.px + a.hw;
         const baseL_b = b.p.px - b.hw;
-        // wl-92: broaden back-peak bases — start further DOWN the
-        // neighbours' legs (closer to their baselines) so the ∧ span
-        // widens, and lower the apex lift so the peak isn't spiky.
-        // Start: 50-75% down A's right leg from apex (wider foot).
-        const tLeft = 0.50 + rng() * 0.25;
+        // Start: on peak A's right leg, somewhere between midpoint
+        // and lower third (wider foot).
+        const tLeft = 0.50 + rng() * 0.30;
         const sx = a.apX + (baseR_a - a.apX) * tLeft;
         const sy = a.apY + (baseY - a.apY) * tLeft;
-        // End: 50-75% down B's left leg from apex.
-        const tRight = 0.50 + rng() * 0.25;
+        // End: on peak B's LEFT leg at a similar depth.
+        const tRight = 0.50 + rng() * 0.30;
         const ex = b.apX + (baseL_b - b.apX) * tRight;
         const ey = b.apY + (baseY - b.apY) * tRight;
         if (ex <= sx + 1) continue; // ill-formed — skip
-        // Back-peak apex sits ABOVE both neighbour apexes. Less lift
-        // (2-7px vs prior 4-14) so the ∧ is wider and gentler.
+        // Back-peak apex sits ABOVE both anchor apexes. Moderate
+        // lift (3-10px) — wide base means the apex can be taller
+        // without looking spiky.
         const higherApY = Math.min(a.apY, b.apY);
-        const lift = 2 + rng() * 5;
+        const lift = 3 + rng() * 7;
         const apY_bg = higherApY - lift;
         const apX_bg = (sx + ex) / 2 + (rng() - 0.5) * (ex - sx) * 0.20;
         // Build wobbled ∧.
@@ -717,37 +719,38 @@ window.MapStyles.wilderland = {
         }
       };
 
-      // Layer 1 — behind layer 2 but in front of the main range.
+      // wl-94: foreground peaks are SLIGHTLY SHORTER than the host
+      // main peak they sit in front of. Prior layer-1 (1.00-1.35×)
+      // was taller than its host, which reads as a larger peak in
+      // front of a smaller one — wrong perspective cue. Each layer
+      // is now a fraction of the host height, progressively smaller.
+      // Layer 1 — 0.82-0.95× host, base +5-11px.
       const fg1Count = Math.floor(rng() * 2) + (apexes.length >= 4 ? 1 : 0);
       for (let f = 0; f < fg1Count; f++) {
         const anchorIdx = Math.floor(apexes.length * (0.25 + rng() * 0.50));
         const host = apexes[Math.max(0, Math.min(apexes.length - 1, anchorIdx))];
-        const sizeMul = 1.00 + rng() * 0.35;
-        const baseShift = 5 + rng() * 7;
+        const sizeMul = 0.82 + rng() * 0.13;
+        const baseShift = 5 + rng() * 6;
         drawFgPeak(host, sizeMul, baseShift, 0);
       }
 
-      // Layer 2 — closer still: smaller, lower on the y-axis. Drawn
-      // AFTER layer 1 so its parchment fill occludes layer 1 where
-      // they overlap.
+      // Layer 2 — 0.60-0.78× host, base +13-22px.
       const fg2Count = Math.max(1, fg1Count);
       for (let f = 0; f < fg2Count; f++) {
         const anchorIdx = Math.floor(apexes.length * (0.20 + rng() * 0.60));
         const host = apexes[Math.max(0, Math.min(apexes.length - 1, anchorIdx))];
-        const sizeMul = 0.70 + rng() * 0.25;           // smaller than layer 1
-        const baseShift = 15 + rng() * 10;             // lower on y-axis
+        const sizeMul = 0.60 + rng() * 0.18;
+        const baseShift = 13 + rng() * 9;
         drawFgPeak(host, sizeMul, baseShift, 0.05);
       }
 
-      // Layer 3 (wl-93) — a couple more small mountains in the near
-      // foreground: even smaller than layer 2 and pushed further down.
-      // Drawn LAST so their parchment fill occludes both layers above.
-      const fg3Count = 1 + Math.floor(rng() * 2);      // 1 or 2
+      // Layer 3 — 0.38-0.56× host, base +24-36px.
+      const fg3Count = 1 + Math.floor(rng() * 2);
       for (let f = 0; f < fg3Count; f++) {
         const anchorIdx = Math.floor(apexes.length * (0.15 + rng() * 0.70));
         const host = apexes[Math.max(0, Math.min(apexes.length - 1, anchorIdx))];
-        const sizeMul = 0.45 + rng() * 0.22;           // smallest
-        const baseShift = 26 + rng() * 12;             // lowest on y-axis
+        const sizeMul = 0.38 + rng() * 0.18;
+        const baseShift = 24 + rng() * 12;
         drawFgPeak(host, sizeMul, baseShift, 0);
       }
       void mainLegs;
@@ -785,8 +788,18 @@ window.MapStyles.wilderland = {
         const cx = x;
         const cy = y - size * 0.15;
         const r = size * (0.32 + rng() * 0.12);
-        // Bumpy perimeter — continuous small jitter around a circle
-        // (not alternating outer/inner, which produces a cartoon star).
+        // wl-94: trunk drawn FIRST (vertical) so the canopy fill
+        // covers its top half. Trunk is strictly vertical — no
+        // angled trunks jutting sideways into the sky.
+        const trunkX = cx + (rng() - 0.5) * r * 0.15;
+        const trunkTop = cy;
+        const trunkBottom = cy + r * (1.05 + rng() * 0.35);
+        tg.append("line")
+          .attr("x1", trunkX).attr("y1", trunkTop)
+          .attr("x2", trunkX).attr("y2", trunkBottom)
+          .attr("stroke", INK).attr("stroke-width", 0.9)
+          .attr("stroke-linecap", "round").attr("opacity", 0.88);
+        // Bumpy canopy — continuous small jitter around a circle.
         const samples = 14;
         const canopyPts = [];
         for (let i = 0; i < samples; i++) {
@@ -799,15 +812,6 @@ window.MapStyles.wilderland = {
           .attr("d", closedLine(canopyPts))
           .attr("fill", PARCH).attr("stroke", INK).attr("stroke-width", 0.85)
           .attr("stroke-linejoin", "round").attr("opacity", 0.95);
-        // Short trunk below canopy
-        const trunkY0 = cy + r * 0.75;
-        const trunkY1 = trunkY0 + r * (0.35 + rng() * 0.25);
-        const trunkX = cx + (rng() - 0.5) * r * 0.15;
-        tg.append("line")
-          .attr("x1", trunkX).attr("y1", trunkY0)
-          .attr("x2", trunkX).attr("y2", trunkY1)
-          .attr("stroke", INK).attr("stroke-width", 0.9)
-          .attr("stroke-linecap", "round").attr("opacity", 0.88);
         // A few scattered forest-floor detail marks around the cluster —
         // tiny broken lines at a slight downward-right angle (mapeffects
         // "isometric scatter detail" technique).
@@ -1356,11 +1360,11 @@ window.MapStyles.wilderland = {
         const vLen = Math.sqrt(vx*vx + vy*vy) || 1;
         const vrng = mulberry32(seedFromString("v" + k));
         // ALWAYS inward (negative outward-direction). Magnitude
-        // 35-75% of size — pushes the scalloped spine deep inside
-        // the hex so the feathered tree-glyphs ringing it have room
-        // to extend outward toward the hex edge without crossing it,
-        // and the outline stops reading as a hex silhouette.
-        const mag = size * (0.35 + vrng() * 0.40);
+        // wl-94: bumped inward drift to 40-80% of size (was 35-75%)
+        // per user feedback — pulls the canopy row ~4% more into the
+        // hex so feathered clumps have room to extend outward toward
+        // the edge without crossing into non-forest neighbours.
+        const mag = size * (0.40 + vrng() * 0.40);
         const d = { dx: -(vx / vLen) * mag, dy: -(vy / vLen) * mag };
         vertexDrift[k] = d;
         return d;
@@ -1438,6 +1442,19 @@ window.MapStyles.wilderland = {
       // scalloped hex boundary.
       const closedLine = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.7));
       const drawCanopy = (cx, cy, r, onx, ony) => {
+        // wl-94: trunk drawn FIRST and strictly VERTICAL (pointing
+        // straight down). Canopy drawn AFTER so its fill covers the
+        // upper portion of the trunk. Previously the trunk emerged
+        // along (-onx, -ony), which for south-facing forest edges
+        // sent it UPWARD into the sky — read as "radio antennas."
+        const trunkX = cx + (rng() - 0.5) * 0.5;
+        const trunkTop = cy;                           // covered by canopy
+        const trunkBottom = cy + r * (1.05 + rng() * 0.35);
+        treeLineGroup.append("line")
+          .attr("x1", trunkX).attr("y1", trunkTop)
+          .attr("x2", trunkX).attr("y2", trunkBottom)
+          .attr("stroke", INK).attr("stroke-width", 0.8)
+          .attr("stroke-linecap", "round").attr("opacity", 0.88);
         const samples = 12;
         const canopyPts = [];
         for (let s = 0; s < samples; s++) {
@@ -1449,15 +1466,7 @@ window.MapStyles.wilderland = {
           .attr("d", closedLine(canopyPts))
           .attr("fill", ctx.colors.PARCHMENT).attr("stroke", INK).attr("stroke-width", 0.8)
           .attr("stroke-linejoin", "round").attr("opacity", 0.95);
-        // Short inward trunk.
-        const trunkX0 = cx - onx * r * 0.1;
-        const trunkY0 = cy - ony * r * 0.1;
-        const trunkLen = r * (0.55 + rng() * 0.35);
-        treeLineGroup.append("line")
-          .attr("x1", trunkX0).attr("y1", trunkY0)
-          .attr("x2", trunkX0 - onx * trunkLen).attr("y2", trunkY0 - ony * trunkLen)
-          .attr("stroke", INK).attr("stroke-width", 0.8)
-          .attr("stroke-linecap", "round").attr("opacity", 0.88);
+        void onx; void ony; // retained for signature compatibility
       };
       // wl-93: collect every canopy (primary + feathered) first,
       // then emit in y-ascending order. Later appends land on top,
@@ -1467,16 +1476,23 @@ window.MapStyles.wilderland = {
       bumps.forEach(b => {
         const rMain = b.size * (0.8 + rng() * 0.9);
         canopyEmits.push({ cx: b.cx, cy: b.cy, r: rMain, onx: b.onx, ony: b.ony });
-        const featherCount = 1 + Math.floor(rng() * 3);
+        // wl-94: more feathered clumps per bump (2-5 vs 1-3). The
+        // extra inward drift gives each bump more outward-budget
+        // room, so additional clumps have somewhere to sit between
+        // the canopy row and the hex edge.
+        const featherCount = 2 + Math.floor(rng() * 4);
         const tx = -b.ony, ty = b.onx; // along-edge tangent
         for (let f = 0; f < featherCount; f++) {
-          const dir = rng() < 0.72 ? -1 : 1;
-          const maxRad = dir < 0 ? b.inwardBudget * 0.9 : b.outwardBudget * 0.6;
-          const rad = (0.3 + rng() * 1.1) * Math.min(maxRad, b.size * 2.0) * dir;
-          const lat = (rng() - 0.5) * b.size * 2.4;
+          // Bias more toward OUTWARD clumps now that the scalloped
+          // line sits deeper inside the hex — we want the feather
+          // trees to ring the outer side toward the hex edge.
+          const dir = rng() < 0.55 ? -1 : 1;
+          const maxRad = dir < 0 ? b.inwardBudget * 0.9 : b.outwardBudget * 0.85;
+          const rad = (0.3 + rng() * 1.2) * Math.min(maxRad, b.size * 2.2) * dir;
+          const lat = (rng() - 0.5) * b.size * 2.6;
           const fx = b.cx + b.onx * rad + tx * lat;
           const fy = b.cy + b.ony * rad + ty * lat;
-          const fr = b.size * (0.55 + rng() * 0.6);
+          const fr = b.size * (0.50 + rng() * 0.60);
           canopyEmits.push({ cx: fx, cy: fy, r: fr, onx: b.onx, ony: b.ony });
         }
       });
