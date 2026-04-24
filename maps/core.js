@@ -1461,6 +1461,10 @@ function renderMountainsByRegion(ctx, ridgeDrawer, options) {
     runs.push(run);
   });
 
+  // wl-93: draw runs top-to-bottom (y ascending). Lower-on-screen
+  // clusters render LAST, so their peak fills (wl-93 solid PARCHMENT)
+  // occlude any upper clusters they overlap — painter's algorithm.
+  runs.sort((ra, rb) => hexCenter(ra[0])[1] - hexCenter(rb[0])[1]);
   runs.forEach((run, runIdx) => {
     const rng = mulberry32(seedFromString("mountain-run-" + run[0] + "-" + runIdx));
     const mSize = (peakSizeBase + rng() * peakSizeRange) * 0.99;
@@ -1866,7 +1870,18 @@ function renderForestEdgeTrees(ctx, drawer, matchTerrains, options) {
 
   const terrainGroup = g.append("g").attr("class", "terrain forest-edge-trees");
 
-  forestHexes.forEach(hex => {
+  // wl-93: iterate forest hexes in y-ascending order so trees in
+  // lower-on-screen hexes render AFTER upper-hex trees and can
+  // visually occlude them — painter's-algorithm depth stacking.
+  const hexCenterY = (hex) => {
+    const col = parseInt(hex.substring(0, 2));
+    const row = parseInt(hex.substring(2, 4));
+    const isShifted = (col % 2) !== (bcCol % 2);
+    return (row - bcRow) * rowStep + (isShifted ? rowStep / 2 : 0) + HEIGHT / 2;
+  };
+  const forestHexList = [...forestHexes].sort((a, b) => hexCenterY(a) - hexCenterY(b));
+
+  forestHexList.forEach(hex => {
     const col = parseInt(hex.substring(0, 2));
     const row = parseInt(hex.substring(2, 4));
     const isShifted = (col % 2) !== (bcCol % 2);

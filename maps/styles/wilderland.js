@@ -126,12 +126,16 @@ window.MapStyles.wilderland = {
       .attr("in2", "colored")
       .attr("mode", "multiply");
 
-    // Background gradient — warmer center
+    // wl-93: solid lighter-cream parchment — drop the PARCHMENT_DARK
+    // radial gradient so peak and canopy fills (which use this same
+    // id) blend seamlessly with the page. User wants the Wilderland
+    // paper to be the uniform lighter cream that matches the
+    // hand-drawn source.
     const grad = defs.append("radialGradient")
       .attr("id", "parchment-grad")
       .attr("cx", "50%").attr("cy", "50%").attr("r", "70%");
     grad.append("stop").attr("offset", "0%").attr("stop-color", PARCHMENT);
-    grad.append("stop").attr("offset", "100%").attr("stop-color", PARCHMENT_DARK);
+    grad.append("stop").attr("offset", "100%").attr("stop-color", PARCHMENT);
 
     g.append("rect")
       .attr("width", WIDTH * 3)
@@ -557,10 +561,94 @@ window.MapStyles.wilderland = {
         const legL = wobbledSegment(leftStart[0], leftStart[1], a.apX, a.apY);
         const legR = wobbledSegment(a.apX, a.apY, rightEnd[0], rightEnd[1]);
         const peakPts = legL.concat(legR.slice(1));
+        // wl-93: fill each main peak with solid PARCHMENT so it
+        // occludes whatever sits behind it (back peaks, neighbouring
+        // right-legs clipped off). The fill is the page colour so it
+        // reads as opaque paper rather than a visible cream patch.
+        const fillPts = peakPts.slice();
+        fillPts.push([rightEnd[0], baseY]);
+        fillPts.push([leftStart[0], baseY]);
+        const fillD = "M " + fillPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ") + " Z";
+        tg.append("path")
+          .attr("d", fillD)
+          .attr("fill", PARCHMENT)
+          .attr("stroke", "none");
         const peakD = "M " + peakPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ");
         const hBoost = a.p.h > 18 ? 0.15 : 0;
         drawStroke(peakD, hBoost);
         mainLegs.push({ leftStart, apX: a.apX, apY: a.apY, baseR, baseL, rightEnd });
+      }
+
+      // --- wl-93: MAIN-PEAK HATCHING (moved up) ---
+      // Run hatching BEFORE the foreground passes so their parchment
+      // fills occlude any hatch strokes that would otherwise bleed
+      // into the foreground peak bodies.
+      for (let i = 0; i < apexes.length; i++) {
+        const a = apexes[i];
+        const peakT = (typeof a.p.t === "number") ? a.p.t : 0.5;
+        const isWest = peakT < 0.45;
+        const isEast = peakT > 0.55;
+        const hatchSkip = isEast ? 0.10 : (isWest ? 0.20 : 0.45);
+        if (rng() < hatchSkip) continue;
+        const baseR = a.p.px + a.hw;
+        const baseL = a.p.px - a.hw;
+        const fsDX = baseR - a.apX;
+        const fsDY = baseY - a.apY;
+        const lsDX = a.apX - baseL;
+        const vSpan = fsDY;
+        if (vSpan < 1.5) continue;
+        const legEndX = (mainLegs[i] && mainLegs[i].rightEnd) ? mainLegs[i].rightEnd[0] : baseR;
+        const maxExtendX = legEndX - 0.5;
+        const rowSpacing = isEast ? (1.5 + rng() * 0.4) : (2.2 + rng() * 0.5);
+        const rowCount = Math.max(3, Math.floor(vSpan / rowSpacing));
+        for (let k = 1; k < rowCount; k++) {
+          const t = k / rowCount;
+          if (t < 0.15) continue;
+          const sx = a.apX + fsDX * t + (rng() - 0.5) * 0.2;
+          const sy = a.apY + fsDY * t + (rng() - 0.5) * 0.15;
+          const targetLen = a.hw * (0.25 + t * 0.70) * (0.85 + rng() * 0.30);
+          const maxLen = maxExtendX - sx;
+          if (maxLen < 0.8) continue;
+          const dx = Math.min(maxLen, targetLen);
+          const faceSlope = fsDY / fsDX;
+          const dy = dx * Math.max(0.08, faceSlope * 0.55);
+          const endT = (sx + dx - a.apX) / fsDX;
+          const faceYAtEnd = a.apY + fsDY * endT;
+          const finalEndY = Math.max(sy + dy, faceYAtEnd + 0.25);
+          tg.append("line")
+            .attr("x1", sx).attr("y1", sy)
+            .attr("x2", sx + dx).attr("y2", finalEndY)
+            .attr("stroke", INK)
+            .attr("stroke-width", isEast ? (0.55 + rng() * 0.15) : (0.45 + rng() * 0.15))
+            .attr("opacity", isEast ? (0.78 + rng() * 0.15) : (0.70 + rng() * 0.15))
+            .attr("stroke-linecap", "round");
+        }
+        if (isWest && lsDX > 1.5) {
+          const rowCountX = Math.max(2, Math.floor(vSpan / (2.6 + rng() * 0.6)));
+          const leftFaceSlope = fsDY / lsDX;
+          for (let k = 1; k < rowCountX; k++) {
+            const t = k / rowCountX;
+            if (t < 0.20) continue;
+            const sx = a.apX - lsDX * t + (rng() - 0.5) * 0.2;
+            const sy = a.apY + fsDY * t + (rng() - 0.5) * 0.15;
+            const targetLen = a.hw * (0.35 + t * 0.55) * (0.8 + rng() * 0.3);
+            const maxLen = (baseR - 0.5) - sx;
+            if (maxLen < 0.8) continue;
+            const dx = Math.min(maxLen, targetLen);
+            const dy = -dx * Math.max(0.06, leftFaceSlope * 0.35);
+            const endY = sy + dy;
+            const endXT = Math.max(0, Math.min(1, (sx + dx - a.apX) / fsDX));
+            const faceYAtEnd = a.apY + fsDY * endXT;
+            const clampedEndY = Math.max(endY, faceYAtEnd + 0.25);
+            tg.append("line")
+              .attr("x1", sx).attr("y1", sy)
+              .attr("x2", sx + dx).attr("y2", clampedEndY)
+              .attr("stroke", INK)
+              .attr("stroke-width", 0.35 + rng() * 0.15)
+              .attr("opacity", 0.55 + rng() * 0.20)
+              .attr("stroke-linecap", "round");
+          }
+        }
       }
 
       // --- wl-91/wl-92 FOREGROUND PASSES (TWO LAYERS) ---
@@ -589,7 +677,7 @@ window.MapStyles.wilderland = {
         const fillD = "M " + fillPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ") + " Z";
         tg.append("path")
           .attr("d", fillD)
-          .attr("fill", "url(#parchment-grad)")
+          .attr("fill", PARCHMENT)
           .attr("stroke", "none");
         const fgD = "M " + fgPts.map(q => q[0].toFixed(2) + " " + q[1].toFixed(2)).join(" L ");
         roughPath(tg, fgD, {
@@ -650,114 +738,19 @@ window.MapStyles.wilderland = {
         const baseShift = 15 + rng() * 10;             // lower on y-axis
         drawFgPeak(host, sizeMul, baseShift, 0.05);
       }
-      void mainLegs; // reserved for future z-ordering tweaks
 
-      // NEAR-HORIZONTAL CONTOUR HATCHING on each peak's right face.
-      // Reference (Grey Mountains zoom) shows nearly-horizontal strokes
-      // stacked densely on the right face. Each hatch runs from the
-      // right-slope ridge outward by roughly the peak half-width, with
-      // a slight downward slant. Hatches start near the apex (to fill
-      // the peak body) and continue down to the valley/base.
-      for (let i = 0; i < apexes.length; i++) {
-        const a = apexes[i];
-        // wl-90: east/west asymmetric shading. Reference Grey
-        // Mountains have denser right-face SHADING on the east (right)
-        // side of the range, and more CROSS-HATCHING (two crossing
-        // directions) on the west. Map cluster-t into a shading
-        // mode: west peaks add counter-diagonals; east peaks get
-        // denser downward rows. Middle peaks use the default.
-        const peakT = (typeof a.p.t === "number") ? a.p.t : 0.5;
-        const isWest = peakT < 0.45;
-        const isEast = peakT > 0.55;
-        // Most peaks hatch; skip a smaller fraction than before so
-        // both sides show visible shading character.
-        const hatchSkip = isEast ? 0.10 : (isWest ? 0.20 : 0.45);
-        if (rng() < hatchSkip) continue;
-        const baseR = a.p.px + a.hw;
-        const baseL = a.p.px - a.hw;
-        const fsDX = baseR - a.apX;
-        const fsDY = baseY - a.apY;
-        const lsDX = a.apX - baseL;      // left-slope (apex → base-left), positive magnitude
-        const vSpan = fsDY;
-        if (vSpan < 1.5) continue;
-
-        // wl-92: hatch no further than where the RIGHT LEG was
-        // actually drawn — the leg is clipped at the next peak's
-        // leftStart so the face visually ends there, not at baseR.
-        const legEndX = (mainLegs[i] && mainLegs[i].rightEnd) ? mainLegs[i].rightEnd[0] : baseR;
-        const maxExtendX = legEndX - 0.5;
-
-        // East peaks: tighter spacing (denser shading). West/mid: wider.
-        const rowSpacing = isEast ? (1.5 + rng() * 0.4) : (2.2 + rng() * 0.5);
-        const rowCount = Math.max(3, Math.floor(vSpan / rowSpacing));
-        for (let k = 1; k < rowCount; k++) {
-          const t = k / rowCount;
-          if (t < 0.15) continue; // clear a wider band near the apex
-          const sx = a.apX + fsDX * t + (rng() - 0.5) * 0.2;
-          const sy = a.apY + fsDY * t + (rng() - 0.5) * 0.15;
-          const targetLen = a.hw * (0.25 + t * 0.70) * (0.85 + rng() * 0.30);
-          const maxLen = maxExtendX - sx;
-          if (maxLen < 0.8) continue;
-          const dx = Math.min(maxLen, targetLen);
-          // Match hatch slope to the local right-face slope so the
-          // hatch stays PARALLEL TO the face.
-          const faceSlope = fsDY / fsDX;
-          const dy = dx * Math.max(0.08, faceSlope * 0.55);
-          // Clamp endpoint below the apex→baseR line.
-          const endT = (sx + dx - a.apX) / fsDX;
-          const faceYAtEnd = a.apY + fsDY * endT;
-          const finalEndY = Math.max(sy + dy, faceYAtEnd + 0.25);
-          tg.append("line")
-            .attr("x1", sx).attr("y1", sy)
-            .attr("x2", sx + dx).attr("y2", finalEndY)
-            .attr("stroke", INK)
-            .attr("stroke-width", isEast ? (0.55 + rng() * 0.15) : (0.45 + rng() * 0.15))
-            .attr("opacity", isEast ? (0.78 + rng() * 0.15) : (0.70 + rng() * 0.15))
-            .attr("stroke-linecap", "round");
-        }
-
-        // West peaks get cross-hatching: a second set of strokes
-        // running counter-diagonal (up-right → down-left, or just the
-        // mirror of the face slope) across the peak body, forming an
-        // X pattern with the right-face hatches. Reference left-side
-        // peaks show this crosshatch shading on their left face.
-        if (isWest && lsDX > 1.5) {
-          const rowCountX = Math.max(2, Math.floor(vSpan / (2.6 + rng() * 0.6)));
-          const leftFaceSlope = fsDY / lsDX;
-          for (let k = 1; k < rowCountX; k++) {
-            const t = k / rowCountX;
-            if (t < 0.20) continue;
-            // Start on the apex→baseL line (left face) at row t
-            const sx = a.apX - lsDX * t + (rng() - 0.5) * 0.2;
-            const sy = a.apY + fsDY * t + (rng() - 0.5) * 0.15;
-            // Extend RIGHTWARD (crossing the peak body) but stay
-            // inside: clamp to baseR and stay below both the apex→
-            // baseL line extended (which we just left) and the
-            // apex→baseR line (so hatch sits inside the triangle).
-            const targetLen = a.hw * (0.35 + t * 0.55) * (0.8 + rng() * 0.3);
-            const maxLen = (baseR - 0.5) - sx;
-            if (maxLen < 0.8) continue;
-            const dx = Math.min(maxLen, targetLen);
-            // Slope slightly DOWNWARD to the right (opposite of the
-            // right-face diagonal), forming an X with the main hatch.
-            const dy = -dx * Math.max(0.06, leftFaceSlope * 0.35);
-            // Keep inside the triangle: clamp endpoint above baseY
-            // (inside the peak body) and below apex→baseR line.
-            const endY = sy + dy;
-            const endXT = Math.max(0, Math.min(1, (sx + dx - a.apX) / fsDX));
-            const faceYAtEnd = a.apY + fsDY * endXT;
-            const clampedEndY = Math.max(endY, faceYAtEnd + 0.25);
-            tg.append("line")
-              .attr("x1", sx).attr("y1", sy)
-              .attr("x2", sx + dx).attr("y2", clampedEndY)
-              .attr("stroke", INK)
-              .attr("stroke-width", 0.35 + rng() * 0.15)
-              .attr("opacity", 0.55 + rng() * 0.20)
-              .attr("stroke-linecap", "round");
-          }
-        }
+      // Layer 3 (wl-93) — a couple more small mountains in the near
+      // foreground: even smaller than layer 2 and pushed further down.
+      // Drawn LAST so their parchment fill occludes both layers above.
+      const fg3Count = 1 + Math.floor(rng() * 2);      // 1 or 2
+      for (let f = 0; f < fg3Count; f++) {
+        const anchorIdx = Math.floor(apexes.length * (0.15 + rng() * 0.70));
+        const host = apexes[Math.max(0, Math.min(apexes.length - 1, anchorIdx))];
+        const sizeMul = 0.45 + rng() * 0.22;           // smallest
+        const baseShift = 26 + rng() * 12;             // lowest on y-axis
+        drawFgPeak(host, sizeMul, baseShift, 0);
       }
-
+      void mainLegs;
     }
 
     function drawTreeCanopy(tg, x, y, size, rng) {
@@ -1252,12 +1245,9 @@ window.MapStyles.wilderland = {
     // line no longer touches hex corners. Scallops are still emitted
     // along each now-displaced segment.
     this.renderForestTreeLine(ctx);
-    // Same soft-outline treatment for contiguous mountain regions — reads
-    // the range as a unified ridge band rather than loose per-hex peaks.
-    MapCore.renderTerrainEdges(ctx, ["mountains"], {
-      color: INK, strokeWidth: 0.65, opacity: 0.28, wobble: 2.6,
-      className: "mountain-region",
-    });
+    // wl-93: removed the mountain-region hex outline. The hex grid
+    // overlay alone already shows hex boundaries uniformly — mountain
+    // hexes shouldn't get an extra stronger outline.
   },
 
   // --- Organic forest tree-line ---
@@ -1469,21 +1459,17 @@ window.MapStyles.wilderland = {
           .attr("stroke", INK).attr("stroke-width", 0.8)
           .attr("stroke-linecap", "round").attr("opacity", 0.88);
       };
+      // wl-93: collect every canopy (primary + feathered) first,
+      // then emit in y-ascending order. Later appends land on top,
+      // so lower-on-screen canopies visually occlude those behind
+      // and above them — proper painter's-algorithm depth stacking.
+      const canopyEmits = [];
       bumps.forEach(b => {
-        // Primary canopy at the bump peak — size varies wildly.
         const rMain = b.size * (0.8 + rng() * 0.9);
-        drawCanopy(b.cx, b.cy, rMain, b.onx, b.ony);
-        // Feather clumps: 1-3 additional small trees scattered around
-        // the bump. Each is offset by a random outward/inward amount
-        // (bounded by the inset/bulge budget so they don't cross into
-        // non-forest hexes) plus a random lateral shift along the edge
-        // direction. These break the regular scallop rhythm and form
-        // the irregular "clumpy" tree-mass silhouette in the reference.
+        canopyEmits.push({ cx: b.cx, cy: b.cy, r: rMain, onx: b.onx, ony: b.ony });
         const featherCount = 1 + Math.floor(rng() * 3);
         const tx = -b.ony, ty = b.onx; // along-edge tangent
         for (let f = 0; f < featherCount; f++) {
-          // Radial offset: mostly inward (negative outward), occasionally
-          // slightly outward, bounded by available budget.
           const dir = rng() < 0.72 ? -1 : 1;
           const maxRad = dir < 0 ? b.inwardBudget * 0.9 : b.outwardBudget * 0.6;
           const rad = (0.3 + rng() * 1.1) * Math.min(maxRad, b.size * 2.0) * dir;
@@ -1491,9 +1477,11 @@ window.MapStyles.wilderland = {
           const fx = b.cx + b.onx * rad + tx * lat;
           const fy = b.cy + b.ony * rad + ty * lat;
           const fr = b.size * (0.55 + rng() * 0.6);
-          drawCanopy(fx, fy, fr, b.onx, b.ony);
+          canopyEmits.push({ cx: fx, cy: fy, r: fr, onx: b.onx, ony: b.ony });
         }
       });
+      canopyEmits.sort((a, b) => a.cy - b.cy);
+      canopyEmits.forEach(c => drawCanopy(c.cx, c.cy, c.r, c.onx, c.ony));
     });
   },
 
