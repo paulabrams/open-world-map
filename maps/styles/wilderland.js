@@ -102,54 +102,28 @@ window.MapStyles.wilderland = {
   renderBackground(ctx) {
     const { g, defs, WIDTH, HEIGHT } = ctx;
     const { PAPER, PARCHMENT, PARCHMENT_DARK } = ctx.colors;
+    void PARCHMENT; void PARCHMENT_DARK;
 
-    // Paper texture filter — warmer, slightly more visible grain
-    const filter = defs.append("filter")
-      .attr("id", "parchment-texture")
-      .attr("x", "0%").attr("y", "0%")
-      .attr("width", "100%").attr("height", "100%");
-
-    filter.append("feTurbulence")
-      .attr("type", "fractalNoise")
-      .attr("baseFrequency", "0.04")
-      .attr("numOctaves", "5")
-      .attr("seed", "7")
-      .attr("stitchTiles", "stitch")
-      .attr("result", "noise");
-
-    filter.append("feColorMatrix")
-      .attr("type", "matrix")
-      .attr("in", "noise")
-      .attr("values", `0 0 0 0 0.961
-                       0 0 0 0 0.929
-                       0 0 0 0 0.839
-                       0 0 0 0.35 0.65`)
-      .attr("result", "colored");
-
-    filter.append("feBlend")
-      .attr("in", "SourceGraphic")
-      .attr("in2", "colored")
-      .attr("mode", "multiply");
-
-    // wl-96: solid PAPER (slightly darker parchment). Terrain fills
-    // also use PAPER so mountain/tree/hill silhouettes blend into
-    // the page exactly. Kept PARCHMENT_DARK in the palette but
-    // unused on the background now.
-    void PARCHMENT_DARK;
+    // wl-97: solid PAPER rect, no texture filter or gradient.
+    // The prior `parchment-texture` feBlend/multiply with a
+    // PARCHMENT-colored noise was darkening the rendered page below
+    // raw PAPER so terrain fills (solid PAPER) looked lighter than
+    // the page they sat on. Remove the filter so page and fills
+    // render at exactly the same #e9ddbd.
+    // `parchment-grad` id retained for legacy references but no
+    // longer used as the rect fill.
     const grad = defs.append("radialGradient")
       .attr("id", "parchment-grad")
       .attr("cx", "50%").attr("cy", "50%").attr("r", "70%");
     grad.append("stop").attr("offset", "0%").attr("stop-color", PAPER);
     grad.append("stop").attr("offset", "100%").attr("stop-color", PAPER);
-    void PARCHMENT;
 
     g.append("rect")
       .attr("width", WIDTH * 3)
       .attr("height", HEIGHT * 3)
       .attr("x", -WIDTH)
       .attr("y", -HEIGHT)
-      .attr("fill", "url(#parchment-grad)")
-      .attr("filter", "url(#parchment-texture)");
+      .attr("fill", PAPER);
   },
 
   // --- Border ---
@@ -598,7 +572,9 @@ window.MapStyles.wilderland = {
         const peakT = (typeof a.p.t === "number") ? a.p.t : 0.5;
         const isWest = peakT < 0.45;
         const isEast = peakT > 0.55;
-        const hatchSkip = isEast ? 0.10 : (isWest ? 0.20 : 0.45);
+        // wl-97: east peaks ALWAYS hatch (light from west → east face
+        // is in shadow → denser shading).
+        const hatchSkip = isEast ? 0.00 : (isWest ? 0.20 : 0.45);
         if (rng() < hatchSkip) continue;
         const baseR = a.p.px + a.hw;
         const baseL = a.p.px - a.hw;
@@ -609,8 +585,10 @@ window.MapStyles.wilderland = {
         if (vSpan < 1.5) continue;
         const legEndX = (mainLegs[i] && mainLegs[i].rightEnd) ? mainLegs[i].rightEnd[0] : baseR;
         const maxExtendX = legEndX - 0.5;
-        const rowSpacing = isEast ? (1.5 + rng() * 0.4) : (2.2 + rng() * 0.5);
+        // wl-97: east peaks get tighter row spacing for heavier shadow.
+        const rowSpacing = isEast ? (1.1 + rng() * 0.3) : (2.2 + rng() * 0.5);
         const rowCount = Math.max(3, Math.floor(vSpan / rowSpacing));
+        const faceSlope = fsDY / fsDX;
         for (let k = 1; k < rowCount; k++) {
           const t = k / rowCount;
           if (t < 0.15) continue;
@@ -620,7 +598,6 @@ window.MapStyles.wilderland = {
           const maxLen = maxExtendX - sx;
           if (maxLen < 0.8) continue;
           const dx = Math.min(maxLen, targetLen);
-          const faceSlope = fsDY / fsDX;
           const dy = dx * Math.max(0.08, faceSlope * 0.55);
           const endT = (sx + dx - a.apX) / fsDX;
           const faceYAtEnd = a.apY + fsDY * endT;
@@ -629,9 +606,41 @@ window.MapStyles.wilderland = {
             .attr("x1", sx).attr("y1", sy)
             .attr("x2", sx + dx).attr("y2", finalEndY)
             .attr("stroke", INK)
-            .attr("stroke-width", isEast ? (0.55 + rng() * 0.15) : (0.45 + rng() * 0.15))
-            .attr("opacity", isEast ? (0.78 + rng() * 0.15) : (0.70 + rng() * 0.15))
+            .attr("stroke-width", isEast ? (0.60 + rng() * 0.15) : (0.45 + rng() * 0.15))
+            .attr("opacity", isEast ? (0.82 + rng() * 0.13) : (0.70 + rng() * 0.15))
             .attr("stroke-linecap", "round");
+        }
+        // wl-97: east peaks get a SECOND crosshatch family — steeper
+        // diagonal strokes at ~0.95× the face slope, running parallel
+        // TO the right face but offset. Light comes from the west, so
+        // east faces get the densest shadow rendering.
+        if (isEast) {
+          const rowSpacing2 = 1.4 + rng() * 0.35;
+          const rowCount2 = Math.max(3, Math.floor(vSpan / rowSpacing2));
+          for (let k = 1; k < rowCount2; k++) {
+            const t = k / rowCount2;
+            if (t < 0.18) continue;
+            const sx = a.apX + fsDX * t + (rng() - 0.5) * 0.25;
+            const sy = a.apY + fsDY * t + (rng() - 0.5) * 0.20;
+            const targetLen = a.hw * (0.20 + t * 0.55) * (0.80 + rng() * 0.30);
+            const maxLen = maxExtendX - sx;
+            if (maxLen < 0.8) continue;
+            const dx = Math.min(maxLen, targetLen);
+            // Steeper descent than the primary family — approaches
+            // the face slope so the two families cross at a narrow
+            // angle, reading as a darker hatched shadow.
+            const dy = dx * Math.max(0.18, faceSlope * 0.92);
+            const endT = (sx + dx - a.apX) / fsDX;
+            const faceYAtEnd = a.apY + fsDY * endT;
+            const finalEndY = Math.max(sy + dy, faceYAtEnd + 0.25);
+            tg.append("line")
+              .attr("x1", sx).attr("y1", sy)
+              .attr("x2", sx + dx).attr("y2", finalEndY)
+              .attr("stroke", INK)
+              .attr("stroke-width", 0.45 + rng() * 0.15)
+              .attr("opacity", 0.70 + rng() * 0.18)
+              .attr("stroke-linecap", "round");
+          }
         }
         if (isWest && lsDX > 1.5) {
           const rowCountX = Math.max(2, Math.floor(vSpan / (2.6 + rng() * 0.6)));
