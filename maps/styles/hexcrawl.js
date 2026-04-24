@@ -359,6 +359,12 @@ window.MapStyles.hexcrawl = {
     MapCore.renderMountainsWithElevation(ctx,
       (tg, x, y, sz, rng) => style.drawMountain(tg, x, y, sz, rng, INK),
       (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, INK));
+    MapCore.renderForestDarkPatches(ctx, {
+      color: INK,
+      probability: 0.50,
+      patchMax: 2,
+      opacity: [0.22, 0.38],
+    });
     MapCore.renderForestEdgeTrees(ctx,
       (tg, x, y, sz, rng) => style.drawTree(tg, x, y, sz, rng, INK),
       ["forest", "forested-hills"]);

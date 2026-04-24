@@ -543,6 +543,12 @@ window.MapStyles.moonletters = {
       (tg, x, y, sz, rng) => style.drawMountainSketch(tg, x, y, sz, rng, colors),
       (tg, x, y, sz, rng) => style.drawHill(tg, x, y, sz, rng, colors),
       { density: 0.85 });
+    MapCore.renderForestDarkPatches(ctx, {
+      color: colors.BLUE || "#1d3557",
+      probability: 0.45,
+      patchMax: 2,
+      opacity: [0.20, 0.34],
+    });
     MapCore.renderForestEdgeTrees(ctx,
       (tg, x, y, sz, rng) => style.drawSparseTree(tg, x, y, sz, rng, colors),
       ["forest", "forested-hills"],

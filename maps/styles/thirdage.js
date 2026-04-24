@@ -251,6 +251,15 @@ window.MapStyles.thirdage = {
     // Pauline Baynes' Middle-earth source art).
     MapCore.renderMountainsByRegion(ctx,
       (tg, peaks, rng, opts) => style.drawMountainRidge(tg, peaks, rng, INK, opts));
+    // wl-99: dark-patch crosshatch BEFORE trees — mirrors the
+    // wilderland technique so each forest hex has a bit of visible
+    // "deeper forest floor" showing between canopies.
+    MapCore.renderForestDarkPatches(ctx, {
+      color: INK,
+      probability: 0.55,
+      patchMax: 2,
+      opacity: [0.25, 0.40],
+    });
     MapCore.renderForestEdgeTrees(ctx,
       (tg, x, y, sz, rng) => style.drawForestHatch(tg, x, y, sz, rng, INK),
       ["forest", "forested-hills"]);

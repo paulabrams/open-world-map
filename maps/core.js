@@ -4463,6 +4463,105 @@ function specialIconLabelOffset(node, scaleFactor = 1.0) {
   return entry ? entry.labelOffset * scaleFactor : undefined;
 }
 
+// --- Forest dark-patch crosshatching (shared) ---
+// Draws small elliptical crosshatched patches INSIDE forest hexes,
+// well inset from hex edges, to suggest deeper/darker spots in the
+// forest floor. Meant to be called BEFORE the tree scatter so tree
+// canopies sit on top and partially occlude the crosshatch.
+// Options:
+//   matchTerrains  array of hex-terrain values that count as forest
+//                  (default ["forest", "forested-hills"])
+//   color          stroke colour (default INK-like "#2a1f14")
+//   probability    fraction of forest hexes that get patches (0..1)
+//   patchMax       max patches per eligible hex (1..N)
+//   strokeWidth    [lo, hi]
+//   opacity        [lo, hi]
+function renderForestDarkPatches(ctx, options) {
+  const { g, hexTerrain, HINT_SCALE, WIDTH, HEIGHT, mulberry32, seedFromString } = ctx;
+  if (!hexTerrain) return;
+  const opts = options || {};
+  const matchTerrains = opts.matchTerrains || ["forest", "forested-hills"];
+  const color = opts.color || "#2a1f14";
+  const probability = typeof opts.probability === "number" ? opts.probability : 0.70;
+  const patchMax = typeof opts.patchMax === "number" ? opts.patchMax : 3;
+  const swLo = (opts.strokeWidth && opts.strokeWidth[0]) || 0.40;
+  const swHi = (opts.strokeWidth && opts.strokeWidth[1]) || 0.55;
+  const opLo = (opts.opacity && opts.opacity[0]) || 0.32;
+  const opHi = (opts.opacity && opts.opacity[1]) || 0.47;
+
+  const bcCol = 10, bcRow = 10;
+  const size = HINT_SCALE / 2;
+  const colStep = size * 2 * 0.75;
+  const rowStep = size * Math.sqrt(3);
+  const matchSet = new Set(matchTerrains);
+
+  const forestHexes = [];
+  Object.entries(hexTerrain).forEach(([h, t]) => {
+    if (matchSet.has(t)) forestHexes.push(h);
+  });
+  if (forestHexes.length === 0) return;
+
+  const group = g.append("g").attr("class", "terrain forest-dark-patches");
+
+  forestHexes.forEach(hex => {
+    const col = parseInt(hex.substring(0, 2));
+    const row = parseInt(hex.substring(2, 4));
+    const isShifted = (col % 2) !== (bcCol % 2);
+    const hx = (col - bcCol) * colStep + WIDTH / 2;
+    const hy = (row - bcRow) * rowStep + (isShifted ? rowStep / 2 : 0) + HEIGHT / 2;
+    const rng = mulberry32(seedFromString("forest-dark-" + hex));
+    if (rng() > probability) return;
+    const patchCount = 1 + Math.floor(rng() * Math.max(1, patchMax));
+    for (let p = 0; p < patchCount; p++) {
+      const angle = rng() * Math.PI * 2;
+      const dist = rng() * size * 0.40;
+      const pcx = hx + Math.cos(angle) * dist;
+      const pcy = hy + Math.sin(angle) * dist;
+      const rxP = size * (0.18 + rng() * 0.10);
+      const ryP = size * (0.13 + rng() * 0.08);
+      const rot = (rng() - 0.5) * 0.4;
+      const cosR = Math.cos(rot), sinR = Math.sin(rot);
+      const spacing = 2.2;
+      const diag = [Math.PI * 0.25, -Math.PI * 0.25];
+      diag.forEach(theta => {
+        const dirX = Math.cos(theta), dirY = Math.sin(theta);
+        const perpX = -dirY, perpY = dirX;
+        const maxExt = Math.max(rxP, ryP) * 1.2;
+        const nLines = Math.ceil((maxExt * 2) / spacing);
+        for (let k = 0; k <= nLines; k++) {
+          const t = -maxExt + k * spacing;
+          const A0 = cosR * perpX + sinR * perpY;
+          const A1 = cosR * dirX + sinR * dirY;
+          const B0 = -sinR * perpX + cosR * perpY;
+          const B1 = -sinR * dirX + cosR * dirY;
+          const Px0 = A0 * t, Py0 = B0 * t;
+          const a = (A1 * A1) / (rxP * rxP) + (B1 * B1) / (ryP * ryP);
+          const b = 2 * ((Px0 * A1) / (rxP * rxP) + (Py0 * B1) / (ryP * ryP));
+          const c = (Px0 * Px0) / (rxP * rxP) + (Py0 * Py0) / (ryP * ryP) - 1;
+          const disc = b * b - 4 * a * c;
+          if (disc <= 0) continue;
+          const sqrtD = Math.sqrt(disc);
+          const s1 = (-b - sqrtD) / (2 * a);
+          const s2 = (-b + sqrtD) / (2 * a);
+          const x1 = pcx + perpX * t + dirX * s1;
+          const y1 = pcy + perpY * t + dirY * s1;
+          const x2 = pcx + perpX * t + dirX * s2;
+          const y2 = pcy + perpY * t + dirY * s2;
+          const len = Math.hypot(x2 - x1, y2 - y1);
+          if (len < 1.0) continue;
+          group.append("line")
+            .attr("x1", x1.toFixed(2)).attr("y1", y1.toFixed(2))
+            .attr("x2", x2.toFixed(2)).attr("y2", y2.toFixed(2))
+            .attr("stroke", color)
+            .attr("stroke-width", swLo + rng() * (swHi - swLo))
+            .attr("opacity", opLo + rng() * (opHi - opLo))
+            .attr("stroke-linecap", "round");
+        }
+      });
+    }
+  });
+}
+
 // Expose for global access
 Object.assign(MapCore, {
   renderFaeGlade, renderWardingStone, renderCragCairn, renderMistwoodGlen, renderMudWallow,
@@ -4470,7 +4569,7 @@ Object.assign(MapCore, {
   renderRavensPerch, renderHangmanHill, renderSwampWetlands, renderVaultOfFirstLight, renderSpiderCave,
   renderBanditHill, renderKallaCave, renderMountainPass, renderWatchCamp, renderSpecialIcon, specialIconLabelOffset,
   HINT_SCALE, DAY_SCALE, FONT, INTERIOR_TERRAINS, SUBHEX_OFFSETS,
-  isOverlandNode, hexToXY, xyToHex, hexNeighbors, renderRiver, renderRiverLabel, renderRoad, renderCrevasse, renderBridges, renderBoats, renderHexTerrain, renderMountainsWithElevation, renderMountainsByRegion, renderForestEdgeTrees, renderFarmlandBiased, renderRegionLabels, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
+  isOverlandNode, hexToXY, xyToHex, hexNeighbors, renderRiver, renderRiverLabel, renderRoad, renderCrevasse, renderBridges, renderBoats, renderHexTerrain, renderMountainsWithElevation, renderMountainsByRegion, renderForestEdgeTrees, renderForestDarkPatches, renderFarmlandBiased, renderRegionLabels, renderHexHover, renderTerrainEdges, formatDaysLabel, renderDayLabelsAlongLinks, mulberry32, seedFromString, computeBounds,
   showDetail, closePanel,
   loadData, runSimulation, setupSVG, centerView,
   renderMap, applyTheme, exportSVG,
