@@ -461,10 +461,22 @@ async function appendNodeToCampaign(campaign, hex, parsed) {
   if (parsed.terrain && parsed.terrain !== "uncharted") {
     data.hex_terrain[hex] = parsed.terrain;
   }
-  const tmp = file + ".tmp";
-  await writeFile(tmp, JSON.stringify(data, null, 2) + "\n", "utf8");
-  await rename(tmp, file);
+  await safeWriteJsonAtomic(file, data);
   return node;
+}
+
+// Atomic JSON write that ALSO validates the temp file parses before renaming.
+// If something corrupts the serialised output (extension, write race, etc.),
+// the existing good file stays intact instead of being replaced by garbage.
+async function safeWriteJsonAtomic(file, data) {
+  const tmp = file + ".tmp";
+  const json = JSON.stringify(data, null, 2) + "\n";
+  await writeFile(tmp, json, "utf8");
+  try { JSON.parse(await readFile(tmp, "utf8")); }
+  catch (e) {
+    throw new Error("post-write JSON validation failed: " + e.message);
+  }
+  await rename(tmp, file);
 }
 
 function readJsonBody(req) {
@@ -643,9 +655,7 @@ async function appendRumorToCampaign(campaign, hex, parsed) {
     captured_at: new Date().toISOString(),
   };
   data.hex_rumors[hex].push(entry);
-  const tmp = file + ".tmp";
-  await writeFile(tmp, JSON.stringify(data, null, 2) + "\n", "utf8");
-  await rename(tmp, file);
+  await safeWriteJsonAtomic(file, data);
   return entry;
 }
 
@@ -762,9 +772,7 @@ async function apiUpdateNode(req, res) {
       applied[k] = fields[k];
     }
   }
-  const tmp = file + ".tmp";
-  await writeFile(tmp, JSON.stringify(data, null, 2) + "\n", "utf8");
-  await rename(tmp, file);
+  await safeWriteJsonAtomic(file, data);
   log(`[update-node] ${id} → ${JSON.stringify(applied)}`);
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ ok: true, node: data.nodes[idx] }));
@@ -889,9 +897,7 @@ async function saveEncounterToCampaign(campaign, hex, parsed) {
     description: parsed.description || "",
     subhex,
   };
-  const tmp = file + ".tmp";
-  await writeFile(tmp, JSON.stringify(data, null, 2) + "\n", "utf8");
-  await rename(tmp, file);
+  await safeWriteJsonAtomic(file, data);
   return subhex;
 }
 

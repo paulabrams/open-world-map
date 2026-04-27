@@ -19,6 +19,18 @@
     overflow: hidden;
     -webkit-text-size-adjust: 100%;
   }
+  /* Map content (canvas + SVG overlays) shouldn't be selectable — drags
+     should pan, not paint a text selection. The detail panel keeps
+     selection on so users can copy descriptions. Inline-edit fields
+     re-enable selection via .editable. */
+  #map-stage,
+  #map-stage svg text,
+  #map-hotspots text,
+  #map-hotspots svg text {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #detail-panel { user-select: text; -webkit-user-select: text; }
   #map-container {
     position: relative;
     width: 100vw;
@@ -1273,6 +1285,93 @@
     }
   }
 
+  // ---------------------------------------------------------------------
+  // Route interaction (parity with the SVG renderer's _setupRouteInteraction).
+  // - Plain click on a hex sets a route start; the start hex highlights.
+  // - Shift+click on another hex resolves a Dijkstra route through the
+  //   travel graph (or a cube-coord straight line if endpoints are off-graph)
+  //   and renders the path + a days label at the midpoint.
+  // - Plain click on empty parchment clears the route.
+  // ---------------------------------------------------------------------
+  let routeStartHex = null;
+  function clearRouteOverlay() {
+    hotspots.querySelectorAll(".route-highlight, .route-start-marker").forEach(el => el.remove());
+  }
+  function renderRouteStart(hex) {
+    clearRouteOverlay();
+    if (!hex || !paintCtx.hexPolygon) return;
+    const pts = paintCtx.hexPolygon(hex);
+    if (!pts || pts.length < 3) return;
+    const g = document.createElementNS(SVG_NS, "g");
+    g.setAttribute("class", "route-start-marker");
+    g.setAttribute("pointer-events", "none");
+    const fill = document.createElementNS(SVG_NS, "polygon");
+    fill.setAttribute("points", pts.map(p => p.join(",")).join(" "));
+    fill.setAttribute("fill", "#c25b2b");
+    fill.setAttribute("opacity", "0.22");
+    g.appendChild(fill);
+    const stroke = document.createElementNS(SVG_NS, "polygon");
+    stroke.setAttribute("points", pts.map(p => p.join(",")).join(" "));
+    stroke.setAttribute("fill", "none");
+    stroke.setAttribute("stroke", "#c25b2b");
+    stroke.setAttribute("stroke-width", "2");
+    stroke.setAttribute("opacity", "0.7");
+    g.appendChild(stroke);
+    hotspots.appendChild(g);
+  }
+  function renderRoute(path, days) {
+    clearRouteOverlay();
+    if (!path || !path.length || !paintCtx.hexPolygon || !paintCtx.hexCenterXY) return;
+    const g = document.createElementNS(SVG_NS, "g");
+    g.setAttribute("class", "route-highlight");
+    g.setAttribute("pointer-events", "none");
+
+    path.forEach(h => {
+      const pts = paintCtx.hexPolygon(h);
+      if (!pts || pts.length < 3) return;
+      const poly = document.createElementNS(SVG_NS, "polygon");
+      poly.setAttribute("points", pts.map(p => p.join(",")).join(" "));
+      poly.setAttribute("fill", "#c25b2b");
+      poly.setAttribute("opacity", "0.30");
+      g.appendChild(poly);
+    });
+
+    if (path.length >= 2) {
+      const centers = path.map(h => paintCtx.hexCenterXY(h)).filter(Boolean);
+      if (centers.length >= 2) {
+        let d = `M${centers[0][0]},${centers[0][1]}`;
+        for (let i = 1; i < centers.length; i++) d += ` L${centers[i][0]},${centers[i][1]}`;
+        const line = document.createElementNS(SVG_NS, "path");
+        line.setAttribute("d", d);
+        line.setAttribute("fill", "none");
+        line.setAttribute("stroke", "#c25b2b");
+        line.setAttribute("stroke-width", "4");
+        line.setAttribute("stroke-linecap", "round");
+        line.setAttribute("stroke-linejoin", "round");
+        line.setAttribute("opacity", "0.7");
+        g.appendChild(line);
+      }
+      if (days != null && centers.length >= 2) {
+        const mid = centers[Math.floor(centers.length / 2)];
+        const txt = document.createElementNS(SVG_NS, "text");
+        txt.setAttribute("x", mid[0]);
+        txt.setAttribute("y", mid[1] - 14);
+        txt.setAttribute("text-anchor", "middle");
+        txt.setAttribute("dominant-baseline", "middle");
+        txt.setAttribute("font-family", "'IM Fell English', serif");
+        txt.setAttribute("font-size", "14");
+        txt.setAttribute("font-weight", "bold");
+        txt.setAttribute("fill", "#c25b2b");
+        txt.setAttribute("stroke", "#fdf6e3");
+        txt.setAttribute("stroke-width", "4");
+        txt.setAttribute("paint-order", "stroke");
+        txt.textContent = MapData.formatDaysLabel(days);
+        g.appendChild(txt);
+      }
+    }
+    hotspots.appendChild(g);
+  }
+
   // Hex-level click — captures clicks anywhere inside a hex, not just on
   // the small node circles. If the click hits a hex with a node, opens
   // that node's panel; otherwise opens a hex-info panel showing terrain
@@ -1285,7 +1384,16 @@
       if (dragging) return;
       const { sx, sy } = pixelToCanvas(ev.clientX, ev.clientY);
       const hex = paintCtx.xyToHex(sx, sy);
-      if (!hex) return;
+      if (!hex) {
+        if (!ev.shiftKey) { routeStartHex = null; clearRouteOverlay(); }
+        return;
+      }
+      // Shift-click → resolve route from the start hex to this one.
+      if (ev.shiftKey && routeStartHex) {
+        const res = MapData.findRoute(routeStartHex, hex, graphData);
+        if (res) renderRoute(res.path, res.days);
+        return;  // don't open the panel for shift-click
+      }
       const hexT = paintCtx.hexTerrain || {};
       const isDefined = !!hexT[hex];
       // Empty hex is clickable IF it borders a defined hex (frontier of the
@@ -1295,7 +1403,13 @@
         const nbrs = MapData.hexNeighbors(hex);
         clickable = nbrs.some(n => hexT[n]);
       }
-      if (!clickable) return;
+      if (!clickable) {
+        if (!ev.shiftKey) { routeStartHex = null; clearRouteOverlay(); }
+        return;
+      }
+      // Plain click on a clickable hex: set as new route start AND open panel.
+      routeStartHex = hex;
+      renderRouteStart(hex);
 
       // Look for any node in this hex. Use graphData.nodes (the full set)
       // rather than paintCtx.nodes (which is filtered for rendering and may

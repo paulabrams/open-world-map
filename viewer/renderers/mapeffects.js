@@ -110,16 +110,23 @@
     "vault-of-first-light": { src: "symbols/features/shape-29.png", height: 22, anchor: [0.5, 0.85] }, // Cave 4 — dwarven dungeon entrance
     "tower-of-stargazer":   { src: "symbols/medieval/shape-19.png", height: 38, anchor: [0.5, 0.92] }, // Wizard Tower — matches the spiked-dome description
     "ravens-perch":    { src: "symbols/medieval/shape-26.png", height: 26, anchor: [0.5, 0.9]  }, // Tower Ruins — abandoned watchtower
-    "bandit-camp":     { src: "symbols/mountains/shape-16.png", height: 18, anchor: [0.5, 0.92], dx: -30 }, // Hills 9 — Bandit Ambush Hill (rocky Weathertop hill, west side of hex)
+    "bandit-camp":     { src: "symbols/mountains/shape-16.png", height: 12, anchor: [0.5, 0.92], dx: -30 }, // Hills 9 — Bandit Ambush Hill (rocky Weathertop hill, west side of hex)
     "northern-warding-stone": { src: "symbols/features/shape-31.png", height: 22, anchor: [0.5, 0.92] }, // Standing Stone 1 — single rune-stone
     "southern-warding-stone": { src: "symbols/features/shape-31.png", height: 22, anchor: [0.5, 0.92] }, // Standing Stone 1
-    "serpents-pass":   { src: "symbols/terrain/shape-52.png",  height: 30, anchor: [0.5, 0.9]  }, // Pointed Rock 1 — jagged peak between crags
+    "serpents-pass":   { src: "symbols/mountains/shape-16.png", height: 14, anchor: [0.5, 0.95] }, // Hills 9 — normal hill, not a pointed rock
     "the-swamp":       { src: "symbols/vegetation/shape-12.png", height: 18, anchor: [0.5, 0.85] }, // Marsh 1 — actual marsh (was a farm brush by mistake)
     "south-road-mountain-watch": { src: "symbols/medieval/shape-16.png", height: 22, anchor: [0.5, 0.9] }, // Wood Tower — Brunhilde's foothill inn
-    // Thornespire Keep — use the Stronghold brush directly. The Viking
-    // variant (shape-03) has the widest multi-tower silhouette, which
-    // reads as a multi-bailey fortress at the keep's hex.
-    "thornespire-keep": { src: "symbols/viking/shape-03.png", height: 32, anchor: [0.5, 0.9] },
+    // Thornespire Keep — Stronghold framed by two mountain peaks rendered
+    // BEHIND it. Compound parts paint in array order so the mountains go
+    // down first; the stronghold's knockout masks them through its own
+    // silhouette.
+    "thornespire-keep": {
+      compound: [
+        { src: "symbols/mountains/shape-04.png", height: 22, anchor: [0.5, 0.95], dx: -16, dy: 8 },
+        { src: "symbols/mountains/shape-04.png", height: 26, anchor: [0.5, 0.95], dx:  18, dy: 8 },
+        { src: "symbols/viking/shape-03.png",    height: 32, anchor: [0.5, 0.9 ], dx:   0, dy: 0 },
+      ],
+    },
   };
 
   // Curated point_type → specific stamp src (relative to manifest base).
@@ -172,7 +179,7 @@
   // italic; bottom is centred italic. Skips any direction that has no entry.
   // ---------------------------------------------------------------------
   function layerEdgeAnnotations(paintCtx) {
-    const { WIDTH, HEIGHT } = paintCtx;
+    const { WIDTH, HEIGHT, hexTerrain, hexCenterXY } = paintCtx;
     const layer = paintCtx.svgLabelLayer;
     const ns = paintCtx.svgNS;
     if (!layer || !ns) return;
@@ -181,19 +188,34 @@
     const byDir = {};
     arrows.forEach(a => { byDir[a.direction] = a.label; });
 
-    const margin = 28;
-    const minX = margin, maxX = WIDTH - margin;
-    const minY = margin, maxY = HEIGHT - margin;
+    // Bounding box of populated hex centres — labels sit two hex steps
+    // outside this, so they hug the map content rather than the canvas
+    // edge regardless of how much padding the renderer left.
+    let pminX = Infinity, pminY = Infinity, pmaxX = -Infinity, pmaxY = -Infinity;
+    Object.keys(hexTerrain || {}).forEach(h => {
+      const xy = hexCenterXY && hexCenterXY(h);
+      if (!xy) return;
+      pminX = Math.min(pminX, xy[0]); pminY = Math.min(pminY, xy[1]);
+      pmaxX = Math.max(pmaxX, xy[0]); pmaxY = Math.max(pmaxY, xy[1]);
+    });
+    if (!isFinite(pminX)) {
+      const margin = 80;
+      pminX = margin; pminY = margin;
+      pmaxX = WIDTH - margin; pmaxY = HEIGHT - margin;
+    }
+    const COL_STEP = 75;                   // 1.5 × hex size (50)
+    const ROW_STEP = 50 * Math.sqrt(3);    // ≈ 86.6
+    const OUT_X = 2 * COL_STEP;
+    const OUT_Y = 2 * ROW_STEP;
 
-    // Top edge label arcs gently across the top of the map. Sized to match
-    // the other off-map edge labels (italic 18) so it doesn't overpower
-    // the rest of the map.
+    // Top edge label arcs gently above the topmost populated hex.
     const topLabel = byDir.N;
     if (topLabel) {
-      const cx = (minX + maxX) / 2;
-      const arcY = minY + 14;
+      const cx = (pminX + pmaxX) / 2;
+      const arcY = pminY - OUT_Y;
       const sag = 8;
-      const arcD = `M${minX + 60},${arcY} Q${cx},${arcY - sag} ${maxX - 60},${arcY}`;
+      const halfW = Math.max(120, (pmaxX - pminX) / 2);
+      const arcD = `M${cx - halfW},${arcY} Q${cx},${arcY - sag} ${cx + halfW},${arcY}`;
       appendSvgTextOnPath(layer, ns, topLabel, arcD, {
         fontSize: 18,
         fontStyle: "italic",
@@ -203,17 +225,17 @@
       });
     }
 
-    // Left edge — three rotated italic labels (NW / W / SW).
+    // Left side — NW / W / SW spaced along the populated-hex y-extent.
     const leftEntries = [
-      { dir: "NW", frac: 0.22 },
+      { dir: "NW", frac: 0.18 },
       { dir: "W",  frac: 0.50 },
-      { dir: "SW", frac: 0.78 },
+      { dir: "SW", frac: 0.82 },
     ];
     leftEntries.forEach(({ dir, frac }) => {
       const label = byDir[dir];
       if (!label) return;
-      const ly = minY + (maxY - minY) * frac;
-      const lx = minX + 16;
+      const ly = pminY + (pmaxY - pminY) * frac;
+      const lx = pminX - OUT_X;
       appendSvgText(layer, ns, label, 0, 0, {
         fontSize: 18,
         fontStyle: "italic",
@@ -223,17 +245,17 @@
       });
     });
 
-    // Right edge — NE / E / SE.
+    // Right side — NE / E / SE.
     const rightEntries = [
-      { dir: "NE", frac: 0.22 },
+      { dir: "NE", frac: 0.18 },
       { dir: "E",  frac: 0.50 },
-      { dir: "SE", frac: 0.78 },
+      { dir: "SE", frac: 0.82 },
     ];
     rightEntries.forEach(({ dir, frac }) => {
       const label = byDir[dir];
       if (!label) return;
-      const ly = minY + (maxY - minY) * frac;
-      const lx = maxX - 16;
+      const ly = pminY + (pmaxY - pminY) * frac;
+      const lx = pmaxX + OUT_X;
       appendSvgText(layer, ns, label, 0, 0, {
         fontSize: 18,
         fontStyle: "italic",
@@ -243,9 +265,9 @@
       });
     });
 
-    // Bottom — centred italic.
+    // Bottom — centred italic, two rows below the southernmost hex.
     if (byDir.S) {
-      appendSvgText(layer, ns, byDir.S, (minX + maxX) / 2, maxY - 6, {
+      appendSvgText(layer, ns, byDir.S, (pminX + pmaxX) / 2, pmaxY + OUT_Y, {
         fontSize: 18,
         fontStyle: "italic",
         fill: COLORS.LABEL,
@@ -278,8 +300,8 @@
       boxes.push({
         cx: xy[0],
         cy: xy[1] + labelYOff,
-        halfW: textW / 2 + 8,    // padding
-        halfH: fontSize * 0.7 + 4,
+        halfW: textW / 2 + 3,    // tighter padding so trees can flank labels
+        halfH: fontSize * 0.6 + 2,
       });
     }
     ctx2d.restore();
@@ -694,9 +716,19 @@
       const rng = D.mulberry32(D.seedFromString("mtn:" + h));
 
       if (isHillsHex(t)) {
-        // Hills hex: 1 small-hill stamp at hex centre.
-        const pts = R.poissonInPolygon(polygon, 60, rng).slice(0, 1);
-        pts.forEach(p => placements.push({ p, terrain: "hills", rng, role: "core" }));
+        // Hills / forested-hills hex: 2-3 hill stamps, scattered, then
+        // pulled 25% toward the hex centroid so they cluster in the middle
+        // rather than skirting the edge (where they look like they belong
+        // to a neighbour).
+        const count = 2 + Math.floor(rng() * 2);
+        const pts = R.poissonInPolygon(polygon, 38, rng).slice(0, count);
+        const cxh = polygon.reduce((s, p) => s + p[0], 0) / polygon.length;
+        const cyh = polygon.reduce((s, p) => s + p[1], 0) / polygon.length;
+        pts.forEach(p => {
+          const px = cxh + (p[0] - cxh) * 0.75;
+          const py = cyh + (p[1] - cyh) * 0.75;
+          placements.push({ p: [px, py], terrain: "hills", rng, role: "core" });
+        });
         return;
       }
 
@@ -792,6 +824,22 @@
       return false;
     }
 
+    // Clip the entire mountain/hills draw pass to the union of mountain +
+    // hills hex polygons. Peaks and foothills can still spill into each
+    // other (same-terrain blend is desirable) but never into forest /
+    // plains / swamp / etc. Same principle as the farm-tile clip.
+    ctx2d.save();
+    const mClip = new Path2D();
+    Object.entries(hexTerrain).forEach(([hh, tt]) => {
+      if (!isMountainHex(tt) && !isHillsHex(tt)) return;
+      const poly = hexPolygon(hh);
+      if (!poly || !poly.length) return;
+      mClip.moveTo(poly[0][0], poly[0][1]);
+      for (let i = 1; i < poly.length; i++) mClip.lineTo(poly[i][0], poly[i][1]);
+      mClip.closePath();
+    });
+    ctx2d.clip(mClip, "nonzero");
+
     placements.forEach(({ p, terrain, rng, role }) => {
       let opts;
       if (role === "edgehill" || terrain === "hills") {
@@ -807,6 +855,7 @@
       let multBase = 1.0;
       if (role === "foothill") multBase = 0.55;
       else if (role === "edgehill") multBase = 0.7;
+      else if (terrain === "hills") multBase = 0.7;  // shrink hills-hex hills
       const mult = multBase * (0.88 + rng() * 0.24);
 
       // Compute the would-be render bbox to check for overlap.
@@ -834,6 +883,7 @@
         mult,
       });
     });
+    ctx2d.restore();
   }
 
   // ---------------------------------------------------------------------
@@ -850,8 +900,8 @@
     // Build avoidance geometry once: visible-node positions + river/road
     // polylines. Trees skip placements within these clear-zone radii so
     // settlements, roads, and rivers stay legible.
-    const NODE_CLEAR_R = 28;     // canvas px around each visible node
-    const PATH_CLEAR_R = 12;     // canvas px from any point on a river/road
+    const NODE_CLEAR_R = 20;     // canvas px around each visible node
+    const PATH_CLEAR_R = 10;     // canvas px from any point on a river/road
     const NODE_CLEAR_R2 = NODE_CLEAR_R * NODE_CLEAR_R;
     const PATH_CLEAR_R2 = PATH_CLEAR_R * PATH_CLEAR_R;
     const nodePts = [];
@@ -1000,11 +1050,34 @@
         queue([x, y], assets.pickWhere(cat, rng, PICK_SINGLE), cat);
       }
 
+      // 4. Guarantee at least 2 trees per forest hex. If the previous
+      // passes left the hex empty (settlement + label exclusions can
+      // squeeze a hex hard), retry with ONLY pointInPolygon + tree-vs-tree
+      // spacing — drop the protection check entirely. Better to clip a
+      // label edge a hair than have a forest hex with no forest in it.
+      const MIN_TREES_PER_HEX = 2;
+      if (placements.length < MIN_TREES_PER_HEX) {
+        const tries = 24;
+        for (let k = 0; k < tries && placements.length < MIN_TREES_PER_HEX; k++) {
+          const angle = rng() * Math.PI * 2;
+          const r = rng() * 0.7;
+          const x = cx + Math.cos(angle) * r * hexW * 0.5;
+          const y = cy + Math.sin(angle) * r * hexH * 0.5;
+          if (!R.pointInPolygon(x, y, polygon)) continue;
+          if (tooCloseToOtherTree(x, y)) continue;
+          const cat = pickCat();
+          queue([x, y], assets.pickWhere(cat, rng, PICK_SINGLE), cat);
+        }
+      }
+
       // y-sort so depth ordering reads correctly, then draw.
       placements.sort((a, b) => a.p[1] - b.p[1]);
       placements.forEach(({ p, stamp, cat }) => {
         const h = R.targetHeightFor(stamp, cat);
-        const mult = 0.88 + rng() * 0.24;
+        // Deciduous shapes were rendering ~25% larger than conifers visually,
+        // so dial them back to match.
+        const catScale = cat === "deciduous" ? 0.75 : 1.0;
+        const mult = catScale * (0.88 + rng() * 0.24);
         R.drawStampAtHeight(ctx2d, stamp, p[0], p[1], h, {
           flipX: rng() > 0.5,
           alpha: 0.78,
@@ -1110,7 +1183,7 @@
 
       if (t === "farmland") {
         const regionId = regionOfHex[h] != null ? regionOfHex[h] : 0;
-        renderFarmlandHex(paintCtx, polygon, rng, regionId, tooCloseToPath);
+        renderFarmlandHex(paintCtx, polygon, rng, regionId, tooCloseToPath, h);
         return;
       }
 
@@ -1229,8 +1302,8 @@
   // sized to the chosen stamp's actual render dimensions, so adjacent fields
   // touch edge-to-edge with no overlap or gap. No rotation — fields read as
   // axis-aligned plots.
-  function renderFarmlandHex(paintCtx, polygon, rng, regionId, tooCloseToPath) {
-    const { ctx2d, assets } = paintCtx;
+  function renderFarmlandHex(paintCtx, polygon, rng, regionId, tooCloseToPath, hex) {
+    const { ctx2d, assets, hexTerrain, hexPolygon } = paintCtx;
     let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
     polygon.forEach(([x, y]) => {
       if (x < xmin) xmin = x;
@@ -1239,6 +1312,58 @@
       if (y > ymax) ymax = y;
     });
     const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
+
+    // Clip the upcoming tile draws to this hex + any neighbour hex that is
+    // ALSO farmland. This lets adjacent farm hexes blend at their shared
+    // edge (desirable) while preventing field tiles from spilling onto
+    // forest, plains, river, etc.
+    ctx2d.save();
+    const clipPath = new Path2D();
+    function appendHexToPath(p) {
+      if (!p || !p.length) return;
+      clipPath.moveTo(p[0][0], p[0][1]);
+      for (let i = 1; i < p.length; i++) clipPath.lineTo(p[i][0], p[i][1]);
+      clipPath.closePath();
+    }
+    appendHexToPath(polygon);
+    if (hex && D.hexNeighbors && hexTerrain && hexPolygon) {
+      for (const nbr of D.hexNeighbors(hex)) {
+        if (hexTerrain[nbr] === "farmland") appendHexToPath(hexPolygon(nbr));
+      }
+    }
+    ctx2d.clip(clipPath, "nonzero");
+
+    // Compute the polygon edges that face NON-farmland neighbours. Tile
+    // placements within EDGE_MARGIN px of these edges are dropped, so the
+    // farm visually retreats from biome boundaries instead of pressing
+    // right up against the hex line.
+    // hexPolygon vertices are at angles 0, 60, 120, 180, 240, 300 (flat-top),
+    // so edges 0..5 face neighbours SE, S, SW, NW, N, NE (in that order).
+    // hexNeighbors() returns [N, NE, SE, S, SW, NW] — map edge index to it.
+    const EDGE_TO_NBR_IDX = [2, 3, 4, 5, 0, 1];
+    const EDGE_MARGIN = 14;
+    const badEdges = [];
+    if (hex && D.hexNeighbors && hexTerrain) {
+      const nbrs = D.hexNeighbors(hex);
+      for (let i = 0; i < 6; i++) {
+        const nbrCode = nbrs[EDGE_TO_NBR_IDX[i]];
+        if (hexTerrain[nbrCode] !== "farmland") {
+          badEdges.push([polygon[i], polygon[(i + 1) % 6]]);
+        }
+      }
+    }
+    function tooCloseToBadEdge(x, y) {
+      for (const [a, b] of badEdges) {
+        const dx = b[0] - a[0], dy = b[1] - a[1];
+        const lenSq = dx * dx + dy * dy;
+        let t = lenSq > 0 ? ((x - a[0]) * dx + (y - a[1]) * dy) / lenSq : 0;
+        t = Math.max(0, Math.min(1, t));
+        const ex = x - (a[0] + t * dx);
+        const ey = y - (a[1] + t * dy);
+        if (ex * ex + ey * ey < EDGE_MARGIN * EDGE_MARGIN) return true;
+      }
+      return false;
+    }
 
     // Region-stable stamp choice: all hexes in the same farm region share
     // the same farm-field brush so they look like one contiguous farm.
@@ -1271,6 +1396,8 @@
         if (!R.pointInPolygon(x, y, polygon)) continue;
         // Don't grow on the road or in the river.
         if (tooCloseToPath && tooCloseToPath(x, y)) continue;
+        // Pull fields away from edges that border a different terrain type.
+        if (tooCloseToBadEdge(x, y)) continue;
         // ~50% reduction in field count: skip half via the per-hex rng,
         // checkerboard-style.
         if (rng() < 0.5) continue;
@@ -1313,6 +1440,7 @@
         });
       }
     }
+    ctx2d.restore();  // matches the save+clip earlier
   }
 
   // ---------------------------------------------------------------------
@@ -1443,6 +1571,23 @@
       "stroke-width": String(bankStroke),
       "stroke-opacity": "0.9",
     });
+
+    // River name label along the wiggle spine. Same approach as the
+    // SVG renderer's renderRiverLabel — invisible path inside <defs>,
+    // textPath references it. Halo handled by appendSvgTextOnPath.
+    const labelLayer = paintCtx.svgLabelLayer;
+    const riverName = paintCtx.graphData && paintCtx.graphData.river_name;
+    if (riverName && labelLayer) {
+      appendSvgTextOnPath(labelLayer, ns, riverName, polylineToD(wiggle), {
+        fontSize: 13,
+        fontStyle: "italic",
+        letterSpacing: "2",
+        fill: COLORS.RIVER,
+        opacity: 0.85,
+        startOffset: "45%",
+        haloWidth: 3,
+      });
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -1703,6 +1848,20 @@
         "stroke-dasharray": dash,
         "stroke-linecap": "round",
       });
+
+      // Road name label along the wobbled centerline.
+      const labelLayer = paintCtx.svgLabelLayer;
+      if (road.name && labelLayer) {
+        appendSvgTextOnPath(labelLayer, ns, road.name, polylineToD(wob), {
+          fontSize: 12,
+          fontStyle: "italic",
+          letterSpacing: "2",
+          fill: COLORS.ROAD,
+          opacity: 0.85,
+          startOffset: "50%",
+          haloWidth: 3,
+        });
+      }
     });
   }
 
@@ -2054,26 +2213,8 @@
       return t;
     }
 
-    // Region label — wide-tracked caps banner that arcs gently across the
-    // top of the landmass like the source art (textPath on a shallow
-    // quadratic curve). Quieter than the off-map top label so they don't
-    // compete; smaller font, lower opacity.
-    if (meta.region) {
-      const lb = paintCtx.landBounds(0);
-      const lx = lb ? (lb.minX + lb.maxX) / 2 : WIDTH / 2;
-      const ly = lb ? lb.minY + 36 : HEIGHT * 0.10;
-      const halfW = lb ? Math.max(120, (lb.maxX - lb.minX) * 0.42) : WIDTH * 0.3;
-      const sag = 18;
-      const arcD = `M${lx - halfW},${ly} Q${lx},${ly - sag} ${lx + halfW},${ly}`;
-      appendSvgTextOnPath(layer, ns, meta.region.toUpperCase(), arcD, {
-        fontSize: 26,
-        fontWeight: "500",
-        letterSpacing: "8",
-        fill: COLORS.INK,
-        opacity: 0.5,
-        haloWidth: 4,
-      });
-    }
+    // (Previously drew a giant region banner across the landmass; removed
+    // because the cartouche in the corner already names the region.)
 
     // Place labels per visible node.
     nodes.forEach(node => {

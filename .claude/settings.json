@@ -18,7 +18,8 @@
       "Bash(lsof -iTCP:8787 -sTCP:LISTEN)",
       "Bash(echo \"exit: $?\")",
       "Bash(git mv *)",
-      "Bash(awk '$4==\"cwd\" {print $NF}')"
+      "Bash(awk '$4==\"cwd\" {print $NF}')",
+      "Bash(grep -n \"placements.forEach.*p, terrain, rng, role\\\\|^\\\\s*}\\); // close placements\\\\|^\\\\s*}\\\\s*$\" /Users/paul/git/open-world-map/viewer/renderers/mapeffects.js)"
     ],
     "additionalDirectories": [
       "/tmp",

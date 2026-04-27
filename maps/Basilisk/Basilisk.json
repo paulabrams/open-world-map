@@ -12,7 +12,7 @@
       "point_type": "heart",
       "terrain": "plains",
       "visible": true,
-      "description": "A walled frontier town at the crossing of the Old Northern Trade Road and the Blackwater River, joined by an old stone bridge. Farms ring the walls; habitable copses are squatted by the poor, resented by farmers for thieves. Guard Captain Ulf keeps order above, but below lies a cursed well, old tunnels, and a vampire brothel beneath the east side. Fog nights bring the Mist Hounds — red lights in pairs — and children vanish across the districts. The party's base of operations.",
+      "description": "farmland hex with no recorded landmarks.",
       "x_hint": 0,
       "y_hint": 0,
       "hex": "1010"
@@ -109,9 +109,10 @@
       "terrain": "forest",
       "visible": true,
       "description": "A sulfur-smelling hot spring west of the Trade Road, also called the Pork Swither Hot Spring Mud Pool. A stream of steaming water runs east across the road. The therapeutic mud heals 1 Heart per hour of soaking. Former territory of the Mud Tooth Porcs, who were squeezed out by giant spiders, the Feather Clan, and a nearby Pine Troll (HD 6, regenerates, fears fire).",
-      "x_hint": -1.5,
+      "x_hint": -1.7,
       "y_hint": -6.06,
-      "hex": "0803"
+      "hex": "0803",
+      "subhex": "W"
     },
     {
       "id": "pjork-choppe-hille",
@@ -186,9 +187,10 @@
       "terrain": "forest",
       "visible": true,
       "description": "An abandoned watchtower in the deep Old Forest, reached by a side road that branches west off the Trade Road north of the Thornespire turnoff. The Castellan's scouts vanished here; the party investigated, rescued three of them, and earned a feast at the Inner Bailey and Inner Bailey passes. The manifest for a later \"Strange Shipment\" (ritual silver daggers for the Vault of First Light) was also recovered from this tower.",
-      "x_hint": -1.5,
-      "y_hint": -6.93,
-      "hex": "0802"
+      "x_hint": -1.68,
+      "y_hint": -7.03,
+      "hex": "0802",
+      "subhex": "NW"
     },
     {
       "id": "the-swamp",
@@ -208,8 +210,8 @@
       "terrain": "forest",
       "visible": true,
       "description": "A mystical sanctuary 2–3 days southwest of Blackwater Crossing through tough forest. The Kalla'din is a pocket realm woven between three house-wide oaks — platforms twenty feet above scorched ground, floating rune-stones, upward-flowing waterfalls, and silver-bark trees growing both upright and inverted. Home to seven immortal Dwur Eldar of the Thornbeard Circle under Gunnar \"Brambleheart,\" now trapped in blissful captivity by stonedcunning fungi. Snezynja, an Aethiiri sorceress bound in starlight chains, keeps ancient memories of the Vault of First Light. The Stone-Nose Clan forest trolls under Grandmother Lichen-Beard dwell at the Standing Stones nearby.",
-      "x_hint": -0.75,
-      "y_hint": 2.17,
+      "x_hint": -1.5,
+      "y_hint": 1.73,
       "hex": "0812"
     },
     {
@@ -319,9 +321,10 @@
       "terrain": "forest",
       "visible": true,
       "description": "A deep wood southwest of the Mud Wallow where the basilisk's territory overlaps with giant spider nests. The Mud Tooth Porcs call the clearing at its heart \"the quiet ground\" and lost kin there. Petrified figures stand in the webs — including the naturalist Saerin Voth, caught studying the stone garden — proof the basilisk was here long before the spiders. The \"basilisk\" and the brood-mother spider are one and the same: an ancient eight-legged priestess-guardian feeding a pre-Dwur seal beneath the forest, and each victim thickens the binding.",
-      "x_hint": -0.75,
+      "x_hint": -0.95,
       "y_hint": -5.63,
-      "hex": "0903"
+      "hex": "0903",
+      "subhex": "W"
     },
     {
       "id": "old-forest-edge",
