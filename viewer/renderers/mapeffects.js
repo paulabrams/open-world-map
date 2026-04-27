@@ -959,7 +959,7 @@
     }
 
     Object.entries(hexTerrain).forEach(([h, t]) => {
-      const isForest = (t === "forest" || t === "forested-hills" || t === "old-forest" || t === "jungle");
+      const isForest = (t === "forest" || t === "forested-hills" || t === "old-forest" || t === "jungle" || t === "farmland-forest");
       if (!isForest) return;
       const polygon = hexPolygon(h);
       const rng = D.mulberry32(D.seedFromString("forest:" + h));
@@ -1155,7 +1155,8 @@
       }
       return out;
     }
-    const farmlandHexes = Object.keys(hexTerrain).filter(h => hexTerrain[h] === "farmland");
+    const isFarmlandLike = (t) => t === "farmland" || t === "farmland-forest";
+    const farmlandHexes = Object.keys(hexTerrain).filter(h => isFarmlandLike(hexTerrain[h]));
     const regionOfHex = {};
     let nextRegionId = 0;
     farmlandHexes.forEach(seed => {
@@ -1181,9 +1182,12 @@
       const polygon = hexPolygon(h);
       const rng = D.mulberry32(D.seedFromString("veg:" + h));
 
-      if (t === "farmland") {
+      if (isFarmlandLike(t)) {
         const regionId = regionOfHex[h] != null ? regionOfHex[h] : 0;
         renderFarmlandHex(paintCtx, polygon, rng, regionId, tooCloseToPath, h);
+        // For farmland-forest, fall through so the standard veg pass doesn't
+        // run, but the forest-tree pass (in layerForests) will still paint
+        // trees on top of the farms.
         return;
       }
 
@@ -1327,8 +1331,9 @@
     }
     appendHexToPath(polygon);
     if (hex && D.hexNeighbors && hexTerrain && hexPolygon) {
+      const isFarm = (t) => t === "farmland" || t === "farmland-forest";
       for (const nbr of D.hexNeighbors(hex)) {
-        if (hexTerrain[nbr] === "farmland") appendHexToPath(hexPolygon(nbr));
+        if (isFarm(hexTerrain[nbr])) appendHexToPath(hexPolygon(nbr));
       }
     }
     ctx2d.clip(clipPath, "nonzero");

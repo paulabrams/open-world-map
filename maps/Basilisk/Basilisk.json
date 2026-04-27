@@ -504,7 +504,7 @@
     "1008": "farmland",
     "1009": "farmland",
     "1010": "plains",
-    "1011": "farmland",
+    "1011": "farmland-forest",
     "1012": "forest",
     "1013": "hills",
     "1014": "mountains",
@@ -573,7 +573,7 @@
     "0712": "forest",
     "0812": "forest",
     "0909": "farmland",
-    "0910": "farmland",
+    "0910": "farmland-forest",
     "0911": "forest",
     "0809": "farmland",
     "0810": "farmland",
@@ -623,6 +623,7 @@
         "1009",
         "1010",
         "1011",
+        "1012",
         "1112",
         "1113",
         "1114",
@@ -723,5 +724,16 @@
       "label": "West lie the Forandol Mountains"
     }
   ],
-  "hex_encounters": {}
+  "hex_encounters": {},
+  "hex_rumors": {
+    "0505": [
+      {
+        "rumor": "Drubwick, the one-eyed fen-poler who works the deep crossing, sells knotted reed charms to anyone fool enough to wade west of the third marker. Won't say what they're charming against, but he mutters that the mud bubbles even in a hard frost out there — warm, like something breathing underneath. The reeds around the old sunken stonework grow twice the height of anything else in the fen.",
+        "source": "Drubwick, a one-eyed fen-poler who guides bog crossings for a copper a head",
+        "reliability": "partial",
+        "topic": "the sunken stonework",
+        "captured_at": "2026-04-27T06:19:15.820Z"
+      }
+    ]
+  }
 }

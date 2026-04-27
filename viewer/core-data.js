@@ -96,21 +96,35 @@
     return String(best.col).padStart(2, "0") + String(best.row).padStart(2, "0");
   }
 
-  // --- Travel-time + route finding (parity with the SVG renderer) ---
-  const TERRAIN_DAYS_PER_HEX = {
-    "plains":         0.25, "grassland":    0.25, "clear":     0.25,
-    "farmland":       0.25, "desert":       0.5,  "hills":     0.5,
-    "forest":         0.75, "forested-hills": 1.0, "old-forest":1.0,
-    "jungle":         1.0,  "mountains":    1.0,  "swamp":     1.0,
-    "tundra":         0.5,
+  // --- Travel-time + route finding ---
+  // 6-hour watches on a 6-mile hex. Path type carries the speed advantage;
+  // off-trail terrain is binary (normal vs. perilous):
+  //   road       → 3 hexes / watch · 2h / hex
+  //   trail      → 2 hexes / watch · 3h / hex   (future — needs trail_path)
+  //   off-trail  → 1 hex / watch  · 6h / hex
+  //   off-trail in mountains / swamp / jungle → ½ hex / watch · 12h / hex
+  // A normal merchant's day = 2 watches (dawn to dusk, 12h marching).
+  // Every watch past 2 in the same day costs 1d6 HP per PC.
+  const TERRAIN_HOURS_PER_HEX = {
+    // Off-trail normal — 1 hex / watch
+    "plains":         6,  "grassland":    6,  "clear":      6,
+    "farmland":       6,  "desert":       6,  "hills":      6,
+    "forest":         6,  "forested-hills": 6, "old-forest": 6,
+    "tundra":         6,  "farmland-forest": 6,
+    // Off-trail perilous — ½ hex / watch
+    "mountains":     12,  "swamp":       12,  "jungle":    12,
   };
-  const DEFAULT_DAYS_PER_HEX = 0.5;
-  const ROAD_MULTIPLIER = 2 / 3;
+  const DEFAULT_HOURS_PER_HEX = 6;
+  const ROAD_HOURS_CAP  = 2;
+  const TRAIL_HOURS_CAP = 3;   // applied if a future `trail_path` is present
+  // Productive marching hours per calendar day for "days + hours" display.
+  const HOURS_PER_DAY_FAMILIAR  = 8;
+  const HOURS_PER_DAY_UNEXPLORED = 6;
 
-  function hexTravelDays(hex, hexTerrain) {
+  function hexTravelHours(hex, hexTerrain) {
     const t = hexTerrain && hexTerrain[hex];
-    const r = t ? TERRAIN_DAYS_PER_HEX[t] : undefined;
-    return r != null ? r : DEFAULT_DAYS_PER_HEX;
+    const r = t ? TERRAIN_HOURS_PER_HEX[t] : undefined;
+    return r != null ? r : DEFAULT_HOURS_PER_HEX;
   }
 
   function hexToCube(hex) {
@@ -130,41 +144,58 @@
 
   function buildTravelGraph(graphData) {
     const graph = new Map();
-    const addEdge = (a, b, days) => {
+    const addEdge = (a, b, hours) => {
       if (!graph.has(a)) graph.set(a, new Map());
       if (!graph.has(b)) graph.set(b, new Map());
       const cur = graph.get(a).get(b);
-      if (cur == null || days < cur) {
-        graph.get(a).set(b, days);
-        graph.get(b).set(a, days);
+      if (cur == null || hours < cur) {
+        graph.get(a).set(b, hours);
+        graph.get(b).set(a, hours);
       }
     };
     const hexTerrain = (graphData && graphData.hex_terrain) || {};
+    // Rivers are treated as perilous off-trail (12h/hex) — fording or
+    // wading takes time. Roads/trails crossing a river hex stay capped
+    // (bridges/fords) because the road/trail edge override wins.
+    const riverHexes = new Set((graphData && graphData.river_path) || []);
+    const hexTravelHoursWithRiver = (h) => {
+      const base = hexTravelHours(h, hexTerrain);
+      return riverHexes.has(h) ? Math.max(base, 12) : base;
+    };
     const edgeCost = (a, b) =>
-      (hexTravelDays(a, hexTerrain) + hexTravelDays(b, hexTerrain)) / 2;
-    const roads = (graphData && graphData.road_path) || [];
-    const roadEntries = typeof roads[0] === "string" ? [{ hexes: roads }] : roads;
-    roadEntries.forEach(entry => {
-      const hexes = Array.isArray(entry) ? entry : (entry && entry.hexes) || [];
-      if (hexes.length < 2) return;
-      const explicitPerHop = entry && entry.days && hexes.length > 1
-        ? entry.days / (hexes.length - 1)
-        : null;
-      for (let i = 0; i < hexes.length - 1; i++) {
-        const cost = explicitPerHop != null
-          ? explicitPerHop
-          : edgeCost(hexes[i], hexes[i + 1]) * ROAD_MULTIPLIER;
-        addEdge(hexes[i], hexes[i + 1], cost);
-      }
-    });
+      (hexTravelHoursWithRiver(a) + hexTravelHoursWithRiver(b)) / 2;
+    function addPathEntries(entries, defaultCap) {
+      const norm = typeof entries[0] === "string" ? [{ hexes: entries }] : entries;
+      norm.forEach(entry => {
+        const hexes = Array.isArray(entry) ? entry : (entry && entry.hexes) || [];
+        if (hexes.length < 2) return;
+        // Author override: `entry.hours` direct; `entry.days` legacy (× 8h).
+        let explicitPerHop = null;
+        if (entry && entry.hours && hexes.length > 1) {
+          explicitPerHop = entry.hours / (hexes.length - 1);
+        } else if (entry && entry.days && hexes.length > 1) {
+          explicitPerHop = (entry.days * 8) / (hexes.length - 1);
+        }
+        for (let i = 0; i < hexes.length - 1; i++) {
+          const cost = explicitPerHop != null ? explicitPerHop : defaultCap;
+          addEdge(hexes[i], hexes[i + 1], cost);
+        }
+      });
+    }
+    const roads  = (graphData && graphData.road_path)  || [];
+    const trails = (graphData && graphData.trail_path) || [];
+    addPathEntries(roads,  ROAD_HOURS_CAP);
+    addPathEntries(trails, TRAIL_HOURS_CAP);
     const known = new Set();
     if (graphData) {
       if (graphData.hex_terrain) Object.keys(graphData.hex_terrain).forEach(h => known.add(h));
       if (graphData.river_path) graphData.river_path.forEach(h => known.add(h));
       if (graphData.nodes) graphData.nodes.forEach(n => { if (n.hex) known.add(n.hex); });
-      roadEntries.forEach(entry => {
-        const hexes = Array.isArray(entry) ? entry : (entry && entry.hexes) || [];
-        hexes.forEach(h => known.add(h));
+      [roads, trails].forEach(entries => {
+        (typeof entries[0] === "string" ? [{ hexes: entries }] : entries).forEach(entry => {
+          const hexes = Array.isArray(entry) ? entry : (entry && entry.hexes) || [];
+          hexes.forEach(h => known.add(h));
+        });
       });
     }
     known.forEach(hex => {
@@ -204,7 +235,7 @@
     const path = [];
     let cur = end;
     while (cur != null) { path.unshift(cur); cur = prev.get(cur); }
-    return { path, days: dist.get(end) };
+    return { path, hours: dist.get(end) };
   }
 
   function hexLinePath(start, end, hexTerrain) {
@@ -232,15 +263,15 @@
       const [rx, , rz] = cubeRound(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, z1 + (z2 - z1) * t);
       path.push(cubeToOffset(rx, rz));
     }
-    let days = 0;
+    let hours = 0;
     for (let i = 1; i < path.length; i++) {
-      days += (hexTravelDays(path[i - 1], hexTerrain) + hexTravelDays(path[i], hexTerrain)) / 2;
+      hours += (hexTravelHours(path[i - 1], hexTerrain) + hexTravelHours(path[i], hexTerrain)) / 2;
     }
-    return { path, days };
+    return { path, hours };
   }
 
   function findRoute(startHex, endHex, graphData) {
-    if (startHex === endHex) return { path: [startHex], days: 0 };
+    if (startHex === endHex) return { path: [startHex], hours: 0 };
     const { graph, known } = buildTravelGraph(graphData);
     if (known.has(startHex) && known.has(endHex)) {
       const res = dijkstra(graph, startHex, endHex);
@@ -249,17 +280,99 @@
     return hexLinePath(startHex, endHex, (graphData && graphData.hex_terrain) || {});
   }
 
-  function formatDaysLabel(days) {
-    if (days == null || !isFinite(days)) return "";
-    if (Math.abs(days) < 0.001) return "0 d";
-    if (days < 1) {
-      const hours = Math.round(days * 24);
-      if (hours <= 0) return "0 d";
-      if (hours < 24) return hours + " h";
+  // ---- Watches model ------------------------------------------------------
+  // 1 watch = 6 hours. A typical merchant's day = 2 watches (dawn to dusk,
+  // 12h marching, 6 road hexes). Each watch past 2 in a single day costs
+  // 1d6 HP per PC, reset by a full night's rest.
+  //   safe   = 2  → 0 d6 cost per day
+  //   push   = 3  → 1d6 cost per day (into the night, 18h)
+  //   forced = 4  → 2d6 cost per day (all-day all-night, hard cap)
+  const HOURS_PER_WATCH = 6;
+  const PACE_WATCHES = { safe: 2, push: 3, forced: 4 };
+
+  // Plan a route across days at the chosen pace. Total watches are rounded
+  // to the nearest half-watch (so a 6h leg reads as 1.5w, not "2w too long").
+  // Per-day cost: every started watch past the 2nd costs 1d6 HP — half a
+  // watch into the danger zone still triggers (you don't get half a d6),
+  // hence ceil() on the over-2 portion.
+  function planRoute(hours, pace) {
+    const watches = Math.max(0, Math.round((hours || 0) * 2 / HOURS_PER_WATCH) / 2);
+    const perDay  = PACE_WATCHES[pace] || PACE_WATCHES.safe;
+    const days    = watches === 0 ? 0 : Math.ceil(watches / perDay);
+    let cost = 0;
+    let remaining = watches;
+    for (let d = 0; d < days; d++) {
+      const today = Math.min(perDay, remaining);
+      cost += Math.max(0, Math.ceil(today - 2));
+      remaining -= today;
     }
-    const rounded = Math.round(days * 4) / 4;
-    return (Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")) + " d";
+    return { watches, days, cost, perDay };
   }
+
+  // Classify each edge of a route as road / trail / off-trail and produce a
+  // natural-language descriptor: "by road", "by trail", "overland", or
+  // mixed combinations like "by road and overland".
+  function describeRoutePathType(path, graphData) {
+    if (!path || path.length < 2 || !graphData) return "";
+    let road = 0, trail = 0, off = 0;
+    const onPath = (a, b, paths) => {
+      if (!paths) return false;
+      const norm = typeof paths[0] === "string" ? [paths] : paths;
+      return norm.some(entry => {
+        const hexes = Array.isArray(entry) ? entry : (entry && entry.hexes) || [];
+        for (let i = 1; i < hexes.length; i++) {
+          if ((hexes[i - 1] === a && hexes[i] === b)
+           || (hexes[i - 1] === b && hexes[i] === a)) return true;
+        }
+        return false;
+      });
+    };
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1], b = path[i];
+      if      (onPath(a, b, graphData.road_path))  road++;
+      else if (onPath(a, b, graphData.trail_path)) trail++;
+      else                                         off++;
+    }
+    const total = road + trail + off;
+    if (total === 0) return "";
+    if (road  === total) return "by road";
+    if (trail === total) return "by trail";
+    if (off   === total) return "overland";
+    const parts = [];
+    if (road)  parts.push("road");
+    if (trail) parts.push("trail");
+    if (off)   parts.push("overland");
+    if (parts.length === 2) return "by " + parts.join(" and ");
+    return "by " + parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
+  }
+
+  // Route midpoint label: "3 watches (18 hours)". Compact, no per-pace
+  // day-counts (those depend on the GM's chosen pace). Miles + path-type
+  // breakdown live in the hovercard, not the inline label.
+  function formatRouteLabel(path, hours /*, graphData */) {
+    if (hours == null || !isFinite(hours)) return "";
+    const watches = Math.max(0, Math.round((hours || 0) * 2 / HOURS_PER_WATCH) / 2);
+    const watchStr = (watches % 1 === 0) ? String(watches) : watches.toFixed(1);
+    const noun = watches === 1 ? "watch" : "watches";
+    const hoursRound = Math.round(hours);
+    const hoursNoun = hoursRound === 1 ? "hour" : "hours";
+    return watchStr + " " + noun + " (" + hoursRound + " " + hoursNoun + ")";
+  }
+
+  // Back-compat: callers that still pass (hours, miles) get the simpler
+  // "miles · Nw" form.
+  function formatWatchLabel(hours, miles) {
+    if (hours == null || !isFinite(hours)) return "";
+    const watches = Math.max(0, Math.round((hours || 0) * 2 / HOURS_PER_WATCH) / 2);
+    const watchStr = (watches % 1 === 0) ? String(watches) : watches.toFixed(1);
+    if (miles == null || !isFinite(miles)) return watchStr + "w";
+    return Math.round(miles) + " mi · " + watchStr + "w";
+  }
+
+  // Back-compat shim — anything still asking for a "days" label gets the
+  // watches formatter at safe pace.
+  function formatDaysLabel(hours) { return formatWatchLabel(hours, "safe"); }
+  function formatTravelLabel(hours, pace) { return formatWatchLabel(hours, pace); }
 
   function hexNeighbors(hex) {
     if (typeof hex !== "string" || hex.length < 4) return [];
@@ -439,8 +552,10 @@
     isOverlandNode,
     mulberry32, seedFromString,
     hexCenterXY, hexPolygon, xyToHex, hexNeighbors, nodeXY, landBounds,
-    hexTravelDays, hexToCube, hexDistance,
-    buildTravelGraph, dijkstra, hexLinePath, findRoute, formatDaysLabel,
+    hexTravelHours, hexToCube, hexDistance,
+    buildTravelGraph, dijkstra, hexLinePath, findRoute,
+    planRoute, describeRoutePathType, formatRouteLabel,
+    formatWatchLabel, formatTravelLabel, formatDaysLabel,
     loadData,
     openPanel, closePanel, escapeHtml,
   };

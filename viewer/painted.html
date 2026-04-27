@@ -68,6 +68,85 @@
     stroke-width: 1.0;
     pointer-events: none;
   }
+  /* Route hovercard — pinned to the lower-right while a shift-click route
+     is rendered. `pointer-events: none` so it can't intercept clicks. */
+  #route-card {
+    position: fixed;
+    display: none;
+    background: #fdf6e3;
+    border: 1px solid #1a1410;
+    padding: 12px 16px;
+    font-family: 'IM Fell English', serif;
+    font-size: 13px;
+    color: #1a1410;
+    z-index: 100;
+    pointer-events: none;
+    width: 360px;
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+  }
+  #route-card h3 {
+    font-size: 14px;
+    margin-bottom: 4px;
+    color: #9c2a1f;
+  }
+  #route-card .waypoints {
+    font-size: 11px;
+    font-style: italic;
+    color: #5a4a3a;
+    margin-bottom: 8px;
+  }
+  #route-card .mini-map {
+    margin: 6px 0;
+    background: #ffffff;
+    border: 1px solid rgba(26,20,16,0.2);
+    padding: 4px;
+  }
+  #route-card .mini-map svg { display: block; width: 100%; height: auto; }
+  #route-card .description {
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 6px 0;
+  }
+  #route-card .totals { margin: 8px 0; font-size: 12px; }
+  #route-card .totals .primary {
+    font-weight: bold;
+    font-size: 13px;
+  }
+  #route-card .totals .pace {
+    font-size: 11px;
+    color: #5a4a3a;
+    margin-top: 2px;
+  }
+  #route-card table {
+    margin: 4px 0;
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12px;
+  }
+  #route-card table td, #route-card table th {
+    padding: 2px 6px;
+    text-align: left;
+  }
+  #route-card .breakdown td:nth-child(1) { width: 32px; text-align: right; }
+  #route-card .breakdown td:nth-child(3) { text-align: right; width: 60px; }
+  #route-card hr {
+    margin: 10px 0;
+    border: 0;
+    border-top: 1px dotted rgba(90,74,58,0.5);
+  }
+  #route-card .hint {
+    font-size: 11px;
+    font-style: italic;
+    color: #5a4a3a;
+    margin-top: 6px;
+  }
+  #route-card .ref { font-size: 11px; opacity: 0.85; }
+  #route-card .ref th {
+    font-weight: bold;
+    border-bottom: 1px solid rgba(26,20,16,0.3);
+  }
   /* In-progress overlay: a pulsing dashed ring while a hex is being
      generated or its encounter is being rolled. Overlays must NEVER
      intercept clicks — both the group AND every descendant get
@@ -585,6 +664,7 @@
       window.location.href = url.toString();
     });
   }
+
 
   const loadingEl = document.getElementById("loading");
   const container = document.getElementById("map-container");
@@ -1296,6 +1376,18 @@
   let routeStartHex = null;
   function clearRouteOverlay() {
     hotspots.querySelectorAll(".route-highlight, .route-start-marker").forEach(el => el.remove());
+    hideRouteCard();
+  }
+  // Show the route card pinned in the lower-right of the viewport so it
+  // stays visible while the route is rendered, no hovering required.
+  function showRouteCardPinned(path, hours) {
+    const card = ensureRouteCard();
+    card.innerHTML = buildRouteCardHtml(path, hours);
+    card.style.right  = "20px";
+    card.style.bottom = "120px";
+    card.style.left   = "auto";
+    card.style.top    = "auto";
+    card.style.display = "block";
   }
   function renderRouteStart(hex) {
     clearRouteOverlay();
@@ -1319,12 +1411,230 @@
     g.appendChild(stroke);
     hotspots.appendChild(g);
   }
-  function renderRoute(path, days) {
+  // ---- Route hovercard --------------------------------------------------
+  // Shown while the cursor is over a rendered shift-click route. Carries
+  // the detail the inline midpoint label deliberately omits: start/end,
+  // miles, per-path-type breakdown, and the watches reference table.
+  function nodeForHex(hex) {
+    return (graphData.nodes || []).find(n =>
+      n.hex === hex && n.visible !== false && !n.parent);
+  }
+  function ensureRouteCard() {
+    let card = document.getElementById("route-card");
+    if (card) return card;
+    card = document.createElement("div");
+    card.id = "route-card";
+    document.body.appendChild(card);
+    return card;
+  }
+  function showRouteCard(ev, path, hours) {
+    const card = ensureRouteCard();
+    card.innerHTML = buildRouteCardHtml(path, hours);
+    positionRouteCard(ev);
+    card.style.display = "block";
+  }
+  function positionRouteCard(ev) {
+    const card = document.getElementById("route-card");
+    if (!card || card.style.display === "none") return;
+    const x = Math.min(ev.clientX + 14, window.innerWidth  - card.offsetWidth  - 8);
+    const y = Math.min(ev.clientY + 14, window.innerHeight - card.offsetHeight - 8);
+    card.style.left = Math.max(8, x) + "px";
+    card.style.top  = Math.max(8, y) + "px";
+  }
+  function hideRouteCard() {
+    const card = document.getElementById("route-card");
+    if (card) card.style.display = "none";
+  }
+  // Helpers for the rich route card.
+  const ROUTE_PERILOUS = new Set(["mountains", "swamp", "jungle"]);
+  function _onPath(a, b, paths) {
+    if (!paths) return false;
+    const norm = typeof paths[0] === "string" ? [paths] : paths;
+    return norm.some(entry => {
+      const hexes = Array.isArray(entry) ? entry : (entry && entry.hexes) || [];
+      for (let i = 1; i < hexes.length; i++) {
+        if ((hexes[i-1] === a && hexes[i] === b)
+         || (hexes[i-1] === b && hexes[i] === a)) return true;
+      }
+      return false;
+    });
+  }
+  function _w(n) { return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, ""); }
+
+  // Run-length encode the path by edge type (road / trail / off-trail) so
+  // the description reads naturally: "by road through farmland and forest,
+  // then off-trail through forest".
+  function routeRuns(path) {
+    const runs = [];
+    if (!path || path.length < 2) return runs;
+    let cur = null;
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i-1], b = path[i];
+      let type = "off-trail";
+      if      (_onPath(a, b, graphData.road_path))  type = "road";
+      else if (_onPath(a, b, graphData.trail_path)) type = "trail";
+      if (cur && cur.type === type) {
+        cur.hexes.push(b);
+      } else {
+        if (cur) runs.push(cur);
+        cur = { type, hexes: [a, b] };
+      }
+    }
+    if (cur) runs.push(cur);
+    return runs;
+  }
+  function describeRoute(path) {
+    const hexT = (graphData && graphData.hex_terrain) || {};
+    return routeRuns(path).map(r => {
+      const terrains = [...new Set(r.hexes.map(h => hexT[h] || "wilderness"))]
+        .filter(t => t !== "wilderness")
+        .slice(0, 3);
+      const tList = terrains.length === 0 ? ""
+                  : terrains.length === 1 ? " through " + terrains[0]
+                  : " through " + terrains.slice(0, -1).join(", ") + " and " + terrains[terrains.length-1];
+      if (r.type === "road")  return "by road"  + tList;
+      if (r.type === "trail") return "by trail" + tList;
+      return "off-trail" + tList;
+    }).join(", then ") + ".";
+  }
+
+  // Tiny SVG diagram showing the path with surrounding hex context.
+  function routeMiniMapSvg(path) {
+    if (!path || path.length < 2) return "";
+    const SIZE = 11;
+    const COL_STEP = SIZE * 1.5;
+    const ROW_STEP = SIZE * Math.sqrt(3);
+    function center(hex) {
+      const col = parseInt(hex.substring(0, 2), 10);
+      const row = parseInt(hex.substring(2, 4), 10);
+      const shifted = (col % 2) !== 0;
+      return [col * COL_STEP, row * ROW_STEP + (shifted ? ROW_STEP / 2 : 0)];
+    }
+    const TERRAIN_FILL = {
+      plains: "#fff8e1", grassland: "#fff8e1", clear: "#fff8e1",
+      farmland: "#fff8e1", "farmland-forest": "#dcedc8",
+      forest: "#c8e6c9", "forested-hills": "#a5d6a7", "old-forest": "#81c784",
+      desert: "#fff3e0", tundra: "#eef2f5", hills: "#d7ccc8",
+      mountains: "#bdbdbd", swamp: "#80cbc4", jungle: "#558b2f",
+    };
+    const pathSet = new Set(path);
+    const ringSet = new Set(path);
+    if (MapData.hexNeighbors) {
+      for (const h of path) {
+        MapData.hexNeighbors(h).forEach(n => ringSet.add(n));
+      }
+    }
+    const hexT = (graphData && graphData.hex_terrain) || {};
+    const allHexes = [...ringSet].filter(h => hexT[h]);
+    const centers = path.map(center);
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    [...allHexes, ...path].forEach(h => {
+      const [x, y] = center(h);
+      minX = Math.min(minX, x - SIZE); minY = Math.min(minY, y - SIZE);
+      maxX = Math.max(maxX, x + SIZE); maxY = Math.max(maxY, y + SIZE);
+    });
+    const PAD = 4;
+    const vbX = minX - PAD, vbY = minY - PAD;
+    const vbW = maxX - minX + 2 * PAD, vbH = maxY - minY + 2 * PAD;
+    let svg = `<svg viewBox="${vbX.toFixed(1)} ${vbY.toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}" preserveAspectRatio="xMidYMid meet">`;
+    function hexPoly(cx, cy) {
+      const pts = [];
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i;
+        pts.push((cx + SIZE * Math.cos(a)).toFixed(1) + "," + (cy + SIZE * Math.sin(a)).toFixed(1));
+      }
+      return pts.join(" ");
+    }
+    // Background hexes (terrain fill)
+    for (const h of allHexes) {
+      const [cx, cy] = center(h);
+      const fill = TERRAIN_FILL[hexT[h]] || "#f5f5f5";
+      svg += `<polygon points="${hexPoly(cx, cy)}" fill="${fill}" stroke="#bbb" stroke-width="0.4"/>`;
+    }
+    // Highlight path hexes
+    for (const h of path) {
+      const [cx, cy] = center(h);
+      svg += `<polygon points="${hexPoly(cx, cy)}" fill="#c25b2b" fill-opacity="0.30" stroke="#c25b2b" stroke-width="0.8"/>`;
+    }
+    // Route line through centres
+    let d = `M${centers[0][0].toFixed(1)},${centers[0][1].toFixed(1)}`;
+    for (let i = 1; i < centers.length; i++) d += ` L${centers[i][0].toFixed(1)},${centers[i][1].toFixed(1)}`;
+    svg += `<path d="${d}" fill="none" stroke="#c25b2b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+    // End markers
+    const [sx, sy] = centers[0];
+    const [ex, ey] = centers[centers.length - 1];
+    svg += `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="2.4" fill="#c25b2b"/>`;
+    svg += `<circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="2.4" fill="#c25b2b"/>`;
+    svg += `</svg>`;
+    return svg;
+  }
+
+  function buildRouteCardHtml(path, hours) {
+    const esc = MapData.escapeHtml;
+    const hexT = (graphData && graphData.hex_terrain) || {};
+
+    // Names
+    const startName = (nodeForHex(path[0])?.name) || ("Hex " + path[0]);
+    const endName   = (nodeForHex(path[path.length-1])?.name) || ("Hex " + path[path.length-1]);
+    const waypoints = [];
+    for (let i = 1; i < path.length - 1; i++) {
+      const n = nodeForHex(path[i]);
+      if (n && n.name && !waypoints.includes(n.name)) waypoints.push(n.name);
+    }
+
+    // Per-edge classification → category miles + watches
+    const cats = { road: 0, trail: 0, off: 0, perilous: 0 };
+    const catH = { road: 0, trail: 0, off: 0, perilous: 0 };
+    const riverSet = new Set((graphData && graphData.river_path) || []);
+    const isPerilous = (h) => ROUTE_PERILOUS.has(hexT[h]) || riverSet.has(h);
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i-1], b = path[i];
+      if      (_onPath(a, b, graphData.road_path))  { cats.road++;  catH.road  += 2; }
+      else if (_onPath(a, b, graphData.trail_path)) { cats.trail++; catH.trail += 3; }
+      else {
+        const aP = isPerilous(a), bP = isPerilous(b);
+        if (aP || bP) { cats.perilous++; catH.perilous += (aP && bP) ? 12 : 9; }
+        else          { cats.off++;      catH.off      += 6; }
+      }
+    }
+
+    // Totals
+    const totalMi = (path.length - 1) * 6;
+    const totalH  = catH.road + catH.trail + catH.off + catH.perilous;
+    const totalW  = totalH / 6;
+    const safeDays   = Math.max(1, Math.ceil(totalW / 2));
+    const pushDays   = Math.max(1, Math.ceil(totalW / 3));
+    const forcedDays = Math.max(1, Math.ceil(totalW / 4));
+
+    // Per-category breakdown rows
+    const rows = [];
+    if (cats.road)     rows.push(`<tr><td>${cats.road}</td><td>by road</td><td>3 / w</td></tr>`);
+    if (cats.trail)    rows.push(`<tr><td>${cats.trail}</td><td>by trail</td><td>2 / w</td></tr>`);
+    if (cats.off)      rows.push(`<tr><td>${cats.off}</td><td>off-trail</td><td>1 / w</td></tr>`);
+    if (cats.perilous) rows.push(`<tr><td>${cats.perilous}</td><td>off-trail (mountains/swamp/jungle)</td><td>½ / w</td></tr>`);
+
+    return `
+      <h3>${esc(startName)} → ${esc(endName)}</h3>
+      ${waypoints.length ? `<div class="waypoints">via ${waypoints.map(esc).join(" · ")}</div>` : ""}
+      <div class="mini-map">${routeMiniMapSvg(path)}</div>
+      <div class="description">${esc(describeRoute(path))}</div>
+      <div class="totals">
+        <div class="primary">${totalMi} miles · ${_w(totalW)} watches · ${Math.round(totalH)} hours</div>
+        <div class="pace">Safe (2 watches/day): ${safeDays}d · Push (3w/d, +1d6 HP/long day): ${pushDays}d · Forced (4w/d, +2d6 HP/long day): ${forcedDays}d</div>
+      </div>
+      <table class="breakdown">
+        <tr><th>Hexes</th><th>Path / terrain</th><th>Pace</th></tr>
+        ${rows.join("")}
+      </table>
+      <div class="hint">Each hex is 6 miles. Terrain controls how many hexes you cover per watch (1 watch = 6 hours).</div>
+    `;
+  }
+
+  function renderRoute(path, hours) {
     clearRouteOverlay();
     if (!path || !path.length || !paintCtx.hexPolygon || !paintCtx.hexCenterXY) return;
     const g = document.createElementNS(SVG_NS, "g");
     g.setAttribute("class", "route-highlight");
-    g.setAttribute("pointer-events", "none");
 
     path.forEach(h => {
       const pts = paintCtx.hexPolygon(h);
@@ -1351,7 +1661,7 @@
         line.setAttribute("opacity", "0.7");
         g.appendChild(line);
       }
-      if (days != null && centers.length >= 2) {
+      if (hours != null && centers.length >= 2) {
         const mid = centers[Math.floor(centers.length / 2)];
         const txt = document.createElementNS(SVG_NS, "text");
         txt.setAttribute("x", mid[0]);
@@ -1365,11 +1675,14 @@
         txt.setAttribute("stroke", "#fdf6e3");
         txt.setAttribute("stroke-width", "4");
         txt.setAttribute("paint-order", "stroke");
-        txt.textContent = MapData.formatDaysLabel(days);
+        txt.textContent = MapData.formatRouteLabel(path, hours);
         g.appendChild(txt);
       }
     }
     hotspots.appendChild(g);
+    // Pin the route card in the lower-right corner so the user always
+    // sees the route summary after shift-click — no hover required.
+    showRouteCardPinned(path, hours);
   }
 
   // Hex-level click — captures clicks anywhere inside a hex, not just on
@@ -1390,9 +1703,10 @@
       }
       // Shift-click → resolve route from the start hex to this one.
       if (ev.shiftKey && routeStartHex) {
+        MapData.closePanel();   // drop the start hex's panel; route card replaces it
         const res = MapData.findRoute(routeStartHex, hex, graphData);
-        if (res) renderRoute(res.path, res.days);
-        return;  // don't open the panel for shift-click
+        if (res) renderRoute(res.path, res.hours);
+        return;
       }
       const hexT = paintCtx.hexTerrain || {};
       const isDefined = !!hexT[hex];
@@ -1603,6 +1917,119 @@
     applyTransform();
   });
   window.addEventListener("mouseup", () => { dragging = false; });
+
+  // ---- Touch handling for mobile ----------------------------------------
+  // One finger drags = pan. Two fingers = pinch-zoom (anchored to the
+  // midpoint). A still hold of >500 ms with one finger = "long-press" and
+  // synthesises the same hex-focus action as a desktop click. Short taps
+  // are intentionally ignored so users don't open panels by accident while
+  // trying to pan.
+  const LONG_PRESS_MS = 500;
+  const TAP_MOVE_TOLERANCE = 10;   // px of slop allowed during a long-press
+  let touchState = null;
+  function clearLongPress() {
+    if (touchState && touchState.longPressTimer != null) {
+      clearTimeout(touchState.longPressTimer);
+      touchState.longPressTimer = null;
+    }
+  }
+  function dispatchLongPressClick(clientX, clientY) {
+    // Walk the elements stacked at the touch point and let the existing
+    // click flow handle hex-focus / panel-open / route-end logic.
+    const target = document.elementFromPoint(clientX, clientY);
+    if (!target) return;
+    const synthetic = new MouseEvent("click", {
+      clientX, clientY, bubbles: true, cancelable: true, button: 0,
+    });
+    target.dispatchEvent(synthetic);
+  }
+  container.addEventListener("touchstart", (ev) => {
+    // Don't hijack touches on UI overlays.
+    if (ev.target.closest("#detail-panel,#zoom-controls,#export-btn,#style-controls,#route-card")) return;
+    ev.preventDefault();
+
+    if (ev.touches.length === 1) {
+      const t = ev.touches[0];
+      touchState = {
+        type: "single",
+        startX: t.clientX, startY: t.clientY,
+        startTx: view.tx,  startTy: view.ty,
+        moved: false,
+        longPressTimer: null,
+      };
+      touchState.longPressTimer = setTimeout(() => {
+        if (!touchState || touchState.moved) return;
+        touchState.longPressFired = true;
+        dispatchLongPressClick(touchState.startX, touchState.startY);
+      }, LONG_PRESS_MS);
+    } else if (ev.touches.length === 2) {
+      clearLongPress();
+      const a = ev.touches[0], b = ev.touches[1];
+      const midX = (a.clientX + b.clientX) / 2;
+      const midY = (a.clientY + b.clientY) / 2;
+      touchState = {
+        type: "pinch",
+        startDist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
+        startScale: view.scale,
+        // World point under the midpoint at gesture start — kept anchored
+        // to the live midpoint as the fingers move.
+        worldX: (midX - view.tx) / view.scale,
+        worldY: (midY - view.ty) / view.scale,
+      };
+    }
+  }, { passive: false });
+
+  container.addEventListener("touchmove", (ev) => {
+    if (!touchState) return;
+    ev.preventDefault();
+
+    if (touchState.type === "single" && ev.touches.length === 1) {
+      const t = ev.touches[0];
+      const dx = t.clientX - touchState.startX;
+      const dy = t.clientY - touchState.startY;
+      if (!touchState.moved && (Math.abs(dx) > TAP_MOVE_TOLERANCE || Math.abs(dy) > TAP_MOVE_TOLERANCE)) {
+        touchState.moved = true;
+        clearLongPress();
+      }
+      if (touchState.moved) {
+        view.tx = touchState.startTx + dx;
+        view.ty = touchState.startTy + dy;
+        applyTransform();
+      }
+    } else if (touchState.type === "pinch" && ev.touches.length === 2) {
+      const a = ev.touches[0], b = ev.touches[1];
+      const midX = (a.clientX + b.clientX) / 2;
+      const midY = (a.clientY + b.clientY) / 2;
+      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const factor = dist / (touchState.startDist || 1);
+      const next = Math.min(8, Math.max(0.15, touchState.startScale * factor));
+      view.scale = next;
+      view.tx = midX - touchState.worldX * next;
+      view.ty = midY - touchState.worldY * next;
+      applyTransform();
+    }
+  }, { passive: false });
+
+  function endTouch(ev) {
+    if (!touchState) return;
+    clearLongPress();
+    if (ev.touches.length === 0) {
+      touchState = null;
+    } else if (ev.touches.length === 1) {
+      // Pinch released, one finger remains → restart single-touch tracking
+      // as a pure drag (no long-press after pinch).
+      const t = ev.touches[0];
+      touchState = {
+        type: "single",
+        startX: t.clientX, startY: t.clientY,
+        startTx: view.tx,  startTy: view.ty,
+        moved: true,
+        longPressTimer: null,
+      };
+    }
+  }
+  container.addEventListener("touchend",    endTouch, { passive: false });
+  container.addEventListener("touchcancel", endTouch, { passive: false });
 
   // Wheel to zoom (cursor-anchored)
   container.addEventListener("wheel", (ev) => {

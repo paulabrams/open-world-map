@@ -19,9 +19,17 @@ Both pages have Style + Renderer + Grid dropdowns; settings round-trip via URL p
 ## MCP Tools Available
 
 - `capture_thought` — save a thought to the database
+- `update_thought` — replace an existing thought by ID (use after a contradiction warning)
 - `search_thoughts` — semantic search by meaning
-- `list_thoughts` — list by type (point, path, rumor, journey, campaign)
+- `list_thoughts` — list / filter
 - `thought_stats` — summary counts
+- `check_consistency` — find contradictions across the corpus
+- `list_campaigns` — discover valid campaign names
+
+**Valid `thought_type` values** (canonical source: `open-world/supabase/functions/_shared/thought-schema.ts`):
+`point`, `path`, `rumor`, `journey`, `campaign`, `observation`, `note`, `terrain`, `monster`, `npc`.
+
+Hex terrain is stored as `terrain` thoughts in the DB AND as the `hex_terrain` field in the campaign JSON — keep both in sync when reclassifying a hex.
 
 ## Key Files
 

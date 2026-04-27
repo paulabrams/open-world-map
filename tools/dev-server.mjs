@@ -435,41 +435,44 @@ function pickSubhex() {
 async function appendNodeToCampaign(campaign, hex, parsed) {
   const file = join(REPO, "maps", campaign, `${campaign}.json`);
   if (!existsSync(file)) throw new Error(`campaign file not found: ${file}`);
-  const txt = await readFile(file, "utf8");
-  const data = JSON.parse(txt);
-  data.nodes = data.nodes || [];
-  const subhex = pickSubhex();
-  const [hx, hy] = hexCenterInches(hex);
-  const [ox, oy] = SUBHEX_OFFSET_INCHES[subhex];
-  const id = `hex-${hex}-${subhex}`;
-  const node = {
-    id,
-    name: parsed.name,
-    point_type: parsed.point_type || "wilderness",
-    terrain: parsed.terrain || "plains",
-    description: parsed.description || "",
-    hex,
-    subhex,
-    x_hint: +(hx + ox).toFixed(3),
-    y_hint: +(hy + oy).toFixed(3),
-    visible: true,
-  };
-  const idx = data.nodes.findIndex(n => n.id === id);
-  if (idx >= 0) data.nodes[idx] = node;
-  else data.nodes.push(node);
-  data.hex_terrain = data.hex_terrain || {};
-  if (parsed.terrain && parsed.terrain !== "uncharted") {
-    data.hex_terrain[hex] = parsed.terrain;
-  }
-  await safeWriteJsonAtomic(file, data);
-  return node;
+  return withFileLock(file, async () => {
+    const txt = await readFile(file, "utf8");
+    const data = JSON.parse(txt);
+    data.nodes = data.nodes || [];
+    const subhex = pickSubhex();
+    const [hx, hy] = hexCenterInches(hex);
+    const [ox, oy] = SUBHEX_OFFSET_INCHES[subhex];
+    const id = `hex-${hex}-${subhex}`;
+    const node = {
+      id,
+      name: parsed.name,
+      point_type: parsed.point_type || "wilderness",
+      terrain: parsed.terrain || "plains",
+      description: parsed.description || "",
+      hex,
+      subhex,
+      x_hint: +(hx + ox).toFixed(3),
+      y_hint: +(hy + oy).toFixed(3),
+      visible: true,
+    };
+    const idx = data.nodes.findIndex(n => n.id === id);
+    if (idx >= 0) data.nodes[idx] = node;
+    else data.nodes.push(node);
+    data.hex_terrain = data.hex_terrain || {};
+    if (parsed.terrain && parsed.terrain !== "uncharted") {
+      data.hex_terrain[hex] = parsed.terrain;
+    }
+    await safeWriteJsonAtomic(file, data);
+    return node;
+  });
 }
 
 // Atomic JSON write that ALSO validates the temp file parses before renaming.
 // If something corrupts the serialised output (extension, write race, etc.),
 // the existing good file stays intact instead of being replaced by garbage.
+let _tmpCounter = 0;
 async function safeWriteJsonAtomic(file, data) {
-  const tmp = file + ".tmp";
+  const tmp = `${file}.${process.pid}.${Date.now()}.${++_tmpCounter}.tmp`;
   const json = JSON.stringify(data, null, 2) + "\n";
   await writeFile(tmp, json, "utf8");
   try { JSON.parse(await readFile(tmp, "utf8")); }
@@ -477,6 +480,18 @@ async function safeWriteJsonAtomic(file, data) {
     throw new Error("post-write JSON validation failed: " + e.message);
   }
   await rename(tmp, file);
+}
+
+// Per-file mutex: serialises read-modify-write so concurrent handlers can't
+// clobber each other's edits to the same campaign JSON. Without this, two
+// updates can both read the old file, mutate independent copies, and the
+// second writer silently overwrites the first writer's changes.
+const _fileLocks = new Map();
+function withFileLock(file, fn) {
+  const prev = _fileLocks.get(file) || Promise.resolve();
+  const next = prev.then(fn, fn);
+  _fileLocks.set(file, next.catch(() => {}));
+  return next;
 }
 
 function readJsonBody(req) {
@@ -643,20 +658,22 @@ async function apiGenerateRumor(req, res) {
 async function appendRumorToCampaign(campaign, hex, parsed) {
   const file = join(REPO, "maps", campaign, `${campaign}.json`);
   if (!existsSync(file)) throw new Error(`campaign file not found: ${file}`);
-  const txt = await readFile(file, "utf8");
-  const data = JSON.parse(txt);
-  data.hex_rumors = data.hex_rumors || {};
-  data.hex_rumors[hex] = data.hex_rumors[hex] || [];
-  const entry = {
-    rumor:       parsed.rumor || "",
-    source:      parsed.source || "",
-    reliability: parsed.reliability || "",
-    topic:       parsed.topic || "",
-    captured_at: new Date().toISOString(),
-  };
-  data.hex_rumors[hex].push(entry);
-  await safeWriteJsonAtomic(file, data);
-  return entry;
+  return withFileLock(file, async () => {
+    const txt = await readFile(file, "utf8");
+    const data = JSON.parse(txt);
+    data.hex_rumors = data.hex_rumors || {};
+    data.hex_rumors[hex] = data.hex_rumors[hex] || [];
+    const entry = {
+      rumor:       parsed.rumor || "",
+      source:      parsed.source || "",
+      reliability: parsed.reliability || "",
+      topic:       parsed.topic || "",
+      captured_at: new Date().toISOString(),
+    };
+    data.hex_rumors[hex].push(entry);
+    await safeWriteJsonAtomic(file, data);
+    return entry;
+  });
 }
 
 async function captureRumorToMcp({ campaign, hex, parsed }) {
@@ -707,20 +724,15 @@ async function apiClearEncounter(req, res) {
     res.end(JSON.stringify({ error: `campaign file not found: ${campaign}` }));
     return;
   }
-  const data = JSON.parse(await readFile(file, "utf8"));
-  let removed = false;
-  if (data.hex_encounters && data.hex_encounters[hex]) {
+  const removed = await withFileLock(file, async () => {
+    const data = JSON.parse(await readFile(file, "utf8"));
+    if (!(data.hex_encounters && data.hex_encounters[hex])) return false;
     delete data.hex_encounters[hex];
-    removed = true;
-  }
-  if (removed) {
-    const tmp = file + ".tmp";
-    await writeFile(tmp, JSON.stringify(data, null, 2) + "\n", "utf8");
-    await rename(tmp, file);
-    log(`[clear-encounter] removed hex_encounters[${hex}] from maps/${campaign}/${campaign}.json`);
-  } else {
-    log(`[clear-encounter] no entry for hex=${hex} — noop`);
-  }
+    await safeWriteJsonAtomic(file, data);
+    return true;
+  });
+  if (removed) log(`[clear-encounter] removed hex_encounters[${hex}] from maps/${campaign}/${campaign}.json`);
+  else log(`[clear-encounter] no entry for hex=${hex} — noop`);
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ ok: true, removed }));
 }
@@ -757,25 +769,29 @@ async function apiUpdateNode(req, res) {
     res.end(JSON.stringify({ error: `campaign file not found: ${campaign}` }));
     return;
   }
-  const data = JSON.parse(await readFile(file, "utf8"));
-  const idx = (data.nodes || []).findIndex(n => n.id === id);
-  if (idx < 0) {
+  const result = await withFileLock(file, async () => {
+    const data = JSON.parse(await readFile(file, "utf8"));
+    const idx = (data.nodes || []).findIndex(n => n.id === id);
+    if (idx < 0) return { notFound: true };
+    const allowed = ["name", "description", "point_type", "terrain", "x_hint", "y_hint"];
+    const applied = {};
+    for (const k of allowed) {
+      if (fields[k] !== undefined) {
+        data.nodes[idx][k] = fields[k];
+        applied[k] = fields[k];
+      }
+    }
+    await safeWriteJsonAtomic(file, data);
+    return { applied, node: data.nodes[idx] };
+  });
+  if (result.notFound) {
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: `node not found: ${id}` }));
     return;
   }
-  const allowed = ["name", "description", "point_type", "terrain", "x_hint", "y_hint"];
-  const applied = {};
-  for (const k of allowed) {
-    if (fields[k] !== undefined) {
-      data.nodes[idx][k] = fields[k];
-      applied[k] = fields[k];
-    }
-  }
-  await safeWriteJsonAtomic(file, data);
-  log(`[update-node] ${id} → ${JSON.stringify(applied)}`);
+  log(`[update-node] ${id} → ${JSON.stringify(result.applied)}`);
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ ok: true, node: data.nodes[idx] }));
+  res.end(JSON.stringify({ ok: true, node: result.node }));
 }
 
 // --- /api/generate-encounter: OSR wandering encounter -------------------
@@ -884,21 +900,23 @@ async function apiGenerateEncounter(req, res) {
 async function saveEncounterToCampaign(campaign, hex, parsed) {
   const file = join(REPO, "maps", campaign, `${campaign}.json`);
   if (!existsSync(file)) throw new Error(`campaign file not found: ${file}`);
-  const txt = await readFile(file, "utf8");
-  const data = JSON.parse(txt);
-  data.hex_encounters = data.hex_encounters || {};
-  const subhex = pickSubhex();
-  data.hex_encounters[hex] = {
-    creature:    parsed.creature || "",
-    number:      parsed.number || "",
-    distance:    parsed.distance || "",
-    activity:    parsed.activity || "",
-    reaction:    parsed.reaction || "",
-    description: parsed.description || "",
-    subhex,
-  };
-  await safeWriteJsonAtomic(file, data);
-  return subhex;
+  return withFileLock(file, async () => {
+    const txt = await readFile(file, "utf8");
+    const data = JSON.parse(txt);
+    data.hex_encounters = data.hex_encounters || {};
+    const subhex = pickSubhex();
+    data.hex_encounters[hex] = {
+      creature:    parsed.creature || "",
+      number:      parsed.number || "",
+      distance:    parsed.distance || "",
+      activity:    parsed.activity || "",
+      reaction:    parsed.reaction || "",
+      description: parsed.description || "",
+      subhex,
+    };
+    await safeWriteJsonAtomic(file, data);
+    return subhex;
+  });
 }
 
 server.listen(PORT, () => {

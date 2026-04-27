@@ -4,20 +4,50 @@ Running log of every item the user has asked for, with status. Newest items towa
 
 ## Open
 
-- [ ] **Random hex generation + persistence.** When the user clicks an empty hex (no JSON entry), the panel should offer to generate content. Implementation has three parts:
-  1. **Generate**: roll the skeleton client-side from small tables (terrain feature type, encounter, rumor seed) keyed by the hex's terrain. Optional second pass: an "AI flavour" button calls Claude API to expand the skeleton into prose using campaign tone.
-  2. **Save locally** ("Download Updated Map JSON" button): generated hexes accumulate in an in-memory copy of `graphData`, mirrored to `localStorage` keyed by campaign so reloads preserve them. A button serialises the full updated graph as a downloadable JSON the user replaces `maps/<campaign>/<campaign>.json` with and commits to git. Single "save the world state" moment that maps to a commit.
-  3. **Send to Claude Code** (per-hex "Copy capture_thought block" button): emits an MCP-call snippet (text or clipboard) the user pastes into Claude Code, which writes the new content back to Supabase via `capture_thought`. Re-running `/map` then regenerates the JSON from the DB so the local mirror stays consistent.
-
-  Layer them additively — start with (2) alone for an MVP, add (1) flavour and (3) MCP write later. The empty-hex panel is already the entry point (today it just shows terrain).
-- [ ] **Thornespire Keep hill-bleed (RAISED 3 TIMES).** The hill silhouette must be hidden by the keep, not visible through the keep's interior gaps. Fixes attempted so far: (1) compound z-order back→front, (2) knockout-at-full-opacity, (3) blur+threshold dilation of the alpha mask. If still visible after the dilation fix, escalate by either (a) replacing the hill with a fully-filled SVG path drawn behind the keep stamp, or (b) dropping the hill stamp entirely and relying on the keep's anchor point to imply elevation. **DO NOT consider this resolved until the user confirms the hill no longer shows through the keep.**
-- [ ] **Click + shift-click distance/direction route feature** (parity with SVG renderer's `_setupRouteInteraction`). Single-click sets a route start hex; shift-click sets the end hex and renders the Dijkstra route through travel-graph + days label at midpoint. Helpers needed in painted page: `_buildTravelGraph`, `_dijkstra`, `_hexLinePath`, `_findRoute`, `_renderRouteStart`, `_renderRoute`, plus shift-state tracking. The path-rendering can use the SVG path-layer that's already wired up.
+- [ ] **Author `trail_path` arrays for the Basilisk campaign.** `buildTravelGraph` already supports trail edges (3h/hex cap, 2 hexes per watch). Campaign JSON has `path_type: "trail"` on links between nodes but no per-hex `trail_path` block to feed the route finder. Without it, off-road hex hops always cost 6h, even between trailheads. Author the trail hexes the same way `road_path` is authored.
+- [ ] **Sub-hex addressing — finish the migration.** AI-generated POIs and three legacy nodes (Raven's Perch NW, Mud Wallow W, Basilisk Spiderwood W) carry a `subhex` field with sensible offsets. Legacy `NODE_ID_STAMP` overrides still use raw `dx`/`dy` for visual position (Thornespire compound mountains, Pjörk Choppe Hille, etc.). Migrate those to `subhex` codes too so the data is uniform.
+- [ ] **Richer route description.** `describeRoute` currently emits "by road through farmland and forest, then off-trail through forest." Could be improved to mention rivers crossed, named roads, named regions ("crosses the Blackwater River", "follows the Old Northern Trade Road"). Data is available; just a smarter generator.
 - [ ] **Re-anchor forest label-bbox to actual SVG-text bounds.** Forest layer's `precomputeLabelBoxes()` measures with canvas `ctx.measureText` — close to the SVG `<text>` width but not exact. Fix: after labels render, walk `<text>` elements with `getBBox()` and feed those into the avoidance check on the next render. (Currently good enough; tighten if labels ever clip into trees.)
-- [ ] **Doc refresh — `Map Effects Style Tuning.md`** is missing the recent additions: mountain bbox no-overlap, marsh no-overlap, region-based farm tiling, `dx`/`dy` on single overrides, knockout-at-full-opacity fix, SVG path/label layers, hex hover card with terrain, knockout dilation/threshold for hollow line-art stamps.
-- [ ] **Sub-hex addressing — formal scheme.** Currently using raw pixel `dx`/`dy` offsets in `NODE_ID_STAMP`. No formal sub-hex coords. If you want addressing like `"0905-W"` → renderer computes the offset, that's an additive change to the JSON schema + override resolver.
+- [ ] **Doc refresh — `Map Effects Style Tuning.md`** is missing the recent additions: mountain bbox no-overlap, marsh no-overlap, region-based farm tiling, `dx`/`dy` on single overrides, knockout-at-full-opacity fix, SVG path/label layers, hex hover card with terrain, knockout dilation/threshold for hollow line-art stamps, mountain-layer global terrain clip, farm-tile edge pullback, swamp dual-pass + tree dusting, watches travel model.
+- [ ] **Per-PC HP rolls in route card.** The card currently says `+1d6 HP` per long day. The OSR rule is "each PC rolls" — a roll-helper UI (or just a clarifying note that each PC rolls separately) would help.
 
 ## Completed
 
+- [x] **River-crossing penalty** — rivers count as perilous (½ hex per watch / 12h per hex) when off-road. Roads/trails through river hexes still cap at their bridge/ford cost. Hovercard bucketing also treats river hexes as perilous.
+- [x] **Hex 0910 + 1011 reclassified** to `farmland-forest` in `Basilisk.json` AND in the open-world MCP. Renderer paints both farm tiles and trees in those hexes.
+- [x] **CLAUDE.md schema corrected** — full list of valid `thought_type` values (point, path, rumor, journey, campaign, observation, note, terrain, monster, npc) with a pointer to the canonical schema file.
+- [x] **Click + shift-click route feature** — Dijkstra travel-graph, cube-line fallback, route-start marker, persistent path overlay, watches+hours midpoint label.
+- [x] **Rich route hovercard pinned to lower-right.** Shows start → end, waypoint nodes, mini-map of the route with terrain-coloured hexes, route description ("by road through farmland and forest, then off-trail through forest"), totals (miles · watches · hours), days at safe/push/forced pace, per-category breakdown (road/trail/off-trail/perilous hexes), hint about hex = 6 miles.
+- [x] **Watches travel model** — 6h watches, 6mi hexes; road = 3 hex/watch (2h cap), trail = 2 hex/watch (3h cap, future), off-trail normal = 1 hex/watch (6h), off-trail perilous = ½ hex/watch (12h). Each watch past 2 in a day costs 1d6 HP. Documented in `docs/Watches.md`.
+- [x] **Robust map loading.** Brace-walk recovery for malformed `Basilisk.json`; red banner if recovery fails; minimal-graph fallback so the page still renders.
+- [x] **Atomic JSON writes with post-write validation** in `dev-server.mjs` — no malformed write can replace a good file.
+- [x] **River label** "Blackwater River" along the wiggle spine via SVG textPath.
+- [x] **Road label** "Old Northern Trade Road" along the wobbled centerline via SVG textPath.
+- [x] **Off-map labels positioned 2 hexes outside the populated bounds** — N label sized to match the others; cardinals/diagonals likewise hug the map content.
+- [x] **Cartouche** background fill removed (borders only).
+- [x] **Region "BELERION" floating banner removed** (cartouche already names the region).
+- [x] **Forest hex always-2-tree fallback** — settlement + label exclusions can no longer leave a forest hex bare.
+- [x] **NODE_CLEAR_R 28→20, PATH_CLEAR_R 12→10, label-box padding tightened** so trees can flank labels.
+- [x] **Mountain layer clipped to mountain + hills hex union** — peaks no longer overflow into forest/plains.
+- [x] **Farm tile clipping + edge pullback** — fields stay inside the farm region and pull 14 px back from edges that face non-farmland.
+- [x] **Swamp** dense cattail second pass (cap 22, radius 20) plus a sparse stunted-tree pass.
+- [x] **Forested-hills denser hill silhouettes** — 2–3 hills per hex, pulled 25% toward centre. Hills hex stamps shrunk via multBase 0.7. Bandit Camp dropped from height 18 → 12.
+- [x] **Deciduous trees scaled to 0.75 ×** conifer size (was rendering ~25% larger).
+- [x] **Map content no longer selectable** — `user-select: none` on stage + SVG text in hotspots layer.
+- [x] **Hex 1113 / Serpent's Pass** — switched from Pointed Rock to Hills 9 (normal hill).
+- [x] **Mistwood Glen moved from de-facto 0912 to its named hex 0812** (was rendering at the wrong hex due to mismatched x_hint/y_hint).
+- [x] **Thornespire Keep** — Stronghold (Viking shape-03) framed by two mountain peaks rendered behind via compound. The original hill-bleed bug is moot — there's no hill stamp anymore.
+- [x] **Sub-hex placements** — Raven's Perch NW, Mud Wallow W, Basilisk Spiderwood W (in Basilisk.json with computed x_hint/y_hint).
+- [x] **Random hex generation + persistence** — Explore picker (7-hex flower) calls `/api/generate-hex`; result is saved to `maps/<campaign>/<campaign>.json` AND captured to MCP via `claude -p`. Each generated POI gets a random sub-hex for visual placement.
+- [x] **Encounter generator** — Roll Encounter button → `/api/generate-encounter` (OSR rolling-die loading icon, sword & shield overlay on the hex). Encounter persists in `hex_encounters` keyed by hex; random sub-hex placement for the marker. Clear Encounter button removes the entry.
+- [x] **Rumor generator** — Ask for Rumor button auto-captures to MCP as a `rumor` thought AND appends to `hex_rumors` in JSON. Encounter context seeds the rumor when one is active. Hex/encounter generators now read nearby rumors back as context for future rolls.
+- [x] **Inline edit on panel name + description** — `contenteditable` with Enter/blur to save via `POST /api/update-node`; Esc reverts; brief green flash on success.
+- [x] **Hex hover highlight extended to frontier hexes** (adjacent to defined hexes), matching the click rule.
+- [x] **Click-back fix** — generated hexes show their content again on re-click (was reading filtered render set; now reads `graphData.nodes`).
+- [x] **Map text non-selectable, panel text still selectable.**
+- [x] **Slash commands `/dev-server-start` and `/dev-server-restart`** in `.claude/commands/` for managing the local dev proxy.
+- [x] **`tools/dev-server.mjs`** — local Node proxy serving the static site + `/api/health`, `/api/generate-hex`, `/api/generate-encounter`, `/api/generate-rumor`, `/api/update-node`, `/api/clear-encounter`. Backend auto-detects local `claude` CLI (uses Pro/Max subscription) or falls back to Anthropic API key.
+- [x] **`.claude/.env` lookup** — proxy reads `OPEN_WORLD_ENV_FILE`, `~/.config/open-world-map.env`, or repo-local `.env` so the API key never has to live in the repo.
 - [x] Roads → SVG twin-bank with paper fill.
 - [x] Labels → SVG `<text>` with paper halo via `paint-order: stroke fill`.
 - [x] Arrow keys pan one hex (smooth tween, 200 ms).
