@@ -1,0 +1,3683 @@
+{
+  "paper": "paper.jpg",
+  "border": "border.png",
+  "patterns": {
+    "marsh": "patterns/marsh.jpg",
+    "grassland": "patterns/grassland.jpg",
+    "hatching": "patterns/hatching.jpg",
+    "rocky": "patterns/rocky.jpg",
+    "cracked": "patterns/cracked.jpg"
+  },
+  "categories": {
+    "mountains": [
+      {
+        "src": "symbols/mountains/shape-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-17.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-18.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-19.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-20.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-21.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-22.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-23.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-24.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-25.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-26.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-27.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-28.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-29.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-30.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-31.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-32.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-33.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-34.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-35.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-36.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-37.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-38.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-39.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-40.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-41.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-42.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-43.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-44.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-45.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-46.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-47.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-48.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-49.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-50.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-51.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-52.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-53.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-54.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-55.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/mountains/shape-56.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      }
+    ],
+    "conifer": [
+      {
+        "src": "symbols/conifer/shape-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-17.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-18.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-19.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/conifer/shape-20.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      }
+    ],
+    "deciduous": [
+      {
+        "src": "symbols/deciduous/shape-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-17.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-18.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-19.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      },
+      {
+        "src": "symbols/deciduous/shape-20.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.9
+        ]
+      }
+    ],
+    "vegetation": [
+      {
+        "src": "symbols/vegetation/shape-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-17.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-18.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-19.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-20.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-21.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-22.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-23.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-24.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-25.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-26.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-27.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-28.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-29.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-30.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-31.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-32.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-33.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-34.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-35.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-36.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-37.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-38.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-39.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-40.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-41.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-42.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-43.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-44.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-45.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-46.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-47.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-48.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-49.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-50.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-51.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-52.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-53.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-54.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-55.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-56.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-57.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/vegetation/shape-58.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "features": [
+      {
+        "src": "symbols/features/shape-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-17.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-18.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-19.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-20.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-21.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-22.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-23.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-24.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-25.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-26.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-27.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-28.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-29.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-30.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-31.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-32.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-33.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-34.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-35.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-36.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-37.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-38.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-39.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-40.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-41.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-42.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-43.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-44.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-45.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-46.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-47.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-48.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-49.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-50.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-51.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-52.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-53.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-54.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-55.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-56.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-57.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-58.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-59.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-60.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "lakes": [
+      {
+        "src": "symbols/lakes/shape-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-17.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-18.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-19.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/lakes/shape-20.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "terrain": [
+      {
+        "src": "symbols/terrain/shape-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-17.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-18.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-19.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-20.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-21.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-22.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-23.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-24.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-25.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-26.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-27.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-28.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-29.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-30.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-31.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-32.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-33.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-34.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-35.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-36.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-37.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-38.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-39.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-40.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-41.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-42.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-43.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-44.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-45.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-46.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-47.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-48.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-49.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-50.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-51.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-52.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-53.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-54.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-55.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-56.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-57.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-58.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-59.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-60.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-61.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-62.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-63.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-64.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-65.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-66.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-67.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-68.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-69.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-70.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-71.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-72.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-73.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-74.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/terrain/shape-75.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "general": [
+      {
+        "src": "symbols/general/shape-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-17.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-18.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-19.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-20.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-21.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-22.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-23.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-24.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-25.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-26.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-27.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-28.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-29.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/general/shape-30.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "viking": [
+      {
+        "src": "symbols/viking/shape-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-17.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-18.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-19.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-20.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-21.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-22.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-23.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-24.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-25.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-26.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-27.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-28.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-29.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-30.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-31.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-32.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/viking/shape-33.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "medieval": [
+      {
+        "src": "symbols/medieval/shape-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-17.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-18.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-19.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-20.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-21.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-22.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-23.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-24.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-25.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-26.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-27.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-28.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-29.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-30.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-31.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-32.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/medieval/shape-33.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "extra-egyptian": [
+      {
+        "src": "symbols/extra-egyptian/extra-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-egyptian/extra-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "extra-mayan": [
+      {
+        "src": "symbols/extra-mayan/extra-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/extra-mayan/extra-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "settlements/village": [
+      {
+        "src": "symbols/features/shape-01.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-02.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-03.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "settlements/castle": [
+      {
+        "src": "symbols/features/shape-04.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-05.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-06.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "settlements/walled-city": [
+      {
+        "src": "symbols/features/shape-07.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-08.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-09.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "features/tower": [
+      {
+        "src": "symbols/features/shape-10.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-11.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "features/ruin": [
+      {
+        "src": "symbols/features/shape-12.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-13.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "features/lair": [
+      {
+        "src": "symbols/features/shape-14.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-15.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ],
+    "features/sanctuary": [
+      {
+        "src": "symbols/features/shape-16.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "src": "symbols/features/shape-17.png",
+        "weight": 1,
+        "anchor": [
+          0.5,
+          0.5
+        ]
+      }
+    ]
+  }
+}

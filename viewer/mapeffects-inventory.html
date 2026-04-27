@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Painted Symbol Inventory</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1a1410;
+    color: #f1e4c4;
+    font-family: 'IM Fell English', Palatino, serif;
+    padding: 18px;
+  }
+  h1 { font-size: 22px; margin-bottom: 6px; }
+  .summary { font-size: 13px; opacity: 0.7; margin-bottom: 16px; }
+
+  .toolbar {
+    margin-bottom: 12px;
+    font-size: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .toolbar fieldset {
+    border: 1px solid #5a4a3a;
+    padding: 4px 8px;
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .toolbar legend { padding: 0 4px; font-size: 11px; opacity: 0.6; }
+  .toolbar label { cursor: pointer; }
+  .toolbar input[type=checkbox], .toolbar input[type=radio] { margin-right: 3px; }
+  .toolbar select, .toolbar button {
+    font-family: inherit;
+    font-size: 12px;
+    padding: 3px 8px;
+    cursor: pointer;
+    background: #2a1f14;
+    color: #f1e4c4;
+    border: 1px solid #5a4a3a;
+  }
+  .toolbar .spacer { flex: 1; }
+  .toolbar .save-state { font-size: 11px; opacity: 0.6; font-family: monospace; }
+
+  .legend {
+    background: #2a1f14;
+    border: 1px solid #5a4a3a;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .legend code { background: #4a3520; padding: 1px 4px; border-radius: 2px; }
+
+  /* Filter chip cloud */
+  .chip-cloud {
+    background: #2a1f14;
+    border: 1px solid #5a4a3a;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+    font-size: 11px;
+    display: none;
+  }
+  .chip-cloud.active { display: block; }
+  .chip-cloud .label { opacity: 0.6; margin-right: 6px; }
+  .chip-cloud .filter-chip {
+    display: inline-block;
+    background: #4a3520;
+    color: #f1e4c4;
+    border: 1px solid #6a5030;
+    padding: 1px 7px;
+    margin: 2px;
+    cursor: pointer;
+    font-size: 11px;
+    border-radius: 2px;
+  }
+  .chip-cloud .filter-chip:hover { background: #6a4a30; }
+  .chip-cloud .filter-chip.selected { background: #8c5a3a; border-color: #c89060; }
+  .chip-cloud .filter-chip .n { opacity: 0.6; margin-left: 3px; font-size: 10px; }
+
+  details {
+    background: #f1e4c4;
+    color: #1a1410;
+    border: 1px solid #2a1f14;
+    margin-bottom: 12px;
+    padding: 12px 14px;
+  }
+  summary {
+    font-size: 16px;
+    color: #5a2010;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▸ "; }
+  details[open] > summary::before { content: "▾ "; }
+  summary .count { opacity: 0.6; font-weight: normal; font-size: 13px; margin-left: 8px; }
+  summary .progress {
+    opacity: 0.55;
+    font-weight: normal;
+    font-size: 12px;
+    margin-left: 8px;
+    font-family: monospace;
+  }
+
+  /* Inline archetype label card — flows in the same grid as stamp cards
+     so a sub-group doesn't force a new row when the previous group only
+     filled part of one. */
+  .arch-label {
+    background: #e8d4a8;
+    border: 1px solid #b09a6c;
+    padding: 8px 10px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #4a2010;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    min-height: 60px;
+  }
+  .arch-label .a-name { font-weight: bold; font-size: 13px; }
+  .arch-label .a-info { opacity: 0.7; font-size: 10px; line-height: 1.4; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 10px;
+    margin-top: 6px;
+    align-items: stretch;
+  }
+
+  .stamp {
+    background: #faf3e6;
+    border: 1px solid #c4b48a;
+    padding: 8px;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+  }
+  .stamp.tagged { box-shadow: 0 0 0 2px #5a8c3a inset; }
+  .stamp.overlay { background: #f0e8d0; border-style: dashed; }
+  .stamp.decoration, .stamp.path, .stamp.pattern { background: #ede1c0; }
+
+  .stamp .pre {
+    background: #fff;
+    border-bottom: 1px dashed #c4b48a;
+    height: 260px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    margin-bottom: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+  .stamp .pre::after {
+    content: "";
+    position: absolute;
+    left: 4px; right: 4px; bottom: 0;
+    height: 1px;
+    background: #c4b48a;
+  }
+  .stamp .pre.normalized img { width: auto; max-width: none; height: auto; }
+  /* Fit: scale to fill the preview wrapper while preserving aspect ratio.
+     Uses object-fit:contain — both width and height are 100%, the image
+     is scaled up *and* down as needed so small stamps don't get lost in
+     dead space and large ones don't squash. */
+  .stamp .pre.fit { align-items: stretch; }
+  .stamp .pre.fit img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
+  .stamp .pre.native { align-items: center; }
+  .stamp .pre.native img { max-width: none; max-height: none; image-rendering: pixelated; }
+
+  .stamp .brush-name {
+    font-family: 'IM Fell English', serif;
+    font-weight: bold;
+    font-size: 13px;
+    color: #2a1410;
+    text-align: center;
+    margin-bottom: 4px;
+    word-break: break-word;
+  }
+  .stamp .meta-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    justify-content: center;
+    margin-bottom: 4px;
+  }
+  .meta-chip {
+    display: inline-block;
+    font-family: monospace;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid;
+  }
+  .meta-chip.archetype { background: #e2c89a; border-color: #b09a6c; color: #4a2a10; }
+  .meta-chip.use-stamp      { background: #d8e8c0; border-color: #80a050; color: #2a4010; }
+  .meta-chip.use-overlay    { background: #e0d4f0; border-color: #8060a0; color: #301050; }
+  .meta-chip.use-decoration { background: #f0e0c0; border-color: #b09060; color: #503010; }
+  .meta-chip.use-path       { background: #d0e0e8; border-color: #6090a0; color: #103040; }
+  .meta-chip.use-pattern    { background: #f0d4d4; border-color: #a06060; color: #501010; }
+  .meta-chip.role-primary       { background: #fae0c0; border-color: #c08040; color: #503010; }
+  .meta-chip.role-overlay-partner  { background: #e0d4f0; border-color: #8060a0; color: #301050; }
+  .meta-chip.role-mirror-partner   { background: #d0e0e8; border-color: #6090a0; color: #103040; }
+  .meta-chip.role-composed-range   { background: #fad0d0; border-color: #c06060; color: #601020; }
+
+  .stamp .stats {
+    font-family: monospace;
+    font-size: 10px;
+    text-align: center;
+    color: #5a4030;
+    margin-bottom: 6px;
+  }
+  .stamp .partner {
+    font-family: monospace;
+    font-size: 10px;
+    text-align: center;
+    color: #6a4a1a;
+    margin-bottom: 4px;
+    font-style: italic;
+    opacity: 0.85;
+  }
+
+  .stamp .meta {
+    margin-top: auto;
+    padding-top: 6px;
+    border-top: 1px solid #d8c89c;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stamp .h-row {
+    display: flex; align-items: center; gap: 4px;
+    justify-content: center; font-size: 10px;
+  }
+  .stamp .h-row input {
+    width: 50px;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 2px 4px;
+    border: 1px solid #c4b48a;
+    background: #fff;
+    text-align: right;
+  }
+  .stamp .h-row .units { width: 38px; text-align: center; }
+  .stamp .h-row label { opacity: 0.55; }
+
+  .stamp .tags {
+    display: flex; flex-wrap: wrap;
+    gap: 3px; align-items: center;
+    min-height: 22px;
+  }
+  .tag-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: #d8e8c0; border: 1px solid #80a050;
+    padding: 1px 4px;
+    font-size: 10px; font-family: monospace;
+    border-radius: 2px;
+  }
+  .tag-chip button {
+    background: none; border: none; cursor: pointer;
+    font-size: 12px; line-height: 1; padding: 0 2px;
+    color: #4a6020;
+  }
+  .stamp .tag-input {
+    flex: 1; min-width: 50px;
+    border: 1px dashed #b09a6c;
+    background: transparent;
+    font-family: monospace;
+    font-size: 10px;
+    padding: 1px 3px;
+    color: #1a1410;
+  }
+  .stamp .tag-input:focus { outline: none; border-style: solid; background: #fff; }
+
+  .stamp .src {
+    font-family: monospace;
+    font-size: 9px;
+    opacity: 0.4;
+    margin-top: 4px;
+    word-break: break-all;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<h1>Painted Symbol Inventory</h1>
+<div class="summary" id="summary">Loading…</div>
+
+<div class="legend">
+  <strong>Reading the cards.</strong> Each card shows the <em>brush name</em> the artist gave the stamp,
+  followed by chips for its <code>archetype</code> (auto-classified from the name) and
+  <code>use</code> — <span class="meta-chip use-stamp">stamp</span>
+  <span class="meta-chip use-overlay">overlay</span>
+  <span class="meta-chip use-decoration">decoration</span>
+  <span class="meta-chip use-path">path</span>
+  <span class="meta-chip use-pattern">pattern</span>.
+  Tiling roles indicate paired stamps the artist designed to be used together —
+  <span class="meta-chip role-primary">primary</span> stamps pair with their
+  <span class="meta-chip role-overlay-partner">overlay-partner</span> (e.g. Volcano + Smoke);
+  <span class="meta-chip role-mirror-partner">mirror-partner</span> goes with its non-Reverse base;
+  <span class="meta-chip role-composed-range">composed-range</span> stamps are pre-formed ranges, drop them as a unit.
+  <em>Suggested height</em> comes from the archetype's spec target × a size factor derived from the original PNG file size (a strong proxy for visual scale).
+</div>
+
+<div class="toolbar">
+  <fieldset>
+    <legend>Preview</legend>
+    <label><input type="radio" name="mode" value="normalized" checked> Normalized</label>
+    <label><input type="radio" name="mode" value="fit"> Fit</label>
+    <label><input type="radio" name="mode" value="native"> Native</label>
+  </fieldset>
+  <fieldset>
+    <legend>Sort</legend>
+    <select id="sort">
+      <option value="default">default</option>
+      <option value="size-desc" selected>size ↓ (largest first)</option>
+      <option value="size-asc">size ↑</option>
+      <option value="name">brush name</option>
+      <option value="archetype">archetype</option>
+      <option value="height">suggested height ↓</option>
+    </select>
+  </fieldset>
+  <fieldset>
+    <legend>Group</legend>
+    <select id="group">
+      <option value="archetype" selected>by archetype</option>
+      <option value="none">none</option>
+    </select>
+  </fieldset>
+  <button id="toggle-filter">Filter…</button>
+  <button id="open-all">Open all</button>
+  <button id="close-all">Collapse all</button>
+  <button id="export">Export classifications</button>
+  <button id="import">Import…</button>
+  <input type="file" id="import-file" accept=".json" style="display:none">
+  <button id="clear-all" style="color:#ffb0a0">Clear classifications</button>
+  <span class="spacer"></span>
+  <span class="save-state" id="save-state"></span>
+</div>
+
+<div class="chip-cloud" id="filter-bar">
+  <div style="margin-bottom:6px"><span class="label">use:</span> <span id="filter-uses"></span></div>
+  <div style="margin-bottom:6px"><span class="label">archetype:</span> <span id="filter-archetypes"></span></div>
+  <div style="margin-bottom:6px"><span class="label">tiling role:</span> <span id="filter-roles"></span></div>
+  <div>
+    <button id="filter-clear">clear filters</button>
+    <button id="filter-untagged">show untagged only</button>
+  </div>
+</div>
+
+<div id="root"></div>
+
+<script>
+(async function () {
+  const root = document.getElementById("root");
+  const summary = document.getElementById("summary");
+  const saveState = document.getElementById("save-state");
+  const base = "assets/mapeffects/";
+
+  // ── Fetch manifest + brush metadata ────────────────────────────────────
+  const [manifest, meta] = await Promise.all([
+    fetch(base + "manifest.json").then(r => r.json()),
+    fetch(base + "brush-metadata.json").then(r => r.json()).catch(() => ({})),
+  ]);
+  const cats = manifest.categories || {};
+
+  // Index every stamp once with its merged metadata.
+  const stamps = [];
+  for (const [catName, items] of Object.entries(cats)) {
+    for (const it of items) {
+      const m = meta[it.src] || {};
+      stamps.push({
+        src: it.src,
+        category: catName,
+        manifest: it,
+        brush_name: m.brush_name || it.src.split("/").pop().replace(/\.png$/, ""),
+        archetype: m.archetype || "unknown",
+        use: m.use || "stamp",
+        suggested_height_px: m.suggested_height_px,
+        size_factor: m.size_factor,
+        file_kb: m.file_kb,
+        tiling_role: m.tiling_role || "single",
+        tiling_partner_name: m.tiling_partner_name || null,
+        guid: m.guid,
+      });
+    }
+  }
+
+  // ── Classification persistence (user overrides) ─────────────────────────
+  const STORAGE_KEY = "painted-classifications-v1";
+  const userMeta = (() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+    catch { return {}; }
+  })();
+  function getUserMeta(src) {
+    return userMeta[src] || { tags: [], targetHeight: null, units: null, notes: "" };
+  }
+  function setUserMeta(src, m) {
+    const empty = !m.tags?.length && m.targetHeight == null && m.units == null && !m.notes;
+    if (empty) delete userMeta[src];
+    else userMeta[src] = m;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(userMeta));
+    flashSave();
+  }
+  let saveTimer = null;
+  function flashSave() {
+    const n = Object.keys(userMeta).length;
+    saveState.textContent = `saved · ${n} user-edits`;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { saveState.textContent = `${n} user-edits`; }, 700);
+  }
+
+  // Effective rendered height for a stamp:
+  //   user override > metadata suggestion > 50 px fallback.
+  function effectiveHeight(s) {
+    const u = getUserMeta(s.src);
+    if (u.targetHeight != null) return u.targetHeight;
+    if (s.suggested_height_px) return s.suggested_height_px;
+    return 50;
+  }
+
+  // ── Filter / sort state ─────────────────────────────────────────────────
+  const filters = { uses: new Set(), archetypes: new Set(), roles: new Set(), untaggedOnly: false };
+
+  function tally(field) {
+    const m = new Map();
+    stamps.forEach(s => { const v = s[field]; m.set(v, (m.get(v) || 0) + 1); });
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }
+  function buildFilterBar() {
+    function render(node, field, list) {
+      node.innerHTML = "";
+      list.forEach(([v, n]) => {
+        const c = document.createElement("span");
+        c.className = "filter-chip" + (filters[field].has(v) ? " selected" : "");
+        c.innerHTML = `${v}<span class="n">${n}</span>`;
+        c.addEventListener("click", () => {
+          if (filters[field].has(v)) filters[field].delete(v);
+          else filters[field].add(v);
+          buildFilterBar();
+          renderAll();
+        });
+        node.appendChild(c);
+      });
+    }
+    render(document.getElementById("filter-uses"),       "uses",       tally("use"));
+    render(document.getElementById("filter-archetypes"), "archetypes", tally("archetype"));
+    render(document.getElementById("filter-roles"),      "roles",      tally("tiling_role"));
+  }
+
+  function passesFilter(s) {
+    if (filters.untaggedOnly && userMeta[s.src]) return false;
+    if (filters.uses.size       && !filters.uses.has(s.use))           return false;
+    if (filters.archetypes.size && !filters.archetypes.has(s.archetype)) return false;
+    if (filters.roles.size      && !filters.roles.has(s.tiling_role))  return false;
+    return true;
+  }
+
+  function getMode() { return document.querySelector('input[name="mode"]:checked').value; }
+  function getSort() { return document.getElementById("sort").value; }
+  function getGroup() { return document.getElementById("group").value; }
+  // Inventory previews use a fixed auto-zoom so the small on-canvas
+  // suggested heights (singles ~14 px, mountains ~38 px) become inspectable
+  // in the preview wrapper while preserving exact relative ratios.
+  const PREVIEW_ZOOM = 3.3;
+
+  function sortStamps(arr) {
+    const sort = getSort();
+    const c = arr.slice();
+    switch (sort) {
+      case "size-desc": c.sort((a, b) => (b.file_kb || 0) - (a.file_kb || 0)); break;
+      case "size-asc":  c.sort((a, b) => (a.file_kb || 0) - (b.file_kb || 0)); break;
+      case "name":      c.sort((a, b) => (a.brush_name || "").localeCompare(b.brush_name || "")); break;
+      case "archetype": c.sort((a, b) => (a.archetype || "").localeCompare(b.archetype || "") || (b.file_kb || 0) - (a.file_kb || 0)); break;
+      case "height":    c.sort((a, b) => effectiveHeight(b) - effectiveHeight(a)); break;
+      default: break;
+    }
+    return c;
+  }
+
+  // ── Render a single stamp card ─────────────────────────────────────────
+  function renderCard(s) {
+    const u = getUserMeta(s.src);
+    const mode = getMode();
+    const eff = effectiveHeight(s);
+    const overridden = u.targetHeight != null;
+
+    const card = document.createElement("div");
+    card.className = "stamp " + s.use + (userMeta[s.src] ? " tagged" : "");
+
+    // Preview
+    const pre = document.createElement("div");
+    pre.className = "pre " + mode;
+    const img = document.createElement("img");
+    img.src = base + s.src;
+    img.loading = "lazy";
+    if (mode === "normalized") img.style.height = (eff * PREVIEW_ZOOM) + "px";
+    pre.appendChild(img);
+    card.appendChild(pre);
+
+    // Brush name (artist's original)
+    const bn = document.createElement("div");
+    bn.className = "brush-name";
+    bn.textContent = s.brush_name;
+    bn.title = s.brush_name;
+    card.appendChild(bn);
+
+    // Meta chips
+    const chips = document.createElement("div");
+    chips.className = "meta-chips";
+    chips.innerHTML =
+      `<span class="meta-chip archetype">${s.archetype}</span>` +
+      `<span class="meta-chip use-${s.use}">${s.use}</span>` +
+      (s.tiling_role && s.tiling_role !== "single"
+        ? `<span class="meta-chip role-${s.tiling_role}">${s.tiling_role}</span>`
+        : "");
+    card.appendChild(chips);
+
+    // Stats line
+    const stats = document.createElement("div");
+    stats.className = "stats";
+    const parts = [];
+    if (s.file_kb)              parts.push(`${s.file_kb} KB`);
+    if (s.suggested_height_px)  parts.push(`suggest ${s.suggested_height_px}px`);
+    if (s.size_factor != null)  parts.push(`×${s.size_factor.toFixed(2)}`);
+    parts.push(`render ${eff}px${overridden ? " (override)" : ""}`);
+    stats.textContent = parts.join(" · ");
+    card.appendChild(stats);
+
+    // Tiling partner pointer
+    if (s.tiling_partner_name) {
+      const p = document.createElement("div");
+      p.className = "partner";
+      const verb = s.tiling_role === "primary" ? "pairs with" :
+                   s.tiling_role === "overlay-partner" ? "overlays" :
+                   s.tiling_role === "mirror-partner" ? "mirrors" :
+                   "→";
+      p.textContent = `${verb} ${s.tiling_partner_name}`;
+      card.appendChild(p);
+    }
+
+    // Editable meta
+    const metaDiv = document.createElement("div");
+    metaDiv.className = "meta";
+
+    // h + units row
+    const hRow = document.createElement("div");
+    hRow.className = "h-row";
+    const hLabel = document.createElement("label"); hLabel.textContent = "h";
+    hRow.appendChild(hLabel);
+    const hInput = document.createElement("input");
+    hInput.type = "number";
+    hInput.placeholder = String(s.suggested_height_px ?? 50);
+    if (u.targetHeight != null) hInput.value = u.targetHeight;
+    hInput.addEventListener("change", () => {
+      const v = hInput.value.trim();
+      u.targetHeight = v === "" ? null : Number(v);
+      if (Number.isNaN(u.targetHeight)) u.targetHeight = null;
+      setUserMeta(s.src, u);
+      renderCardInPlace(card, s);
+    });
+    hRow.appendChild(hInput);
+
+    const uLab = document.createElement("label"); uLab.textContent = "units";
+    hRow.appendChild(uLab);
+    const uInput = document.createElement("input");
+    uInput.type = "number"; uInput.className = "units";
+    uInput.placeholder = "1";
+    uInput.title = "How many distinct visual units (peaks/trees/etc) are drawn in this stamp.";
+    if (u.units != null) uInput.value = u.units;
+    uInput.addEventListener("change", () => {
+      const v = uInput.value.trim();
+      u.units = v === "" ? null : Number(v);
+      if (Number.isNaN(u.units)) u.units = null;
+      setUserMeta(s.src, u);
+      card.classList.toggle("tagged", userMeta[s.src] != null);
+    });
+    hRow.appendChild(uInput);
+    metaDiv.appendChild(hRow);
+
+    // Tag chips
+    const tagsDiv = document.createElement("div");
+    tagsDiv.className = "tags";
+    function renderTags() {
+      tagsDiv.innerHTML = "";
+      (u.tags || []).forEach(t => {
+        const chip = document.createElement("span");
+        chip.className = "tag-chip";
+        chip.textContent = t;
+        const x = document.createElement("button");
+        x.textContent = "×";
+        x.addEventListener("click", () => {
+          u.tags = u.tags.filter(tag => tag !== t);
+          setUserMeta(s.src, u); renderTags();
+          card.classList.toggle("tagged", userMeta[s.src] != null);
+        });
+        chip.appendChild(x);
+        tagsDiv.appendChild(chip);
+      });
+      const ti = document.createElement("input");
+      ti.className = "tag-input";
+      ti.placeholder = "+tag";
+      ti.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === ",") {
+          e.preventDefault();
+          const t = ti.value.trim().replace(/,$/, "").toLowerCase();
+          if (t && !(u.tags || []).includes(t)) {
+            u.tags = [...(u.tags || []), t];
+            setUserMeta(s.src, u); renderTags();
+            card.classList.toggle("tagged", userMeta[s.src] != null);
+          }
+          ti.value = "";
+        }
+      });
+      tagsDiv.appendChild(ti);
+    }
+    renderTags();
+    metaDiv.appendChild(tagsDiv);
+
+    card.appendChild(metaDiv);
+
+    const src = document.createElement("div");
+    src.className = "src";
+    src.textContent = s.src;
+    card.appendChild(src);
+
+    return card;
+  }
+
+  function renderCardInPlace(oldCard, s) {
+    const fresh = renderCard(s);
+    oldCard.replaceWith(fresh);
+  }
+
+  // ── Cross-category sections ──────────────────────────────────────────────
+  // Each archetype belongs to a top-level "section" so the inventory groups
+  // by purpose (sea, settlements, terrain, etc.) instead of by source
+  // brushset. Within a section the archetype labels flow inline with the
+  // stamps in one grid so sub-groups don't waste rows.
+  const SECTION_ORDER = [
+    "mountains", "forests", "vegetation", "terrain", "water",
+    "settlements", "sea", "ominous", "decorations", "overlays", "paths",
+    // Source brushset names — used as the section when an archetype is
+    // unclassified, so Viking / Medieval / Egyptian / Mayan stamps stay
+    // grouped by their pack of origin instead of dumped together.
+    "viking", "medieval", "extra-egyptian", "extra-mayan",
+    "general", "features", "lakes", "conifer", "deciduous",
+    "unclassified",
+  ];
+  const SECTION_OF_ARCHETYPE = {
+    // mountains
+    "small-hill": "mountains", "mountain": "mountains", "volcano": "mountains",
+    "caldera": "mountains", "mountain-range": "mountains", "lake-mountain": "mountains",
+    // forests / trees
+    "tree-clump": "forests", "conifer-single": "forests", "deciduous-single": "forests",
+    "tree-single": "forests", "tree-sapling": "forests", "treetops-overlay": "overlays",
+    // vegetation
+    "marsh": "vegetation", "cattail": "vegetation", "cactus": "vegetation",
+    "farm": "vegetation", "thorns": "vegetation", "desert-scrub": "vegetation",
+    "vegetation-grass": "vegetation", "vegetation-shrub": "vegetation",
+    "vegetation-flower": "vegetation",
+    // terrain features
+    "dune": "terrain", "mesa": "terrain", "cliff": "terrain",
+    "pointed-rock": "terrain", "rock-formation": "terrain", "rock-small": "terrain",
+    "crater": "terrain", "crevasse": "terrain", "canyon": "terrain",
+    "floating-island": "terrain",
+    // water
+    "lake": "water", "waterfall": "water", "estuary": "water",
+    // settlements / structures
+    "walled-city": "settlements", "city": "settlements", "stronghold": "settlements",
+    "castle": "settlements", "village": "settlements", "tower": "settlements",
+    "ruin": "settlements", "sanctuary": "settlements", "lair": "settlements",
+    "bridge": "settlements", "portal": "settlements",
+    // sea
+    "ship": "sea", "sea-monster": "sea", "tentacles": "sea", "whirlpool": "sea",
+    // ominous
+    "dragon": "ominous", "ominous-marker": "ominous",
+    // decorations
+    "compass": "decorations", "banner": "decorations", "scale-bar": "decorations",
+    "border-corner": "decorations", "weave-border": "decorations",
+    "weave-corner": "decorations", "rhumb-lines": "decorations",
+    // overlays
+    "smoke-overlay": "overlays", "grid-hex": "overlays", "grid-square": "overlays",
+    "shader": "overlays", "seamless-tile": "overlays",
+    // paths
+    "river": "paths", "coastline": "paths", "trail": "paths", "ocean-hatching": "paths",
+  };
+  function sectionOf(stamp) {
+    const arch = stamp.archetype;
+    if (SECTION_OF_ARCHETYPE[arch]) return SECTION_OF_ARCHETYPE[arch];
+    // Fall back to the source brushset category (viking, medieval, etc.)
+    // so unclassified-archetype stamps stay grouped by pack of origin.
+    if (stamp.category && stamp.category !== "unknown") return stamp.category;
+    return "unclassified";
+  }
+
+  // Order archetypes within a section by typical render height (largest first),
+  // pushing unclassified/unknown to the end.
+  function archSortKey(arch, sample) {
+    if (arch === "unknown") return [Infinity, arch];
+    return [-(sample?.suggested_height_px || 0), arch];
+  }
+
+  function renderAll() {
+    root.innerHTML = "";
+
+    const bySection = {};
+    stamps.filter(passesFilter).forEach(s => {
+      const sec = sectionOf(s);
+      (bySection[sec] ||= []).push(s);
+    });
+
+    const orderedSections = SECTION_ORDER.filter(s => bySection[s]).concat(
+      Object.keys(bySection).filter(s => !SECTION_ORDER.includes(s))
+    );
+    if (orderedSections.length === 0) {
+      root.innerHTML = `<div style="color:#aaa;text-align:center;padding:40px">No stamps match the current filters.</div>`;
+      return;
+    }
+
+    const groupBy = getGroup();
+
+    for (const secName of orderedSections) {
+      const items = sortStamps(bySection[secName]);
+      const det = document.createElement("details");
+      if (["mountains", "forests", "settlements", "terrain"].includes(secName)) {
+        det.setAttribute("open", "");
+      }
+      const sum = document.createElement("summary");
+      sum.innerHTML = `${secName} <span class="count">(${items.length})</span>`;
+      det.appendChild(sum);
+
+      const grid = document.createElement("div");
+      grid.className = "grid";
+
+      if (groupBy === "archetype") {
+        // Bucket by archetype, then emit a single grid where each archetype
+        // starts with an inline label "card" followed by its stamp cards.
+        // No new <div> per group → archetypes flow without forced row breaks.
+        const subBy = {};
+        items.forEach(s => { (subBy[s.archetype] ||= []).push(s); });
+        const archOrder = Object.keys(subBy).sort((a, b) => {
+          const ka = archSortKey(a, subBy[a][0]);
+          const kb = archSortKey(b, subBy[b][0]);
+          if (ka[0] !== kb[0]) return ka[0] - kb[0];
+          return ka[1].localeCompare(kb[1]);
+        });
+        for (const arch of archOrder) {
+          const list = subBy[arch];
+          const sample = list[0];
+          const heights = list.map(effectiveHeight).filter(Boolean);
+          const minH = heights.length ? Math.min(...heights) : "—";
+          const maxH = heights.length ? Math.max(...heights) : "—";
+          const label = document.createElement("div");
+          label.className = "arch-label";
+          label.innerHTML = `<span class="a-name">${arch}</span>` +
+            `<span class="a-info">${list.length} stamps<br>${sample.use} · h ${minH}–${maxH}px</span>`;
+          grid.appendChild(label);
+          list.forEach(s => grid.appendChild(renderCard(s)));
+        }
+      } else {
+        items.forEach(s => grid.appendChild(renderCard(s)));
+      }
+
+      det.appendChild(grid);
+      root.appendChild(det);
+    }
+  }
+
+  function setSummary() {
+    const n = stamps.length;
+    const named = stamps.filter(s => s.brush_name && s.archetype !== "unknown").length;
+    const tagged = Object.keys(userMeta).length;
+    summary.innerHTML =
+      `<strong>${n} stamps</strong> · ${named} auto-classified · ${tagged} user-edited. ` +
+      `Each card shows the artist's brush name; size hierarchy follows the archetype × file-size factor.`;
+    flashSave();
+  }
+
+  // ── Wire up controls ────────────────────────────────────────────────────
+  document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener("change", renderAll));
+  document.getElementById("sort").addEventListener("change", renderAll);
+  document.getElementById("group").addEventListener("change", renderAll);
+  document.getElementById("toggle-filter").addEventListener("click", () => {
+    document.getElementById("filter-bar").classList.toggle("active");
+    buildFilterBar();
+  });
+  document.getElementById("open-all").addEventListener("click",  () => document.querySelectorAll("details").forEach(d => d.setAttribute("open", "")));
+  document.getElementById("close-all").addEventListener("click", () => document.querySelectorAll("details").forEach(d => d.removeAttribute("open")));
+  document.getElementById("filter-clear").addEventListener("click", () => {
+    filters.uses.clear(); filters.archetypes.clear(); filters.roles.clear(); filters.untaggedOnly = false;
+    buildFilterBar(); renderAll();
+  });
+  document.getElementById("filter-untagged").addEventListener("click", () => {
+    filters.untaggedOnly = !filters.untaggedOnly; renderAll();
+  });
+
+  document.getElementById("export").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(userMeta, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "classifications.json"; a.click();
+    URL.revokeObjectURL(url);
+  });
+  document.getElementById("import").addEventListener("click", () => document.getElementById("import-file").click());
+  document.getElementById("import-file").addEventListener("change", async e => {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      const incoming = JSON.parse(await file.text());
+      Object.entries(incoming).forEach(([k, v]) => { userMeta[k] = v; });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userMeta));
+      setSummary(); buildFilterBar(); renderAll();
+    } catch (err) { alert("Failed to parse JSON: " + err.message); }
+    e.target.value = "";
+  });
+  document.getElementById("clear-all").addEventListener("click", () => {
+    if (!confirm(`Clear all ${Object.keys(userMeta).length} user classifications? Export first if you want to keep them.`)) return;
+    Object.keys(userMeta).forEach(k => delete userMeta[k]);
+    localStorage.removeItem(STORAGE_KEY);
+    setSummary(); buildFilterBar(); renderAll();
+  });
+
+  setSummary();
+  renderAll();
+})().catch(err => {
+  document.getElementById("summary").textContent = "Error: " + err.message;
+  console.error(err);
+});
+</script>
+</body>
+</html>

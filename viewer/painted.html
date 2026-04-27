@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>Open World Map — Painted</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: #ffffff;
+    color-scheme: light;
+  }
+  body {
+    font-family: 'IM Fell English', 'Cinzel', Palatino, "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
+    overflow: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+  #map-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: #ffffff;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+  }
+  #map-container:active { cursor: grabbing; }
+  #map-stage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+  #map-canvas {
+    display: block;
+  }
+  #map-hotspots {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  #map-hotspots > circle {
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  #map-hotspots polygon.hex-hover {
+    fill: rgba(120, 80, 40, 0.10);
+    stroke: rgba(60, 40, 20, 0.55);
+    stroke-width: 1.0;
+    pointer-events: none;
+  }
+  /* In-progress overlay: a pulsing dashed ring while a hex is being
+     generated or its encounter is being rolled. Overlays must NEVER
+     intercept clicks — both the group AND every descendant get
+     pointer-events:none, otherwise decorative circles inside an overlay
+     can match selectors meant for node hotspots. */
+  #map-hotspots g.hex-overlay,
+  #map-hotspots g.hex-overlay * { pointer-events: none; }
+  @keyframes hex-pulse {
+    0%, 100% { opacity: 0.55; }
+    50%      { opacity: 1; }
+  }
+  @keyframes hex-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  #map-hotspots g.hex-overlay.busy circle {
+    animation: hex-pulse 0.9s ease-in-out infinite;
+  }
+  /* Directional arrow shown when generating from a sub-hex edge. The shaft
+     is a flowing dashed line aimed inward; the head pulses for emphasis. */
+  @keyframes bolt-flow {
+    from { stroke-dashoffset: 14; }
+    to   { stroke-dashoffset: 0;  }
+  }
+  #map-hotspots g.hex-overlay.busy .bolt-shaft {
+    stroke: #9c2a1f;
+    stroke-width: 4;
+    stroke-linecap: round;
+    fill: none;
+    stroke-dasharray: 7 7;
+    animation: bolt-flow 0.5s linear infinite;
+  }
+  #map-hotspots g.hex-overlay.busy .bolt-head {
+    fill: #9c2a1f;
+    stroke: #9c2a1f;
+    stroke-width: 1;
+    stroke-linejoin: round;
+    animation: hex-pulse 0.7s ease-in-out infinite;
+  }
+  /* Encounter "rolling" die — a single SVG <text> glyph that flashes
+     through the dice faces and jumps between random sub-hexes via JS. The
+     paper-coloured stroke gives a halo so the glyph reads over busy art. */
+  #map-hotspots g.encounter-busy .die {
+    font-size: 32px;
+    fill: #1a1410;
+    stroke: #fdf6e3;
+    stroke-width: 5;
+    paint-order: stroke;
+    font-family: serif;
+    user-select: none;
+  }
+  /* Path + label layers — vector overlays so rivers, roads and labels
+     stay sharp at any zoom. Sit over the canvas paint, under the hex
+     hover and node hotspot circles. */
+  #map-hotspots g.path-layer { pointer-events: none; }
+  #map-hotspots g.path-layer path { stroke-linecap: round; stroke-linejoin: round; }
+  #map-hotspots g.label-layer { pointer-events: none; }
+  #map-hotspots g.label-layer text {
+    /* Paint-order draws stroke (paper halo) BEHIND fill so the text reads
+       clearly over busy artwork. */
+    paint-order: stroke;
+    stroke-linejoin: round;
+  }
+
+  #detail-panel {
+    display: none;
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 320px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    background: #ffffff;
+    border: 2px solid #1a1410;
+    padding: 20px;
+    font-size: 14px;
+    color: #2a1f14;
+    box-shadow: 4px 4px 12px rgba(0,0,0,0.3);
+    z-index: 50;
+  }
+  #detail-panel.open { display: block; }
+  #detail-panel h2 {
+    color: #9c2a1f;
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+  #detail-panel .point-type {
+    font-style: italic;
+    color: #5a4a3a;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  #detail-panel .description {
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  #detail-panel .connections {
+    border-top: 1px solid #5a4a3a;
+    padding-top: 10px;
+    font-size: 13px;
+  }
+  #detail-panel .connections h3 {
+    font-size: 14px;
+    color: #9c2a1f;
+    margin-bottom: 6px;
+  }
+  #detail-panel .connections li {
+    margin-bottom: 4px;
+    list-style: none;
+  }
+  #detail-panel .close-btn {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    cursor: pointer;
+    font-size: 18px;
+    color: #5a4a3a;
+    background: none;
+    border: none;
+    font-family: inherit;
+  }
+  #detail-panel .hex-id {
+    font-family: "SF Mono", "Monaco", "Menlo", monospace;
+    font-size: 12px;
+    color: #5a4a3a;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  #detail-panel .hex-travel,
+  #detail-panel .hex-pois { display: none; }
+  #detail-panel .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  #detail-panel .actions:empty { display: none; }
+  #detail-panel .panel-action {
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 10px;
+    background: #f1e4c4;
+    color: #1a1410;
+    border: 1px solid #1a1410;
+    cursor: pointer;
+  }
+  #detail-panel .panel-action:hover { background: #e7d5a8; }
+  #detail-panel .panel-action[disabled] {
+    opacity: 0.55;
+    cursor: progress;
+  }
+  /* Sub-hex picker — a tiny 7-hex diagram inside the empty-hex panel that
+     lets the GM choose which edge the exploring party enters from. */
+  #detail-panel .explore-block { margin-bottom: 12px; }
+  #detail-panel .explore-block .explore-label {
+    font-size: 12px;
+    font-style: italic;
+    color: #5a4a3a;
+    margin-bottom: 4px;
+  }
+  #detail-panel .explore-block svg { display: block; }
+  #detail-panel .subhex {
+    fill: transparent;
+    stroke: #1a1410;
+    stroke-width: 1.2;
+    cursor: pointer;
+  }
+  #detail-panel .subhex:hover { fill: #f1e4c4; }
+  #detail-panel .subhex.busy { cursor: progress; opacity: 0.4; }
+  #detail-panel .subhex-label {
+    font-family: "SF Mono", "Monaco", "Menlo", monospace;
+    font-size: 9px;
+    fill: #5a4a3a;
+    pointer-events: none;
+    text-anchor: middle;
+    dominant-baseline: middle;
+  }
+  /* Inline-edit affordances on panel name + description. Clicking enters
+     edit mode; Enter or blur saves; Escape reverts. */
+  #detail-panel .editable {
+    cursor: text;
+    border-radius: 2px;
+    transition: background 0.15s;
+  }
+  #detail-panel .editable:hover { background: rgba(241, 228, 196, 0.45); }
+  #detail-panel .editable:focus {
+    background: rgba(241, 228, 196, 0.85);
+    outline: 1px dotted #5a4a3a;
+    outline-offset: 2px;
+  }
+  #detail-panel .just-saved {
+    background: rgba(76, 175, 80, 0.25) !important;
+    transition: background 0.6s ease-out;
+  }
+  /* Encounter callout — shown after the user rolls a wandering encounter. */
+  #detail-panel .encounter:empty { display: none; }
+  #detail-panel .encounter {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: #fdf6e3;
+    border-left: 3px solid #9c2a1f;
+    font-size: 13px;
+  }
+  #detail-panel .encounter h3 {
+    font-size: 13px;
+    color: #9c2a1f;
+    margin-bottom: 6px;
+    font-style: italic;
+  }
+  #detail-panel .encounter .creature-line {
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+  #detail-panel .encounter .stats {
+    font-size: 11px;
+    color: #5a4a3a;
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  #detail-panel .encounter .stats span {
+    display: inline-block;
+    margin-right: 10px;
+  }
+  #detail-panel .encounter .stats b {
+    font-weight: 600;
+    color: #2a1f14;
+  }
+  /* Rumor callout — accumulates across rolls; each rumor lists source +
+     reliability. Auto-pushed to the open-world MCP on generation. */
+  #detail-panel .rumors:empty { display: none; }
+  #detail-panel .rumors {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: #f5e6c8;
+    border-left: 3px solid #5a4a3a;
+    font-size: 13px;
+  }
+  #detail-panel .rumors h3 {
+    font-size: 13px;
+    color: #5a4a3a;
+    margin-bottom: 6px;
+    font-style: italic;
+  }
+  #detail-panel .rumor {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px dotted rgba(90,74,58,0.35);
+  }
+  #detail-panel .rumor:last-child {
+    margin-bottom: 0; padding-bottom: 0; border-bottom: none;
+  }
+  #detail-panel .rumor .text { line-height: 1.4; }
+  #detail-panel .rumor .meta {
+    font-size: 11px;
+    color: #5a4a3a;
+    font-style: italic;
+    margin-top: 2px;
+  }
+  #detail-panel .rumor .reliability {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 10px;
+    margin-left: 6px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    background: rgba(90,74,58,0.15);
+  }
+
+  #title-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    color: #f1e4c4;
+    font-size: 11px;
+    font-style: italic;
+    opacity: 0.7;
+    pointer-events: none;
+  }
+
+  #export-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    background: #ffffff;
+    border: 2px solid #1a1410;
+    font-family: inherit;
+    font-size: 13px;
+    color: #1a1410;
+    cursor: pointer;
+    opacity: 0.85;
+    z-index: 50;
+  }
+  #export-btn:hover { opacity: 1; }
+
+  #loading {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #f1e4c4;
+    font-style: italic;
+    font-size: 14px;
+    pointer-events: none;
+    z-index: 60;
+  }
+  #loading.hidden { display: none; }
+
+  #zoom-controls {
+    position: fixed;
+    bottom: 60px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 50;
+  }
+  /* Controls and zoom buttons share the page background colour so they
+     read as effectively transparent — only their text/border defines them. */
+  #zoom-controls button {
+    width: 36px;
+    height: 36px;
+    background: var(--page-bg, #ffffff);
+    border: 1px solid #1a1410;
+    color: #1a1410;
+    font-family: inherit;
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    opacity: 0.55;
+  }
+  #zoom-controls button:hover { opacity: 1; }
+
+  #style-controls {
+    position: fixed;
+    bottom: 50px;
+    left: 20px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    z-index: 50;
+  }
+  #style-controls label {
+    font-size: 11px;
+    color: #1a1410;
+    opacity: 0.55;
+    font-style: italic;
+  }
+  #style-controls select {
+    font-family: Palatino, "Palatino Linotype", "Book Antiqua", "Times New Roman", serif;
+    font-size: 13px;
+    padding: 5px 8px;
+    background: var(--page-bg, #ffffff);
+    border: 1px solid #1a1410;
+    color: #1a1410;
+    cursor: pointer;
+    opacity: 0.55;
+  }
+  #style-controls select:hover, #style-controls select:focus { opacity: 1; }
+  #title-bar { color: #1a1410; opacity: 0.45; }
+  #export-btn {
+    background: var(--page-bg, #ffffff) !important;
+    border-color: #1a1410 !important;
+    color: #1a1410 !important;
+    opacity: 0.55;
+  }
+  #export-btn:hover { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="map-container">
+  <div id="map-stage">
+    <canvas id="map-canvas"></canvas>
+    <svg id="map-hotspots"></svg>
+  </div>
+</div>
+
+<div id="zoom-controls">
+  <button id="zoom-in" title="Zoom in">+</button>
+  <button id="zoom-out" title="Zoom out">−</button>
+  <button id="zoom-fit" title="Fit map">⤢</button>
+</div>
+
+<div id="style-controls">
+  <label>Style
+    <select id="style-select">
+      <option value="wilderland" selected>Wilderland</option>
+      <option value="moonletters">Moon Letters</option>
+      <option value="dragonisles">Dragon Isles</option>
+    </select>
+  </label>
+  <label>Renderer
+    <select id="renderer-select">
+      <option value="painted" selected>Painted</option>
+      <option value="svg">SVG</option>
+    </select>
+  </label>
+  <label>Overlay
+    <select id="grid-select">
+      <option value="none">None</option>
+      <option value="square">Square (1")</option>
+      <option value="hex" selected>Hex</option>
+    </select>
+  </label>
+  <label>Background
+    <select id="background-select">
+      <option value="white" selected>White</option>
+      <option value="parchment">Parchment</option>
+    </select>
+  </label>
+</div>
+
+<div id="detail-panel">
+  <button class="close-btn" onclick="MapData.closePanel()">&times;</button>
+  <div class="hex-id" id="panel-hex-id"></div>
+  <h2 id="panel-name"></h2>
+  <div class="point-type" id="panel-type"></div>
+  <div class="hex-travel" id="panel-travel"></div>
+  <div class="description" id="panel-desc"></div>
+  <div class="actions" id="panel-actions"></div>
+  <div class="encounter" id="panel-encounter"></div>
+  <div class="rumors" id="panel-rumors"></div>
+  <div class="hex-pois" id="panel-pois"></div>
+  <div class="connections" id="panel-connections"></div>
+</div>
+
+<div id="title-bar"></div>
+<button id="export-btn">Save PNG</button>
+<div id="loading">Loading assets…</div>
+
+<script src="core-data.js"></script>
+<script src="core-raster.js"></script>
+<script src="renderers/mapeffects.js"></script>
+<script>
+(async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const campaign = params.get("map")?.replace(/\.json$/, "") || "Basilisk";
+  const styleName = "mapeffects";
+
+  // The Style dropdown controls link colours + font only (palette).
+  // The Renderer dropdown controls which pipeline draws the stamps:
+  // "painted" stays here; "svg" navigates to map.html with the same style.
+  const VALID_STYLES = new Set(["wilderland", "moonletters", "dragonisles"]);
+  const linkStyle = VALID_STYLES.has(params.get("style")) ? params.get("style") : "wilderland";
+  if (window.MapStyles && window.MapStyles.setLinkStyle) {
+    window.MapStyles.setLinkStyle(linkStyle);
+  }
+
+  const styleSelect = document.getElementById("style-select");
+  if (styleSelect) {
+    styleSelect.value = linkStyle;
+    styleSelect.addEventListener("change", (e) => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("map", campaign);
+      url.searchParams.set("style", e.target.value);
+      window.location.href = url.toString();
+    });
+  }
+  const rendererSelect = document.getElementById("renderer-select");
+  if (rendererSelect) {
+    rendererSelect.addEventListener("change", (e) => {
+      if (e.target.value === "svg") {
+        const grid = params.get("grid") || "hex";
+        window.location.href = `map.html?map=${encodeURIComponent(campaign)}&style=${encodeURIComponent(linkStyle)}&grid=${encodeURIComponent(grid)}`;
+      }
+    });
+  }
+
+  // Grid overlay: rendered on the canvas as a separate layer. Reload page
+  // on change so the renderer re-runs with the new overlay setting.
+  const VALID_GRIDS = new Set(["none", "square", "hex"]);
+  const gridName = VALID_GRIDS.has(params.get("grid")) ? params.get("grid") : "hex";
+  window.MAP_GRID = gridName;  // read by mapeffects.js layerGridOverlay
+  const gridSelect = document.getElementById("grid-select");
+  if (gridSelect) {
+    gridSelect.value = gridName;
+    gridSelect.addEventListener("change", (e) => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("map", campaign);
+      url.searchParams.set("style", linkStyle);
+      url.searchParams.set("grid", e.target.value);
+      url.searchParams.set("bg", bgName);
+      window.location.href = url.toString();
+    });
+  }
+
+  // Background colour: white (default) or parchment. Drives both the page
+  // CSS background and the renderer's COLORS.PAPER fill so the canvas
+  // edge blends seamlessly with the page.
+  const VALID_BG = { white: "#ffffff", parchment: "#f1e4c4" };
+  const bgName = VALID_BG.hasOwnProperty(params.get("bg")) ? params.get("bg") : "white";
+  const bgColor = VALID_BG[bgName];
+  document.documentElement.style.setProperty("--page-bg", bgColor);
+  document.documentElement.style.background = bgColor;
+  document.body.style.background = bgColor;
+  const mapContainerEl = document.getElementById("map-container");
+  if (mapContainerEl) mapContainerEl.style.background = bgColor;
+  // Tell the painted renderer to fill the canvas with the same colour.
+  if (window.MapStyles && window.MapStyles.setPaperColor) {
+    window.MapStyles.setPaperColor(bgColor);
+  } else {
+    window.MAP_PAPER_COLOR = bgColor;  // read by mapeffects.js if loaded after
+  }
+  const bgSelect = document.getElementById("background-select");
+  if (bgSelect) {
+    bgSelect.value = bgName;
+    bgSelect.addEventListener("change", (e) => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("map", campaign);
+      url.searchParams.set("style", linkStyle);
+      url.searchParams.set("grid", gridName);
+      url.searchParams.set("bg", e.target.value);
+      window.location.href = url.toString();
+    });
+  }
+
+  const loadingEl = document.getElementById("loading");
+  const container = document.getElementById("map-container");
+  const stage = document.getElementById("map-stage");
+  const canvas = document.getElementById("map-canvas");
+  const hotspots = document.getElementById("map-hotspots");
+
+  // Load data + manifest in parallel.
+  const graphData = await MapData.loadData(campaign);
+  const assets = MapRaster.AssetCache;
+  await assets.preload("assets/mapeffects/manifest.json");
+
+  // Feature-detect the local proxy. On GitHub Pages there is no /api/health,
+  // so the fetch fails and AI features stay hidden. The proxy holds the API
+  // key — the browser never sees it.
+  let AI_HEX = { enabled: false, model: null };
+  try {
+    const r = await fetch("/api/health", { cache: "no-store" });
+    if (r.ok) {
+      const j = await r.json();
+      if (j && j.aiEnabled) AI_HEX = { enabled: true, model: j.model || null };
+    }
+  } catch (e) { /* no proxy — feature stays off */ }
+
+  loadingEl.classList.add("hidden");
+
+  // Compute the map's pixel size from its hex+node bounds. The painted
+  // canvas is rendered at this fixed size; the visible viewport is achieved
+  // via CSS transform (pan + zoom) on the stage wrapper.
+  const PAD = 140;
+  const probeWidth = 4000, probeHeight = 4000;
+  const hexBounds = MapData.landBounds(graphData.hex_terrain || {}, probeWidth, probeHeight, 0);
+  let minX = hexBounds ? hexBounds.minX : probeWidth / 2 - 200;
+  let minY = hexBounds ? hexBounds.minY : probeHeight / 2 - 200;
+  let maxX = hexBounds ? hexBounds.maxX : probeWidth / 2 + 200;
+  let maxY = hexBounds ? hexBounds.maxY : probeHeight / 2 + 200;
+  (graphData.nodes || []).forEach(n => {
+    if (!Number.isFinite(n.x_hint) || !Number.isFinite(n.y_hint)) return;
+    const nx = n.x_hint * MapData.HINT_SCALE + probeWidth / 2;
+    const ny = n.y_hint * MapData.HINT_SCALE + probeHeight / 2;
+    minX = Math.min(minX, nx - 60);
+    minY = Math.min(minY, ny - 60);
+    maxX = Math.max(maxX, nx + 60);
+    maxY = Math.max(maxY, ny + 60);
+  });
+
+  // Center the bounds in the canvas so Blackwater Crossing (the (0,0) of the
+  // hex grid) sits at canvas center. Render dims: bounds + symmetric padding.
+  const halfW = Math.max(maxX - probeWidth / 2,  probeWidth / 2 - minX);
+  const halfH = Math.max(maxY - probeHeight / 2, probeHeight / 2 - minY);
+  const RENDER_W = Math.ceil(halfW * 2 + PAD * 2);
+  const RENDER_H = Math.ceil(halfH * 2 + PAD * 2);
+
+  const style = MapStyles[styleName];
+  const paintCtx = MapRaster.buildPaintCtx({
+    canvas,
+    graphData,
+    campaign,
+    assets,
+    width:  RENDER_W,
+    height: RENDER_H,
+  });
+
+  // Wire up the SVG overlay. Path layer (rivers + roads) sits BELOW node
+  // hotspots so the hotspot circles still receive clicks. Renderer layers
+  // emit SVG paths into `paintCtx.svgPathLayer`.
+  hotspots.setAttribute("viewBox", `0 0 ${RENDER_W} ${RENDER_H}`);
+  hotspots.style.width  = RENDER_W + "px";
+  hotspots.style.height = RENDER_H + "px";
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  paintCtx.svgNS = SVG_NS;
+
+  // Active encounter markers — keyed by hex. Hoisted above renderAll so
+  // reapplyEncounterOverlays() (called from renderAll) doesn't trip the TDZ
+  // when the page first loads. Seeded from graphData.hex_encounters so a
+  // page reload restores the markers from disk.
+  const activeEncounters = new Map();
+  if (graphData.hex_encounters) {
+    for (const [hex, enc] of Object.entries(graphData.hex_encounters)) {
+      activeEncounters.set(hex, enc);
+    }
+  }
+  // Sub-hex direction vectors and the busy-overlay interval map are also
+  // hoisted here for the same reason — overlay functions defined later
+  // are reached during renderAll's first call.
+  const DIR_VECS = {
+    N:  [0, -1],
+    NE: [Math.sqrt(3)/2, -0.5],
+    SE: [Math.sqrt(3)/2,  0.5],
+    S:  [0,  1],
+    SW: [-Math.sqrt(3)/2,  0.5],
+    NW: [-Math.sqrt(3)/2, -0.5],
+  };
+  const busyIntervals = new Map();
+
+  // renderAll(): clear the SVG overlay, repaint canvas + paths + labels, and
+  // re-attach hotspot circles. Called once on first load and again whenever
+  // graphData changes (e.g. after AI hex generation).
+  async function renderAll() {
+    hotspots.innerHTML = "";
+    const pathLayer = document.createElementNS(SVG_NS, "g");
+    pathLayer.setAttribute("class", "path-layer");
+    hotspots.appendChild(pathLayer);
+    const labelLayer = document.createElementNS(SVG_NS, "g");
+    labelLayer.setAttribute("class", "label-layer");
+    hotspots.appendChild(labelLayer);
+    paintCtx.svgPathLayer = pathLayer;
+    paintCtx.svgLabelLayer = labelLayer;
+    paintCtx.nodes = style.filterNodes(graphData.nodes || []);
+    await style.render(paintCtx);
+    paintCtx.nodes.forEach(node => {
+      const slot = paintCtx._stampPositions && paintCtx._stampPositions[node.id];
+      const [x, y] = slot ? [slot.x, slot.y] : paintCtx.nodeXY(node);
+      const c = document.createElementNS(SVG_NS, "circle");
+      c.setAttribute("cx", x);
+      c.setAttribute("cy", y);
+      c.setAttribute("r", 18);
+      c.setAttribute("fill", "transparent");
+      c.setAttribute("data-id", node.id);
+      c.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const conns = (graphData.links || [])
+          .filter(l => l.visible !== false && (l.source === node.id || l.target === node.id))
+          .map(l => {
+            const otherId = l.source === node.id ? l.target : l.source;
+            const other = (graphData.nodes || []).find(n => n.id === otherId);
+            const days = l.days != null ? ` — ${l.days}d` : "";
+            return (other ? other.name : otherId) + days;
+          });
+        MapData.openPanel(node, { connections: conns });
+        attachEditing(node);
+        if (node.hex) attachExploreActions(node.hex, node.terrain || (paintCtx.hexTerrain && paintCtx.hexTerrain[node.hex]) || "wilderness", null);
+      });
+      hotspots.appendChild(c);
+    });
+    // Encounter overlays live in the SVG hotspots layer too — they get
+    // wiped by the innerHTML clear above, so re-apply them now.
+    if (typeof reapplyEncounterOverlays === "function") reapplyEncounterOverlays();
+  }
+  await renderAll();
+
+  // ----------------------------------------------------------
+  // Hex hover overlay — only when grid="hex". Draws a single SVG polygon
+  // on top of the hovered hex; mirrors the SVG renderer's hover state.
+  // ----------------------------------------------------------
+  function pixelToCanvas(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = (clientX - rect.left) / rect.width  * RENDER_W;
+    const sy = (clientY - rect.top)  / rect.height * RENDER_H;
+    return { sx, sy };
+  }
+
+  // --- Inline editing on the panel ----------------------------------
+  // Clicking the name or description in the detail panel turns it into a
+  // contenteditable region. Enter or blur commits via /api/update-node;
+  // Escape reverts. Synthetic empty-hex panels (id like "hex-CCRR" with
+  // no entry in graphData.nodes yet) are skipped — there's nothing to
+  // update until the hex is actually generated.
+  function attachEditing(node) {
+    if (!node || !node.id) return;
+    const isReal = (graphData.nodes || []).some(n => n.id === node.id);
+    if (!isReal) return;
+    const nameEl = document.getElementById("panel-name");
+    const descEl = document.getElementById("panel-desc");
+    if (nameEl) makeEditable(nameEl, node, "name");
+    if (descEl) makeEditable(descEl, node, "description");
+  }
+  function makeEditable(el, node, field) {
+    el.contentEditable = "plaintext-only";
+    el.spellcheck = true;
+    el.classList.add("editable");
+    el.title = "Click to edit. Enter to save, Esc to cancel.";
+    const original = () => node[field] || "";
+    el.addEventListener("focus", () => { el.dataset.preEdit = original(); });
+    el.addEventListener("blur", () => {
+      const newVal = el.textContent.trim();
+      if (newVal === original()) return;
+      saveNodeField(node, field, newVal, el);
+    });
+    el.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); el.blur(); }
+      else if (ev.key === "Escape")           { el.textContent = original(); el.blur(); }
+    });
+  }
+  async function saveNodeField(node, field, value, el) {
+    try {
+      const resp = await fetch("/api/update-node", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaign,
+          id: node.id,
+          fields: { [field]: value },
+        }),
+      });
+      const body = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(body.error || ("HTTP " + resp.status));
+      node[field] = value;
+      const ref = (graphData.nodes || []).find(n => n.id === node.id);
+      if (ref) ref[field] = value;
+      if (el) {
+        el.classList.add("just-saved");
+        setTimeout(() => el.classList.remove("just-saved"), 700);
+      }
+    } catch (e) {
+      alert("Save failed: " + e.message);
+      if (el) el.textContent = node[field] || "";
+    }
+  }
+
+  // --- Hex SVG overlays -----------------------------------------------
+  // Two kinds: a transient "busy" ring while a hex is generating or its
+  // encounter is being rolled, and a persistent "encounter" sword+shield
+  // marking hexes that currently have an active wandering encounter.
+  // Encounter state is held in-memory only (not persisted) and re-applied
+  // after every renderAll() so a regen doesn't lose the markers.
+  // (`activeEncounters` is declared above renderAll for TDZ reasons.)
+
+  // (DIR_VECS is hoisted to the top of init() — see the activeEncounters
+  // block above. It's used here and in subhexOffsetPx below.)
+  // Pixel offset from hex centre for each sub-hex code. Encounter markers
+  // and any future per-sub-hex art use this. Magnitude (~17 px) is well
+  // inside the hex inscribed radius (~43 px) so the icon stays in-hex.
+  function subhexOffsetPx(code) {
+    if (!code || code === "C" || !DIR_VECS[code]) return [0, 0];
+    const M = 17;
+    const [ux, uy] = DIR_VECS[code];
+    return [ux * M, uy * M];
+  }
+
+  function removeOverlay(hex, kind) {
+    if (!hex) return;
+    hotspots.querySelectorAll(`g.hex-overlay.${kind}[data-hex="${hex}"]`).forEach(el => el.remove());
+  }
+  // Loading indicator. If a direction is supplied (one of the six edge
+  // sub-hex codes), draw a flowing-dashed arrow from that edge inward to
+  // hex centre — visually echoing the picker click. Otherwise (encounter
+  // rolls, or C for centre) fall back to a pulsing dashed ring.
+  function showBusyOverlay(hex, direction) {
+    if (!paintCtx.hexCenterXY) return;
+    const [cx, cy] = paintCtx.hexCenterXY(hex);
+    removeOverlay(hex, "busy");
+    const g = document.createElementNS(SVG_NS, "g");
+    g.setAttribute("class", "hex-overlay busy");
+    g.setAttribute("data-hex", hex);
+    g.setAttribute("transform", `translate(${cx}, ${cy})`);
+
+    const dirVec = (direction && direction !== "C") ? DIR_VECS[direction] : null;
+    if (dirVec) {
+      const [ux, uy] = dirVec;
+      const EDGE_DIST = 40, TIP_DIST = 6;
+      const tx = ux * EDGE_DIST, ty = uy * EDGE_DIST; // tail at hex edge
+      const hx = ux * TIP_DIST,  hy = uy * TIP_DIST;  // tip near centre
+      // Perpendicular unit vector for arrowhead wings.
+      const px = -uy, py = ux;
+      const HEAD_LEN = 11, HEAD_HALF = 6;
+      // Wings flare BEHIND the tip toward the tail (direction = +ux,+uy).
+      const w1x = hx + ux * HEAD_LEN + px * HEAD_HALF;
+      const w1y = hy + uy * HEAD_LEN + py * HEAD_HALF;
+      const w2x = hx + ux * HEAD_LEN - px * HEAD_HALF;
+      const w2y = hy + uy * HEAD_LEN - py * HEAD_HALF;
+
+      const shaft = document.createElementNS(SVG_NS, "line");
+      shaft.setAttribute("x1", tx); shaft.setAttribute("y1", ty);
+      shaft.setAttribute("x2", hx); shaft.setAttribute("y2", hy);
+      shaft.setAttribute("class", "bolt-shaft");
+      g.appendChild(shaft);
+
+      const head = document.createElementNS(SVG_NS, "polygon");
+      head.setAttribute("points", `${hx},${hy} ${w1x},${w1y} ${w2x},${w2y}`);
+      head.setAttribute("class", "bolt-head");
+      g.appendChild(head);
+    } else {
+      const ring = document.createElementNS(SVG_NS, "circle");
+      ring.setAttribute("cx", "0");
+      ring.setAttribute("cy", "0");
+      ring.setAttribute("r", "26");
+      ring.setAttribute("fill", "rgba(255,255,255,0.7)");
+      ring.setAttribute("stroke", "#9c2a1f");
+      ring.setAttribute("stroke-width", "2.5");
+      ring.setAttribute("stroke-dasharray", "6 4");
+      g.appendChild(ring);
+    }
+    hotspots.appendChild(g);
+  }
+  function hideBusyOverlay(hex) {
+    const id = busyIntervals.get(hex);
+    if (id != null) { clearInterval(id); busyIntervals.delete(hex); }
+    removeOverlay(hex, "busy");
+  }
+  // (busyIntervals is hoisted to the top of init() — same TDZ reason.)
+
+  // Encounter-specific busy overlay: a die glyph that flashes through all
+  // six faces while jumping between random sub-hex positions inside the
+  // hex — visually distinct from the directional bolt used for explore.
+  function showEncounterBusyOverlay(hex) {
+    if (!paintCtx.hexCenterXY) return;
+    const [cx, cy] = paintCtx.hexCenterXY(hex);
+    hideBusyOverlay(hex);
+    const g = document.createElementNS(SVG_NS, "g");
+    g.setAttribute("class", "hex-overlay busy encounter-busy");
+    g.setAttribute("data-hex", hex);
+    const text = document.createElementNS(SVG_NS, "text");
+    text.setAttribute("class", "die");
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "central");
+    text.textContent = "\u2680";
+    g.appendChild(text);
+    hotspots.appendChild(g);
+
+    const SUBS  = ["C", "N", "NE", "SE", "S", "SW", "NW"];
+    const FACES = ["\u2680", "\u2681", "\u2682", "\u2683", "\u2684", "\u2685"];
+    const tick = () => {
+      const sh = SUBS[Math.floor(Math.random() * SUBS.length)];
+      const [ox, oy] = subhexOffsetPx(sh);
+      g.setAttribute("transform", `translate(${cx + ox}, ${cy + oy})`);
+      text.textContent = FACES[Math.floor(Math.random() * FACES.length)];
+    };
+    tick(); // initial frame
+    const id = setInterval(tick, 160);
+    busyIntervals.set(hex, id);
+  }
+
+  function showEncounterOverlay(hex, subhex) {
+    if (!paintCtx.hexCenterXY) return;
+    const [cx, cy] = paintCtx.hexCenterXY(hex);
+    const [ox, oy] = subhexOffsetPx(subhex);
+    removeOverlay(hex, "encounter");
+    const g = document.createElementNS(SVG_NS, "g");
+    g.setAttribute("class", "hex-overlay encounter");
+    g.setAttribute("data-hex", hex);
+    g.setAttribute("transform", `translate(${cx + ox}, ${cy + oy})`);
+    // crossed swords behind
+    [["-10","-10","10","10"],["-10","10","10","-10"]].forEach(([x1,y1,x2,y2]) => {
+      const s = document.createElementNS(SVG_NS, "line");
+      s.setAttribute("x1", x1); s.setAttribute("y1", y1);
+      s.setAttribute("x2", x2); s.setAttribute("y2", y2);
+      s.setAttribute("stroke", "#1a1410");
+      s.setAttribute("stroke-width", "2.5");
+      s.setAttribute("stroke-linecap", "round");
+      g.appendChild(s);
+    });
+    // pommel + crossguard accents on each sword tip (small dots)
+    [[-10,-10],[10,10],[-10,10],[10,-10]].forEach(([x,y]) => {
+      const dot = document.createElementNS(SVG_NS, "circle");
+      dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("r", "1.5");
+      dot.setAttribute("fill", "#1a1410");
+      g.appendChild(dot);
+    });
+    // shield in front (heater shield silhouette)
+    const shield = document.createElementNS(SVG_NS, "path");
+    shield.setAttribute("d", "M -7 -6 L 7 -6 L 7 2 Q 0 12 -7 2 Z");
+    shield.setAttribute("fill", "#fdf6e3");
+    shield.setAttribute("stroke", "#1a1410");
+    shield.setAttribute("stroke-width", "1.5");
+    shield.setAttribute("stroke-linejoin", "round");
+    g.appendChild(shield);
+    // small chevron on the shield for visual interest
+    const chevron = document.createElementNS(SVG_NS, "path");
+    chevron.setAttribute("d", "M -4 -2 L 0 2 L 4 -2");
+    chevron.setAttribute("fill", "none");
+    chevron.setAttribute("stroke", "#9c2a1f");
+    chevron.setAttribute("stroke-width", "1.2");
+    chevron.setAttribute("stroke-linecap", "round");
+    chevron.setAttribute("stroke-linejoin", "round");
+    g.appendChild(chevron);
+    hotspots.appendChild(g);
+  }
+  function reapplyEncounterOverlays() {
+    activeEncounters.forEach((enc, hex) => showEncounterOverlay(hex, enc && enc.subhex));
+  }
+
+  // Gather rumors saved against this hex and its 6 neighbours. Returned
+  // in the shape the server expects under `nearbyRumors`. Used to seed
+  // every generator (hex, encounter, rumor) so established lore is
+  // honoured across calls.
+  function nearbyHexRumors(hex, limit = 6) {
+    const out = [];
+    const allRumors = (graphData.hex_rumors) || {};
+    (allRumors[hex] || []).forEach(r => out.push({ hex, ...r }));
+    if (MapData.hexNeighbors) {
+      MapData.hexNeighbors(hex).forEach(n => {
+        (allRumors[n] || []).forEach(r => out.push({ hex: n, ...r }));
+      });
+    }
+    return out.slice(0, limit);
+  }
+
+  // Render every saved rumor for this hex into the panel callout.
+  function renderRumors(hex) {
+    const el = document.getElementById("panel-rumors");
+    if (!el) return;
+    const list = (graphData.hex_rumors && graphData.hex_rumors[hex]) || [];
+    if (!list.length) { el.innerHTML = ""; return; }
+    const esc = MapData.escapeHtml;
+    el.innerHTML = `
+      <h3>Rumors</h3>
+      ${list.map(r => `
+        <div class="rumor">
+          <div class="text">"${esc(r.rumor || "")}"</div>
+          <div class="meta">— ${esc(r.source || "unknown")}${r.reliability ? `<span class="reliability">${esc(r.reliability)}</span>` : ""}${r.topic ? ` · ${esc(r.topic)}` : ""}</div>
+        </div>
+      `).join("")}
+    `;
+  }
+
+  // Ask for a rumor about this hex. If an encounter is active, the rumor
+  // is seeded by it. Auto-pushed to MCP and Basilisk.json server-side.
+  async function generateRumor(hex, terrain, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Asking…"; }
+    showBusyOverlay(hex);
+    try {
+      const resp = await fetch("/api/generate-rumor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hex,
+          terrain,
+          campaign,
+          contextNodes: nearbyContextNodes(hex),
+          nearbyRumors: nearbyHexRumors(hex),
+          encounter: activeEncounters.get(hex) || null,
+        }),
+      });
+      const body = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(body.error || ("HTTP " + resp.status));
+      // Mirror into in-memory graphData so subsequent renders / panel
+      // re-opens see the new rumor without a reload.
+      graphData.hex_rumors = graphData.hex_rumors || {};
+      graphData.hex_rumors[hex] = graphData.hex_rumors[hex] || [];
+      graphData.hex_rumors[hex].push(body.savedRumor || {
+        rumor: body.rumor, source: body.source,
+        reliability: body.reliability, topic: body.topic,
+      });
+      renderRumors(hex);
+    } catch (e) {
+      const el = document.getElementById("panel-rumors");
+      if (el) el.innerHTML = `<h3>Rumors</h3><div class="rumor"><div class="text">Failed: ${MapData.escapeHtml(e.message)}</div></div>`;
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Ask for Rumor"; }
+      hideBusyOverlay(hex);
+    }
+  }
+
+  // Compute the 6-or-fewer nearest known nodes (by axial hex distance) so
+  // the AI has tonal context. Used by both generators.
+  function nearbyContextNodes(hex, limit = 6) {
+    return (graphData.nodes || [])
+      .filter(n => n.visible !== false && n.hex)
+      .map(n => {
+        const [hc, hr] = [parseInt(hex.substring(0,2),10), parseInt(hex.substring(2,4),10)];
+        const [nc, nr] = [parseInt(n.hex.substring(0,2),10), parseInt(n.hex.substring(2,4),10)];
+        return { node: n, dist: Math.abs(hc-nc) + Math.abs(hr-nr) };
+      })
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, limit)
+      .map(({ node }) => ({
+        name: node.name,
+        point_type: node.point_type,
+        hex: node.hex,
+        description: node.description,
+      }));
+  }
+
+  // Roll a wandering encounter for the given hex/terrain via the proxy.
+  // Encounters are ephemeral — displayed in the panel callout, not saved.
+  async function generateEncounter(hex, terrain, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Rolling…"; }
+    const encEl = document.getElementById("panel-encounter");
+    if (encEl) encEl.innerHTML = "<h3>Encounter</h3><div>Rolling…</div>";
+    showEncounterBusyOverlay(hex);
+    try {
+      const resp = await fetch("/api/generate-encounter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hex,
+          terrain,
+          campaign,
+          contextNodes: nearbyContextNodes(hex),
+          nearbyRumors: nearbyHexRumors(hex),
+        }),
+      });
+      const body = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(body.error || ("HTTP " + resp.status));
+      renderEncounter(body);
+      activeEncounters.set(hex, body);
+      showEncounterOverlay(hex, body && body.subhex);
+    } catch (e) {
+      if (encEl) encEl.innerHTML = `<h3>Encounter</h3><div>Roll failed: ${MapData.escapeHtml(e.message)}</div>`;
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Roll Encounter"; }
+      hideBusyOverlay(hex);
+    }
+  }
+  function renderEncounter(enc) {
+    const e = document.getElementById("panel-encounter");
+    if (!e) return;
+    const esc = MapData.escapeHtml;
+    e.innerHTML = `
+      <h3>Encounter</h3>
+      <div class="creature-line">${esc(enc.creature || "—")} (${esc(enc.number || "?")})</div>
+      <div>${esc(enc.description || "")}</div>
+      <div class="stats">
+        <span><b>Reaction:</b> ${esc(enc.reaction || "—")}</span>
+        <span><b>Distance:</b> ${esc(enc.distance || "—")}</span>
+        <span><b>Activity:</b> ${esc(enc.activity || "—")}</span>
+      </div>
+    `;
+  }
+
+  // Append AI action controls to the panel after openPanel. For empty
+  // hexes (synthetic !== null) we add the Explore picker block; for every
+  // hex we add a Roll Encounter button. Skipped entirely if AI is off.
+  function attachExploreActions(hex, terrain, synthetic /* null for defined */) {
+    // If this hex has a saved encounter, surface it in the panel callout
+    // — independent of whether the AI backend is currently available.
+    const savedEnc = activeEncounters.get(hex);
+    if (savedEnc) renderEncounter(savedEnc);
+    // Same for rumors — accumulate in the rumor callout.
+    renderRumors(hex);
+
+    if (!AI_HEX.enabled) return;
+    const actEl = document.getElementById("panel-actions");
+    if (!actEl) return;
+    actEl.innerHTML = "";
+    if (synthetic) {
+      actEl.appendChild(buildExploreBlock(hex, terrain, synthetic));
+    }
+    const encBtn = document.createElement("button");
+    encBtn.className = "panel-action";
+    encBtn.type = "button";
+    encBtn.textContent = savedEnc ? "Re-roll Encounter" : "Roll Encounter";
+    encBtn.addEventListener("click", () => generateEncounter(hex, terrain, encBtn));
+    actEl.appendChild(encBtn);
+
+    if (savedEnc) {
+      const clearBtn = document.createElement("button");
+      clearBtn.className = "panel-action";
+      clearBtn.type = "button";
+      clearBtn.textContent = "Clear Encounter";
+      clearBtn.addEventListener("click", () => clearEncounter(hex, terrain, clearBtn));
+      actEl.appendChild(clearBtn);
+    }
+
+    const rumorBtn = document.createElement("button");
+    rumorBtn.className = "panel-action";
+    rumorBtn.type = "button";
+    rumorBtn.textContent = "Ask for Rumor";
+    rumorBtn.addEventListener("click", () => generateRumor(hex, terrain, rumorBtn));
+    actEl.appendChild(rumorBtn);
+  }
+
+  async function clearEncounter(hex, terrain, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Clearing…"; }
+    try {
+      const resp = await fetch("/api/clear-encounter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign, hex }),
+      });
+      const body = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(body.error || ("HTTP " + resp.status));
+      activeEncounters.delete(hex);
+      if (graphData.hex_encounters) delete graphData.hex_encounters[hex];
+      removeOverlay(hex, "encounter");
+      const encEl = document.getElementById("panel-encounter");
+      if (encEl) encEl.innerHTML = "";
+      // Refresh the action buttons so the Clear button disappears.
+      attachExploreActions(hex, terrain, null);
+    } catch (e) {
+      alert("Clear failed: " + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = "Clear Encounter"; }
+    }
+  }
+
+  // Build the "Explore" picker — a 7-mini-hex SVG where each cell encodes
+  // which edge the exploring party enters from (C=center, plus the six
+  // hex directions in flat-top order: N, NE, SE, S, SW, NW). Clicking a
+  // cell starts generation with that direction as a hint.
+  function buildExploreBlock(hex, terrain, synthetic) {
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const block = document.createElement("div");
+    block.className = "explore-block";
+    const label = document.createElement("div");
+    label.className = "explore-label";
+    label.textContent = "Explore — pick the edge the party enters from:";
+    block.appendChild(label);
+
+    const r = 18;          // mini hex radius
+    const cx0 = 60, cy0 = 60;
+    const dy = Math.sqrt(3) * r;
+    const dx = 1.5 * r;
+    const cells = [
+      { code: "C",  x: cx0,         y: cy0,             label: "•"  },
+      { code: "N",  x: cx0,         y: cy0 - dy,        label: "N"  },
+      { code: "NE", x: cx0 + dx,    y: cy0 - dy / 2,    label: "NE" },
+      { code: "SE", x: cx0 + dx,    y: cy0 + dy / 2,    label: "SE" },
+      { code: "S",  x: cx0,         y: cy0 + dy,        label: "S"  },
+      { code: "SW", x: cx0 - dx,    y: cy0 + dy / 2,    label: "SW" },
+      { code: "NW", x: cx0 - dx,    y: cy0 - dy / 2,    label: "NW" },
+    ];
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 120 120");
+    svg.setAttribute("width", "120");
+    svg.setAttribute("height", "120");
+    cells.forEach(cell => {
+      const pts = [];
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i;
+        pts.push((cell.x + r * Math.cos(a)) + "," + (cell.y + r * Math.sin(a)));
+      }
+      const poly = document.createElementNS(SVG_NS, "polygon");
+      poly.setAttribute("class", "subhex");
+      poly.setAttribute("points", pts.join(" "));
+      poly.setAttribute("data-code", cell.code);
+      poly.addEventListener("click", () => {
+        const all = svg.querySelectorAll(".subhex");
+        all.forEach(p => p.classList.add("busy"));
+        generateHex(hex, terrain, synthetic, null, cell.code);
+      });
+      svg.appendChild(poly);
+      const txt = document.createElementNS(SVG_NS, "text");
+      txt.setAttribute("class", "subhex-label");
+      txt.setAttribute("x", cell.x);
+      txt.setAttribute("y", cell.y + 1);
+      txt.textContent = cell.label;
+      svg.appendChild(txt);
+    });
+    block.appendChild(svg);
+    return block;
+  }
+
+  // POST to the local /api/generate-hex proxy. Replaces the current panel
+  // with the generated content on success, surfaces errors inline on failure.
+  // The new node is mirrored into graphData.nodes so subsequent clicks on
+  // the same hex show the generated content (in-memory only — persistence
+  // to JSON / DB is a separate task).
+  async function generateHex(hex, terrain, synthetic, btn, direction) {
+    if (btn) { btn.disabled = true; btn.textContent = "Generating…"; }
+    showBusyOverlay(hex, direction);
+    try {
+      const contextNodes = nearbyContextNodes(hex, 12);
+      // For uncharted hexes, nudge terrain continuity: half the time, pick
+      // a neighbour's terrain so the world tends to extend existing biomes
+      // rather than fragment into random patches. Only fires when we have
+      // at least one defined neighbour terrain.
+      let requestTerrain = terrain;
+      const hexT = graphData.hex_terrain || {};
+      if (requestTerrain === "uncharted" && MapData.hexNeighbors) {
+        const neighborTerrains = MapData.hexNeighbors(hex)
+          .map(h => hexT[h])
+          .filter(Boolean);
+        if (neighborTerrains.length && Math.random() < 0.5) {
+          requestTerrain = neighborTerrains[Math.floor(Math.random() * neighborTerrains.length)];
+        }
+      }
+      const resp = await fetch("/api/generate-hex", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hex,
+          terrain: requestTerrain,
+          campaign,
+          contextNodes,
+          nearbyRumors: nearbyHexRumors(hex),
+          direction: direction || null,
+        }),
+      });
+      const body = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(body.error || ("HTTP " + resp.status));
+      const finalTerrain = body.terrain || terrain;
+      const generated = {
+        id: "hex-" + hex + "-generated",
+        name: body.name || synthetic.name,
+        point_type: body.point_type || "wilderness",
+        terrain: finalTerrain,
+        description: body.description || "",
+        hex,
+        visible: true,
+      };
+      // Mirror into the in-memory graph so re-clicks find it AND so the
+      // background art (forest, hills, etc.) paints under the new node.
+      (graphData.nodes = graphData.nodes || []).push(generated);
+      graphData.hex_terrain = graphData.hex_terrain || {};
+      if (finalTerrain && finalTerrain !== "uncharted") {
+        graphData.hex_terrain[hex] = finalTerrain;
+      }
+      await renderAll();
+      MapData.openPanel(generated, { connections: [] });
+      attachEditing(generated);
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = "Generate this hex"; }
+      const descEl = document.getElementById("panel-desc");
+      if (descEl) descEl.textContent = synthetic.description + "\n\nGeneration failed: " + e.message;
+    } finally {
+      hideBusyOverlay(hex);
+    }
+  }
+
+  // Hex-level click — captures clicks anywhere inside a hex, not just on
+  // the small node circles. If the click hits a hex with a node, opens
+  // that node's panel; otherwise opens a hex-info panel showing terrain
+  // and any local POIs.
+  if (paintCtx.hexPolygon && paintCtx.xyToHex) {
+    container.addEventListener("click", (ev) => {
+      // Skip clicks on UI / node hotspot circles (those have their own handler).
+      if (ev.target.closest("#detail-panel,#zoom-controls,#export-btn,#style-controls")) return;
+      if (ev.target.closest("#map-hotspots > circle")) return;
+      if (dragging) return;
+      const { sx, sy } = pixelToCanvas(ev.clientX, ev.clientY);
+      const hex = paintCtx.xyToHex(sx, sy);
+      if (!hex) return;
+      const hexT = paintCtx.hexTerrain || {};
+      const isDefined = !!hexT[hex];
+      // Empty hex is clickable IF it borders a defined hex (frontier of the
+      // known map). Hexes well outside the known area stay non-interactive.
+      let clickable = isDefined;
+      if (!clickable && MapData.hexNeighbors) {
+        const nbrs = MapData.hexNeighbors(hex);
+        clickable = nbrs.some(n => hexT[n]);
+      }
+      if (!clickable) return;
+
+      // Look for any node in this hex. Use graphData.nodes (the full set)
+      // rather than paintCtx.nodes (which is filtered for rendering and may
+      // exclude AI-generated nodes that don't pass the renderer's overland
+      // filter).
+      const localNodes = (graphData.nodes || [])
+        .filter(n => n.hex === hex && n.visible !== false);
+      // Prefer the first overland node if there is one.
+      const primary = localNodes.find(n => MapData.isOverlandNode && MapData.isOverlandNode(n))
+                    || localNodes[0];
+      if (primary) {
+        const conns = (graphData.links || [])
+          .filter(l => l.visible !== false && (l.source === primary.id || l.target === primary.id))
+          .map(l => {
+            const otherId = l.source === primary.id ? l.target : l.source;
+            const other = (graphData.nodes || []).find(n => n.id === otherId);
+            const days = l.days != null ? ` — ${l.days}d` : "";
+            return (other ? other.name : otherId) + days;
+          });
+        MapData.openPanel(primary, { connections: conns });
+        attachEditing(primary);
+        attachExploreActions(hex, primary.terrain || hexT[hex] || "wilderness", null);
+      } else {
+        // Empty hex — show a synthetic hex-info "node". For frontier hexes
+        // (no terrain entry), label as "uncharted".
+        const terrain = hexT[hex] || "uncharted";
+        const desc = isDefined
+          ? `${terrain} hex with no recorded landmarks.`
+          : "Beyond the known map.";
+        const synthetic = {
+          id: "hex-" + hex,
+          name: `Hex ${hex}`,
+          point_type: "wilderness",
+          terrain,
+          description: desc,
+          hex,
+        };
+        MapData.openPanel(synthetic, { connections: [] });
+        attachExploreActions(hex, terrain, synthetic);
+      }
+    });
+  }
+
+  if (gridName === "hex" && paintCtx.hexPolygon && paintCtx.xyToHex) {
+    let hoverPoly = null;
+    let hoverLabel = null;
+    let lastHex = null;
+    stage.addEventListener("mousemove", (ev) => {
+      const { sx, sy } = pixelToCanvas(ev.clientX, ev.clientY);
+      const hex = paintCtx.xyToHex ? paintCtx.xyToHex(sx, sy) : null;
+      if (hex === lastHex) return;
+      lastHex = hex;
+      if (hoverPoly)  { hoverPoly.remove();  hoverPoly = null;  }
+      if (hoverLabel) { hoverLabel.remove(); hoverLabel = null; }
+      if (!hex) return;
+      // Highlight defined hexes AND frontier hexes (adjacent to a defined
+      // one) — same predicate as the click handler, so visual feedback
+      // always matches what's clickable.
+      const hexT = paintCtx.hexTerrain || {};
+      const isDefined = !!hexT[hex];
+      let clickable = isDefined;
+      if (!clickable && MapData.hexNeighbors) {
+        clickable = MapData.hexNeighbors(hex).some(n => hexT[n]);
+      }
+      if (!clickable) return;
+      const pts = paintCtx.hexPolygon(hex);
+      if (!pts || pts.length < 3) return;
+      hoverPoly = document.createElementNS(SVG_NS, "polygon");
+      hoverPoly.setAttribute("class", "hex-hover");
+      hoverPoly.setAttribute("points", pts.map(p => p.join(",")).join(" "));
+      hotspots.insertBefore(hoverPoly, hotspots.firstChild);
+
+      // Hover card at the hovered cell's centre. Shows hex address +
+      // terrain type as two stacked lines.
+      let cxh = 0, cyh = 0;
+      pts.forEach(p => { cxh += p[0]; cyh += p[1]; });
+      cxh /= pts.length; cyh /= pts.length;
+      const terrain = hexT[hex] || "uncharted";
+      const card = document.createElementNS(SVG_NS, "g");
+      card.setAttribute("pointer-events", "none");
+      const line1 = document.createElementNS(SVG_NS, "text");
+      line1.setAttribute("x", cxh);
+      line1.setAttribute("y", cyh - 44);
+      line1.setAttribute("text-anchor", "middle");
+      line1.setAttribute("fill", "rgba(60,40,20,0.92)");
+      line1.setAttribute("stroke", "white");
+      line1.setAttribute("stroke-width", "3");
+      line1.setAttribute("paint-order", "stroke");
+      line1.setAttribute("font-family", "monospace");
+      line1.setAttribute("font-size", "14");
+      line1.setAttribute("font-weight", "bold");
+      line1.textContent = hex;
+      card.appendChild(line1);
+      const line2 = document.createElementNS(SVG_NS, "text");
+      line2.setAttribute("x", cxh);
+      line2.setAttribute("y", cyh - 28);
+      line2.setAttribute("text-anchor", "middle");
+      line2.setAttribute("fill", "rgba(60,40,20,0.78)");
+      line2.setAttribute("stroke", "white");
+      line2.setAttribute("stroke-width", "3");
+      line2.setAttribute("paint-order", "stroke");
+      line2.setAttribute("font-family", "'IM Fell English', serif");
+      line2.setAttribute("font-style", "italic");
+      line2.setAttribute("font-size", "12");
+      line2.textContent = terrain;
+      card.appendChild(line2);
+      hotspots.appendChild(card);
+      hoverLabel = card;
+    });
+    stage.addEventListener("mouseleave", () => {
+      if (hoverPoly)  { hoverPoly.remove();  hoverPoly = null;  }
+      if (hoverLabel) { hoverLabel.remove(); hoverLabel = null; }
+      lastHex = null;
+    });
+  }
+
+  // ----------------------------------------------------------
+  // Pan / zoom — CSS transform on #map-stage
+  // ----------------------------------------------------------
+  const view = { tx: 0, ty: 0, scale: 1 };
+  function applyTransform() {
+    stage.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`;
+    saveViewToHash();
+  }
+  function fitToViewport() {
+    const W = window.innerWidth, H = window.innerHeight;
+    const s = Math.min(W / RENDER_W, H / RENDER_H);
+    view.scale = s;
+    view.tx = (W - RENDER_W * s) / 2;
+    view.ty = (H - RENDER_H * s) / 2;
+    applyTransform();
+  }
+
+  // Persist view across reloads via URL hash. We store the hex address
+  // currently at viewport centre + the zoom level — `#hex=1010&zoom=1.5`.
+  // Coarser than pixel coordinates but more meaningful: the URL reads as
+  // "go to this hex at this zoom," and stays valid across window resizes
+  // and small canvas-size changes.
+  let _saveHashTimer = null;
+  function saveViewToHash() {
+    if (_saveHashTimer) cancelAnimationFrame(_saveHashTimer);
+    _saveHashTimer = requestAnimationFrame(() => {
+      const W = window.innerWidth, H = window.innerHeight;
+      const cx = (W / 2 - view.tx) / view.scale;
+      const cy = (H / 2 - view.ty) / view.scale;
+      const hex = paintCtx.xyToHex ? paintCtx.xyToHex(cx, cy) : null;
+      const zoom = view.scale.toFixed(3);
+      const hash = hex ? `#hex=${hex}&zoom=${zoom}` : `#zoom=${zoom}`;
+      try { history.replaceState(null, "", location.pathname + location.search + hash); }
+      catch (e) { /* ignore */ }
+    });
+  }
+  function restoreViewFromHash() {
+    const h = location.hash.replace(/^#/, "");
+    if (!h) return false;
+    const parts = Object.fromEntries(h.split("&").map(p => p.split("=")));
+    const zoom = parseFloat(parts.zoom);
+    if (!Number.isFinite(zoom) || zoom < 0.05 || zoom > 16) return false;
+    let cx = null, cy = null;
+    if (parts.hex && paintCtx.hexCenterXY) {
+      const xy = paintCtx.hexCenterXY(parts.hex);
+      if (xy) { cx = xy[0]; cy = xy[1]; }
+    }
+    if (cx == null || cy == null) {
+      // Hex missing or unresolvable — keep the existing centre, just apply zoom.
+      const W0 = window.innerWidth, H0 = window.innerHeight;
+      cx = (W0 / 2 - view.tx) / view.scale;
+      cy = (H0 / 2 - view.ty) / view.scale;
+    }
+    const W = window.innerWidth, H = window.innerHeight;
+    view.scale = zoom;
+    view.tx = W / 2 - cx * zoom;
+    view.ty = H / 2 - cy * zoom;
+    applyTransform();
+    return true;
+  }
+  if (!restoreViewFromHash()) fitToViewport();
+
+  // Drag to pan
+  let dragging = false, dragStart = null;
+  container.addEventListener("mousedown", (ev) => {
+    if (ev.target.closest("#detail-panel,#zoom-controls,#export-btn,#map-hotspots > circle")) return;
+    dragging = true;
+    dragStart = { x: ev.clientX - view.tx, y: ev.clientY - view.ty };
+    ev.preventDefault();
+  });
+  window.addEventListener("mousemove", (ev) => {
+    if (!dragging) return;
+    view.tx = ev.clientX - dragStart.x;
+    view.ty = ev.clientY - dragStart.y;
+    applyTransform();
+  });
+  window.addEventListener("mouseup", () => { dragging = false; });
+
+  // Wheel to zoom (cursor-anchored)
+  container.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    const factor = Math.exp(-ev.deltaY * 0.0015);
+    const next = Math.min(8, Math.max(0.15, view.scale * factor));
+    const rect = container.getBoundingClientRect();
+    const px = ev.clientX - rect.left;
+    const py = ev.clientY - rect.top;
+    // Keep the world-point under the cursor stationary
+    const wx = (px - view.tx) / view.scale;
+    const wy = (py - view.ty) / view.scale;
+    view.scale = next;
+    view.tx = px - wx * next;
+    view.ty = py - wy * next;
+    applyTransform();
+  }, { passive: false });
+
+  document.getElementById("zoom-in").addEventListener("click", () => zoomCenter(1.25));
+  document.getElementById("zoom-out").addEventListener("click", () => zoomCenter(1 / 1.25));
+  document.getElementById("zoom-fit").addEventListener("click", fitToViewport);
+  function zoomCenter(factor) {
+    const W = window.innerWidth, H = window.innerHeight;
+    const wx = (W / 2 - view.tx) / view.scale;
+    const wy = (H / 2 - view.ty) / view.scale;
+    view.scale = Math.min(8, Math.max(0.15, view.scale * factor));
+    view.tx = W / 2 - wx * view.scale;
+    view.ty = H / 2 - wy * view.scale;
+    applyTransform();
+  }
+
+  // Smoothly tween view from current → target over duration ms.
+  let activeTween = null;
+  function tweenViewTo(targetScale, targetTx, targetTy, duration) {
+    if (activeTween) cancelAnimationFrame(activeTween);
+    const startScale = view.scale, startTx = view.tx, startTy = view.ty;
+    const t0 = performance.now();
+    function step(now) {
+      let t = Math.min(1, (now - t0) / duration);
+      // Ease-in-out cubic.
+      t = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      view.scale = startScale + (targetScale - startScale) * t;
+      view.tx    = startTx    + (targetTx    - startTx)    * t;
+      view.ty    = startTy    + (targetTy    - startTy)    * t;
+      applyTransform();
+      if (t < 1) activeTween = requestAnimationFrame(step);
+      else activeTween = null;
+    }
+    activeTween = requestAnimationFrame(step);
+  }
+
+  // Double-click on a hex → smoothly zoom in centred on that hex.
+  // Skips if the user double-clicked on a node hotspot (those open the panel).
+  container.addEventListener("dblclick", (ev) => {
+    if (ev.target.closest("#detail-panel,#zoom-controls,#export-btn,#map-hotspots > circle")) return;
+    const { sx, sy } = pixelToCanvas(ev.clientX, ev.clientY);
+    const targetScale = Math.min(8, view.scale * 2.5);
+    const W = window.innerWidth, H = window.innerHeight;
+    const targetTx = W / 2 - sx * targetScale;
+    const targetTy = H / 2 - sy * targetScale;
+    tweenViewTo(targetScale, targetTx, targetTy, 380);
+  });
+
+  // Arrow keys pan by exactly one hex step. PAINTED_SCALE = 200 px/inch
+  // means colStep = 75 canvas-px and rowStep ≈ 86.6 canvas-px (using the
+  // pointy-top math from core-data.js: size = 50, colStep = size×1.5,
+  // rowStep = size×√3). Tween for smooth motion.
+  const HEX_COL_STEP = 75;
+  const HEX_ROW_STEP = 50 * Math.sqrt(3);
+  document.addEventListener("keydown", (ev) => {
+    // Skip if user is typing in an input field.
+    const tag = (ev.target && ev.target.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    // Plus / minus zoom around the viewport centre.
+    if (ev.key === "+" || ev.key === "=" || ev.key === "-" || ev.key === "_") {
+      ev.preventDefault();
+      const factor = (ev.key === "+" || ev.key === "=") ? 1.25 : 1 / 1.25;
+      const W = window.innerWidth, H = window.innerHeight;
+      const wx = (W / 2 - view.tx) / view.scale;
+      const wy = (H / 2 - view.ty) / view.scale;
+      const targetScale = Math.min(8, Math.max(0.15, view.scale * factor));
+      const targetTx = W / 2 - wx * targetScale;
+      const targetTy = H / 2 - wy * targetScale;
+      tweenViewTo(targetScale, targetTx, targetTy, 180);
+      return;
+    }
+    let dx = 0, dy = 0;
+    switch (ev.key) {
+      case "ArrowUp":    dy = +HEX_ROW_STEP * view.scale; break;
+      case "ArrowDown":  dy = -HEX_ROW_STEP * view.scale; break;
+      case "ArrowLeft":  dx = +HEX_COL_STEP * view.scale; break;
+      case "ArrowRight": dx = -HEX_COL_STEP * view.scale; break;
+      default: return;
+    }
+    ev.preventDefault();
+    tweenViewTo(view.scale, view.tx + dx, view.ty + dy, 200);
+  });
+
+  // Title bar
+  const m = graphData.meta || {};
+  document.getElementById("title-bar").textContent =
+    `${m.campaign || campaign} — ${m.region || ""}, ${m.world || ""} — ${m.era || ""}`;
+
+  // Export button
+  document.getElementById("export-btn").addEventListener("click", () => {
+    MapRaster.exportCanvasPNG(canvas, `${campaign}-mapeffects.png`);
+  });
+
+  // Re-fit on viewport resize.
+  window.addEventListener("resize", fitToViewport);
+})().catch(err => {
+  console.error(err);
+  document.getElementById("loading").textContent = "Error: " + err.message;
+});
+</script>
+</body>
+</html>

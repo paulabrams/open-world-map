@@ -2,13 +2,13 @@
 
 ## Goal
 
-Match the Baynes/Tolkien source art across **every map element** in maps/styles/thirdage.js, maps/styles/wilderland.js, and maps/styles/moonletters.js, and the Dragon Isles world-map source art in maps/styles/dragonisles.js. Target 10/10 visual match where the rendered map looks hand-drawn in the authentic style.
+Match the Baynes/Tolkien source art across **every map element** in viewer/renderers/thirdage.js, viewer/renderers/wilderland.js, and viewer/renderers/moonletters.js, and the Dragon Isles world-map source art in viewer/renderers/dragonisles.js. Target 10/10 visual match where the rendered map looks hand-drawn in the authentic style.
 
-> The Dragon Isles style replaces the earlier hexcrawl style. `maps/styles/hexcrawl.js` should be renamed to `maps/styles/dragonisles.js` and retuned to match `dragon_isles_simple.png` — any hex-crawl-rubric work is superseded.
+> The Dragon Isles style replaces the earlier hexcrawl style. `viewer/renderers/hexcrawl.js` should be renamed to `viewer/renderers/dragonisles.js` and retuned to match `dragon_isles_simple.png` — any hex-crawl-rubric work is superseded.
 
-### Reference images (canonical location: `maps/style-references/`)
+### Reference images (canonical location: `viewer/style-references/`)
 
-- **thirdage.js** → `middle-earth.webp` (primary) + `middle earth draft.jpg` (supporting — shows pencil underdrawing, region-fill shading, and margin construction notes). If `docs/style-references/` also contains a file, treat `maps/style-references/` as authoritative.
+- **thirdage.js** → `middle-earth.webp` (primary) + `middle earth draft.jpg` (supporting — shows pencil underdrawing, region-fill shading, and margin construction notes). If `docs/style-references/` also contains a file, treat `viewer/style-references/` as authoritative.
 - **wilderland.js** → `wilderland.jpg`
 - **moonletters.js** → `thrors-map.jpg`
 - **dragonisles.js** → `dragon_isles_simple.png` (world-scale map of the Dragon Isles — ornate Celtic-knot frame, sword-and-knotwork compass, sepia-on-parchment with red labels for named regions and prominent settlements)
@@ -137,7 +137,7 @@ At the start of each iteration:
 2. Pick the **lowest-scoring style** as this iteration's target.
 3. Keep working on that style until its score **ties the second-lowest** — then the two become the new joint lowest, and you switch to whichever of the two has the bigger concrete gap (the one where you can name a specific, addressable miss).
 4. If two styles are tied for lowest, pick the one that hasn't been iterated on more recently (avoid thrashing one while the other starves).
-5. A change to shared code (`maps/core.js`) counts against *all four* styles — see the scoring rule below.
+5. A change to shared code (`viewer/core.js`) counts against *all four* styles — see the scoring rule below.
 6. **If the user has scoped the loop to a specific style** (e.g. `/loop run on wilderland`), that override beats the rotation rule — but you MUST explicitly log "user-scoped to {style}; rotation paused" in the iteration's target line so it's clear the lowest-scoring rule is being bypassed intentionally.
 
 ### Scoring rules — integers only, no padding
@@ -203,7 +203,7 @@ Open corrections are the user's way of saying "this is broken right now, don't k
 1. Confirm the working tree is clean (`git status` shows no uncommitted changes from the previous iteration).
 2. Pick the target style per the rule above. State it: `Target this iteration: {style} (current score {N}/10).`
 3. **BEFORE** the code change, capture a "before" screenshot of the current render (see Verification Protocol below). This is the baseline for the comparison.
-4. Make ONE focused code change (normally in the target style's module; if in `maps/core.js`, flag it explicitly — scoring rule below).
+4. Make ONE focused code change (normally in the target style's module; if in `viewer/core.js`, flag it explicitly — scoring rule below).
 5. Capture an "after" screenshot of the render per the Verification Protocol.
 6. **Execute the full Verification Protocol** (next section) — NO exceptions, NO shortcuts. If any step is skipped, the iteration is void and must be redone. The protocol's output is the input to scoring.
 7. Rate 1-10 based on what the **Verification Protocol** surfaced, not what you think the code should produce. Err low.
@@ -228,7 +228,7 @@ Every iteration MUST produce three image files, all referenced by path in the it
 
 1. `tmp/screenshots/{iter-id}-before.png` — the render before this iteration's change (e.g. `tmp/screenshots/wl-30-before.png`).
 2. `tmp/screenshots/{iter-id}-after.png` — the render after this iteration's change.
-3. A reference-image path — the source art file for the target style (e.g. `maps/style-references/wilderland.jpg`), usually cropped to the element being worked on and saved as `tmp/screenshots/{iter-id}-ref-crop.png`.
+3. A reference-image path — the source art file for the target style (e.g. `viewer/style-references/wilderland.jpg`), usually cropped to the element being worked on and saved as `tmp/screenshots/{iter-id}-ref-crop.png`.
 
 If focused on a specific element (e.g. mountains), crop all three images to that element's region so the comparison is apples-to-apples. Use PIL for cropping (sips has surfaced as unreliable — see Patterns).
 

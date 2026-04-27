@@ -2,9 +2,19 @@
 
 ## What This Is
 
-Point-crawl map system for TTRPG campaigns. Supabase DB (thoughts table) + MCP server + static SVG map viewer.
+Point-crawl map system for TTRPG campaigns. Supabase DB (thoughts table) + MCP server + static map viewer with two rendering pipelines (SVG vector + painted canvas).
 
 Current campaign: **The Basilisk Campaign** (Blackwater Crossing region, Belerion, Dragon Isles).
+
+## Renderers and Styles
+
+There are **two renderers** and **four styles** — independent axes:
+
+- **SVG renderer** at `viewer/map.html` (vector linework + procedural ink). Pages: `viewer/core.js` + `viewer/renderers/{wilderland,thirdage,moonletters,dragonisles}.js`.
+- **Painted renderer** at `viewer/painted.html` (canvas + brush stamps). Pages: `viewer/renderers/mapeffects.js` + `viewer/core-raster.js`.
+- **Styles** (palette + font, NOT how stamps render): Wilderland, Moon Letters, Dragon Isles. Both renderers support all four styles via `?style=` URL param. Switching styles only re-colours linework — stamp art is unchanged.
+
+Both pages have Style + Renderer + Grid dropdowns; settings round-trip via URL params.
 
 ## MCP Tools Available
 
@@ -15,26 +25,57 @@ Current campaign: **The Basilisk Campaign** (Blackwater Crossing region, Belerio
 
 ## Key Files
 
+### Documentation
+
 - `docs/Open-World-Map.md` — full spec
 - `docs/rebuild-map.md` — full rebuild prompt and schema reference
-- `maps/map.html` — unified map viewer (single page, style/grid switcher)
-- `maps/core.js` — shared utilities, data loading, rendering orchestrator
-- `maps/styles/*.js` — style modules (classic, wilderland, world, treasuremap)
-- `maps/grids/*.js` — grid overlay modules (square, hex)
+- `docs/STYLE.md` — SVG-renderer visual style guide (Tolkien aesthetic)
+- `docs/Map Effects Style Tuning.md` — painted-renderer rules and conventions
+- `docs/painted-renderer.md` — painted-renderer build spec and architecture
+- `docs/tasks.md` — running open/completed log
+
+### Viewer
+
+- `viewer/index.html` — landing page, links into the map
+- `viewer/map.html` — SVG renderer entry point
+- `viewer/painted.html` — painted (canvas) renderer entry point
+- `viewer/core-data.js` — shared data layer (loading, hex math, panel UX, travel-time math, RNG, hex neighbours)
+- `viewer/core.js` — SVG-side rendering plumbing (route finding, force layout, label placement)
+- `viewer/core-raster.js` — canvas-side rendering plumbing (asset cache, paint context, knockout silhouettes, drawStamp, drawStampAtHeight, polylineToD)
+- `viewer/renderers/wilderland.js`, `moonletters.js`, `dragonisles.js` — SVG style modules
+- `viewer/renderers/mapeffects.js` — painted style module (the only one for the canvas renderer; per-style palettes live inside it as `STYLE_PALETTES`)
+- `viewer/grids/{square,hex}.js` — SVG grid overlay modules
+- `viewer/style-references/*` — source art for the SVG renderers
+- `viewer/mapeffects-inventory.html` — brush-metadata browser used to triage painted-renderer stamps
+- `viewer/assets/mapeffects/` — derived runtime assets for the painted renderer (gitignored; rebuild via `tools/build-mapeffects-assets.mjs`)
+
+### Build tools
+
+- `tools/build-mapeffects-assets.mjs` — extracts brush stamps from Procreate `.brushset` files in `resources/`, trims to alpha bbox, writes manifest + per-category PNGs to `viewer/assets/mapeffects/symbols/`. Re-run after changing `SHAPE_MAX_EDGE` or the brushset list.
+- `tools/extract-brush-metadata.py` — reads each brush's `Brush.archive` plist and the trimmed PNG dimensions, classifies into archetypes, runs blob/peak detection, computes `suggested_height_px`. Output: `viewer/assets/mapeffects/brush-metadata.json`. Re-run after changing classification patterns or sizing constants — no asset rebuild needed.
+
+### Data
+
 - `maps/{campaign}/{campaign}.json` — graph data per campaign (e.g. `maps/Basilisk/Basilisk.json`)
 - `maps/{campaign}/{campaign}-{style}.svg` — exported SVGs per campaign
+- `maps/{campaign}/screenshots/*.png` — reference screenshots
+- `index.html` (repo root) — redirects to `viewer/index.html`
 
 ## View the Map
 
 ```sh
-cd maps && python3 -m http.server 8787
+python3 -m http.server 8787
 ```
 
-Then open http://localhost:8787/map.html?map=Basilisk
+Then open one of:
 
-URL params: `?map=Basilisk&style=wilderland&grid=hex`
-Styles: classic, wilderland, world, treasuremap
-Grids: none, square, hex
+- `http://localhost:8787/` — landing page → click "Open Map"
+- `http://localhost:8787/viewer/painted.html?map=Basilisk&style=wilderland&grid=hex` — painted renderer (default)
+- `http://localhost:8787/viewer/map.html?map=Basilisk&style=wilderland&grid=hex` — SVG renderer
+
+URL params (both pages): `?map=<campaign>&style=<style>&grid=<square|hex|none>`.
+
+The painted page also persists pan/zoom in the URL hash so reload returns to the same view.
 
 ## Rebuild the Map JSON
 
@@ -59,14 +100,27 @@ Always update **both** the database AND the JSON to keep them in sync:
 ```
 { meta: { campaign, world, region, era },
   nodes: [{ id, name, point_type, terrain, visible, description, x_hint, y_hint, hex }],
-  links: [{ source, target, name, days, path_type, terrain_difficulty, visible }] }
+  links: [{ source, target, name, days, path_type, terrain_difficulty, visible }],
+  hex_terrain: { "CCRR": "<terrain>" },
+  river_path: ["CCRR", ...],
+  road_path: [{ name, hexes: [...], path_type, terrain_difficulty, days }],
+  off_map_arrows: [{ direction: "N|NE|E|SE|S|SW|W|NW", label }] }
 ```
 
 - `point_type`: heart, fortress, tavern, settlement, wilderness, dungeon, sanctuary, tower, ruin, waypoint, lair
-- `terrain`: plains, forest, mountains, swamp
+- `terrain`: plains, forest, mountains, swamp, hills, forested-hills, farmland, etc.
 - `path_type`: road, trail, wilderness, river
 - `terrain_difficulty`: easy, tough, perilous
-- `x_hint`/`y_hint`: position in inches relative to Blackwater Crossing (0,0). Positive x = east, positive y = south. Based on the hand-drawn 8.5"×11" campaign map.
+- `x_hint`/`y_hint`: position in inches relative to Blackwater Crossing (0,0). Positive x = east, positive y = south.
+- `hex`: 4-digit `"CCRR"` (column, row), Blackwater Crossing = `"1010"`.
+
+## Terminology (painted renderer)
+
+- **stamp** — runtime placement on canvas. Used in renderer code (`drawStamp`, `_stampPositions`) and inventory UI.
+- **brush** — original Procreate source artwork. Surfaces in metadata field `brush_name` and the `Brush.archive` plist.
+- **symbol** — on-disk filesystem path (`viewer/assets/mapeffects/symbols/<category>/shape-NN.png`).
+
+Rule of thumb: source = brush, runtime = stamp, file path = symbol.
 
 ## Known DB Issues
 

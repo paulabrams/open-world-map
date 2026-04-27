@@ -42,13 +42,13 @@ For each PATH thought, extract:
 - `visible`: true (default)
 
 **Step 3: Merge with existing overrides.**
-Read the current `maps/Basilisk.json` file. For any node that already exists in the current file, preserve its `x_hint` and `y_hint` values (these are hand-tuned positions). For new nodes, set `x_hint` and `y_hint` to 0 (they'll need manual positioning).
+Read the current `maps/Basilisk/Basilisk.json` file. For any node that already exists in the current file, preserve its `x_hint` and `y_hint` values (these are hand-tuned positions). For new nodes, set `x_hint` and `y_hint` to 0 (they'll need manual positioning).
 
 **Step 4: Check for orphans.**
 Every node must be reachable via at least one link. If a point has no corresponding path connecting it, flag it in a comment but still include it. If a path references a point that doesn't exist, flag it and skip the link.
 
 **Step 5: Write the JSON.**
-Output the complete JSON to `maps/Basilisk.json` in this exact schema:
+Output the complete JSON to `maps/Basilisk/Basilisk.json` in this exact schema:
 
 {
   "meta": {

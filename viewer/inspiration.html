@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open World Map — Inspiration</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #f4e8d1;
+    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    color: #2a1f14;
+  }
+  header {
+    text-align: center;
+    padding: 40px 20px 20px;
+  }
+  header h1 {
+    font-size: 32px;
+    letter-spacing: 4px;
+    color: #8b2500;
+    margin-bottom: 8px;
+  }
+  header p {
+    font-size: 14px;
+    font-style: italic;
+    color: #5a4a3a;
+    max-width: 720px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+  header a.back {
+    display: inline-block;
+    margin-top: 12px;
+    color: #8b2500;
+    text-decoration: none;
+    font-size: 13px;
+  }
+
+  .styles {
+    max-width: 900px;
+    margin: 30px auto 60px;
+    padding: 0 20px;
+  }
+
+  .style-card {
+    background: #faf3e6;
+    border: 1px solid #d4c4a0;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .style-card .style-image {
+    cursor: zoom-in;
+    transition: opacity 0.2s;
+  }
+  .style-card .style-image:hover { opacity: 0.9; }
+  .style-card .style-image img {
+    width: 100%;
+    display: block;
+  }
+  .style-card .style-info {
+    padding: 16px 20px;
+  }
+  .style-card h3 {
+    font-size: 18px;
+    color: #2a1f14;
+    margin-bottom: 6px;
+  }
+  .style-card p {
+    font-size: 13px;
+    color: #5a4a3a;
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+  .style-card .ref {
+    font-size: 11px;
+    font-style: italic;
+    color: #8b7b6b;
+  }
+
+  /* Lightbox */
+  #lightbox {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    cursor: zoom-out;
+    overflow: auto;
+    padding: 20px;
+  }
+  #lightbox.open { display: flex; align-items: center; justify-content: center; }
+  #lightbox img {
+    max-width: 95vw;
+    max-height: 95vh;
+    object-fit: contain;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+  }
+
+  footer {
+    text-align: center;
+    padding: 30px 20px;
+    font-size: 11px;
+    color: #8b7b6b;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>INSPIRATION</h1>
+  <p>Hand-drawn fantasy maps that informed the look of the Open World viewer. The renderer doesn't try to match these exactly — they're here as reference for the visual vocabulary of fantasy cartography.</p>
+  <a class="back" href="index.html">&larr; Back to maps</a>
+</header>
+
+<div class="styles">
+  <div class="style-card">
+    <div class="style-image" onclick="openLightbox(this.querySelector('img').src)">
+      <img src="style-references/wilderland.jpg" alt="Wilderland source art">
+    </div>
+    <div class="style-info">
+      <h3>Wilderland</h3>
+      <p>Tolkien's own hand-drawn map: round tree canopies, peaked mountains with shadow sides, blue rivers, decorative border.</p>
+      <div class="ref">Source art: Tolkien's Wilderland map, The Hobbit</div>
+    </div>
+  </div>
+
+  <div class="style-card">
+    <div class="style-image" onclick="openLightbox(this.querySelector('img').src)">
+      <img src="style-references/thrors-map.jpg" alt="Moon Letters source art">
+    </div>
+    <div class="style-info">
+      <h3>Moon Letters</h3>
+      <p>Sparse blue-ink sketch on aged parchment with a runic border and handwritten annotations. The red text only appears in moonlight.</p>
+      <div class="ref">Source art: Thror's Map, The Hobbit</div>
+    </div>
+  </div>
+
+  <div class="style-card">
+    <div class="style-image" onclick="openLightbox(this.querySelector('img').src)">
+      <img src="style-references/middle-earth.webp" alt="Third Age source art">
+    </div>
+    <div class="style-info">
+      <h3>Third Age</h3>
+      <p>Dense engraving in black and red ink with forest hatching, ridge-line mountains, region labels, and an ornate compass rose.</p>
+      <div class="ref">Source art: Pauline Baynes' Map of Middle-earth</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <a href="index.html" style="color:#8b7b6b;text-decoration:none;">&larr; Back to maps</a>
+</footer>
+
+<div id="lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="Full size source art">
+</div>
+
+<script>
+function openLightbox(src) {
+  document.getElementById("lightbox-img").src = src;
+  document.getElementById("lightbox").classList.add("open");
+}
+function closeLightbox() {
+  document.getElementById("lightbox").classList.remove("open");
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeLightbox();
+});
+</script>
+
+</body>
+</html>

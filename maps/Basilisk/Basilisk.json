@@ -13,8 +13,8 @@
       "terrain": "plains",
       "visible": true,
       "description": "A walled frontier town at the crossing of the Old Northern Trade Road and the Blackwater River, joined by an old stone bridge. Farms ring the walls; habitable copses are squatted by the poor, resented by farmers for thieves. Guard Captain Ulf keeps order above, but below lies a cursed well, old tunnels, and a vampire brothel beneath the east side. Fog nights bring the Mist Hounds — red lights in pairs — and children vanish across the districts. The party's base of operations.",
-      "x_hint": 0.0,
-      "y_hint": 0.0,
+      "x_hint": 0,
+      "y_hint": 0,
       "hex": "1010"
     },
     {
@@ -24,8 +24,8 @@
       "terrain": "town",
       "visible": true,
       "description": "A tavern near the north gate of Blackwater Crossing and the party's declared home base. Mustering from the Basilisk lets characters roll Hearts with advantage — the place restores them in a way few frontier inns do.",
-      "x_hint": 0.0,
-      "y_hint": 0.0,
+      "x_hint": 0,
+      "y_hint": 0,
       "hex": "1010",
       "scale": "local",
       "parent": "blackwater-crossing"
@@ -37,8 +37,8 @@
       "terrain": "town",
       "visible": true,
       "description": "A dockside tavern on the east (bad) side of the Blackwater, tangled in the suspicious-meat rumor. In Session 43 the party tore down the crumbling building beside it, fought red-eyed rats, and found stairs leading down to the old tunnels and the vampire brothel below. A demon desk clerk greets arrivals; townspeople pass through in pseudonyms as clients or chattel.",
-      "x_hint": 0.0,
-      "y_hint": 0.0,
+      "x_hint": 0,
+      "y_hint": 0,
       "hex": "1010",
       "scale": "local",
       "parent": "blackwater-crossing"
@@ -50,8 +50,8 @@
       "terrain": "town",
       "visible": true,
       "description": "A labyrinth of alleys near the Laughing Basilisk, held by a local canting crew — the town's thieves guild. Easy to get lost in, easier still to be found by the wrong people.",
-      "x_hint": 0.0,
-      "y_hint": 0.0,
+      "x_hint": 0,
+      "y_hint": 0,
       "hex": "1010",
       "scale": "local",
       "parent": "blackwater-crossing"
@@ -63,8 +63,8 @@
       "terrain": "underground",
       "visible": true,
       "description": "Old tunnels beneath the city, entered through stairs under a crumbling building next to the Sweaty Mermaid. Just past a beaded curtain arch lies a vampire brothel — receptionist with a giant red-eyed rat, multiple rooms, at least one vampire, and a noble patron who buys blood before each new moon. The fog's Mist Hounds serve the vampires here, and children vanish above to feed them.",
-      "x_hint": 0.0,
-      "y_hint": 0.0,
+      "x_hint": 0,
+      "y_hint": 0,
       "hex": "1010",
       "scale": "local",
       "parent": "blackwater-crossing"
@@ -76,7 +76,7 @@
       "terrain": "plains",
       "visible": true,
       "description": "A ruined farmstead south of Blackwater Crossing along the Trade Road, scorched by an old fire. A basement still opens beneath the blackened timbers. Something cursed lingers in the ash — locals give it a wide berth.",
-      "x_hint": 0.0,
+      "x_hint": 0,
       "y_hint": 0.87,
       "hex": "1011"
     },
@@ -87,7 +87,7 @@
       "terrain": "forest",
       "visible": true,
       "description": "A transitional landmark where the Trade Road leaves the Old Forest and descends into farmland — two hours south of the forest edge. Leaning stones and sparse trees mark civilization's northern limit. A gallows further south carries a sign reading \"THEEF.\" Travelers here turn east to reach Kalla Cave.",
-      "x_hint": 0.0,
+      "x_hint": 0,
       "y_hint": -2.6,
       "hex": "1007"
     },
@@ -142,7 +142,7 @@
       "terrain": "forest",
       "visible": true,
       "description": "A barrow mound southeast of the Mud Wallow and two hours north of the Kobold Crevasse. On a throne of bones sits the Crag King, a barrow wight chieftain, flanked by eight skeleton guards. The dead zone around the mound is growing. A Thornespire Keep helmet lies among the bones — a trophy from the missing patrol. No trail leads here; the Mud Tooth Porcs guided the party in around the spider nests. A Level 5 encounter the party scouted but did not engage.",
-      "x_hint": 0.0,
+      "x_hint": 0,
       "y_hint": -5.2,
       "hex": "1004"
     },
@@ -345,6 +345,66 @@
       "y_hint": 2.6,
       "hex": "0912",
       "subhex": "S"
+    },
+    {
+      "id": "hex-1111-NE",
+      "name": "Maret's Charcoal Mound",
+      "point_type": "wilderness",
+      "terrain": "forest",
+      "description": "At the tree-line where the Trade Road enters the wood, a slow-burning charcoal mound exhales smoke that smells of rendered fat rather than timber — tended by a heavy-set old woman who gives only the name Maret and deflects every question about the ring of antler-tip stakes she has pressed into the black loam around the mound's base.",
+      "hex": "1111",
+      "subhex": "NE",
+      "x_hint": 0.93,
+      "y_hint": 1.199,
+      "visible": true
+    },
+    {
+      "id": "hex-1110-SW",
+      "name": "Merrow's Barley Fields",
+      "point_type": "waypoint",
+      "terrain": "farmland",
+      "description": "Half a mile east of Blackwater's outer farms, a scarecrow in the center of Merrow's largest plot stands dressed in a genuine town guard's tabard — the star-and-river badge still legible, the cloth unwashed and fresh. A girl is watching from the field edge with a mattock across her shoulders, and she won't meet your eyes.",
+      "hex": "1110",
+      "subhex": "SW",
+      "x_hint": 0.57,
+      "y_hint": 0.533,
+      "visible": true
+    },
+    {
+      "id": "hex-0910-SW",
+      "name": "Crookstaff Farm",
+      "point_type": "waypoint",
+      "terrain": "farmland",
+      "description": "Visible from the south-east track, a barn door is daubed with a red handprint — the tribute mark Krin's bandits leave when a farmer has paid once and agreed to keep paying. The owner, a wide-shouldered woman named Dotta, stands in the doorway with a grain flail across her knees; she paid the first time, swore never again, and has been watching the southern road every morning since.",
+      "hex": "0910",
+      "subhex": "SW",
+      "x_hint": -0.93,
+      "y_hint": 0.533,
+      "visible": true
+    },
+    {
+      "id": "hex-1213-SW",
+      "name": "Tula's Outlook",
+      "point_type": "waypoint",
+      "terrain": "hills",
+      "description": "A flat-topped spur of rock right on the north-west approach, where a half-deaf woman named Tula Oss has built a low stone windbreak and spends her days watching Serpent's Pass through a dented brass spyglass — her greasy ledger logs every traveller by description and time, and she will not say who she reports to.",
+      "hex": "1213",
+      "subhex": "SW",
+      "x_hint": 1.32,
+      "y_hint": 2.698,
+      "visible": true
+    },
+    {
+      "id": "hex-1210-NE",
+      "name": "Nob's Rise",
+      "point_type": "waypoint",
+      "terrain": "hills",
+      "description": "The first hill that lifts you clear of Merrow's barley country, crowned by a drover's cairn built over a bleached horse skull — each traveler adds a stone for luck. A woman sits at its base fletching arrows without looking up; her boots are soaked through, and the nearest ford is two hours back the way you came.",
+      "hex": "1210",
+      "subhex": "NE",
+      "x_hint": 1.68,
+      "y_hint": -0.1,
+      "visible": true
     }
   ],
   "links": [
@@ -364,7 +424,7 @@
       "path_type": "wilderness",
       "terrain_difficulty": "perilous",
       "visible": true,
-      "days": 1.0
+      "days": 1
     },
     {
       "source": "blackwater-crossing",
@@ -430,6 +490,57 @@
     }
   ],
   "hex_terrain": {
+    "1000": "forest",
+    "1001": "forest",
+    "1002": "forest",
+    "1003": "forest",
+    "1004": "forest",
+    "1005": "forest",
+    "1006": "forest",
+    "1007": "farmland",
+    "1008": "farmland",
+    "1009": "farmland",
+    "1010": "plains",
+    "1011": "farmland",
+    "1012": "forest",
+    "1013": "hills",
+    "1014": "mountains",
+    "1015": "mountains",
+    "1016": "mountains",
+    "1104": "forest",
+    "1105": "forest",
+    "1106": "forest",
+    "1107": "farmland",
+    "1108": "farmland",
+    "1109": "farmland",
+    "1110": "farmland",
+    "1111": "forest",
+    "1112": "hills",
+    "1113": "hills",
+    "1114": "mountains",
+    "1115": "mountains",
+    "1204": "forest",
+    "1205": "forest",
+    "1206": "forest",
+    "1207": "forest",
+    "1210": "hills",
+    "1211": "plains",
+    "1212": "forest",
+    "1213": "hills",
+    "1214": "mountains",
+    "1215": "mountains",
+    "1304": "forest",
+    "1305": "forest",
+    "1310": "plains",
+    "1311": "plains",
+    "1312": "forested-hills",
+    "1313": "mountains",
+    "1314": "mountains",
+    "1412": "plains",
+    "1413": "forested-hills",
+    "1414": "mountains",
+    "1415": "mountains",
+    "1613": "plains",
     "0604": "forest",
     "0605": "forest",
     "0602": "forested-hills",
@@ -454,79 +565,29 @@
     "0904": "forest",
     "0905": "forested-hills",
     "0906": "forest",
-    "1004": "forest",
-    "1005": "forest",
-    "1006": "forest",
-    "1007": "farmland",
-    "1105": "forest",
-    "1106": "forest",
-    "1107": "farmland",
-    "1204": "forest",
-    "1205": "forest",
-    "1206": "forest",
-    "1207": "forest",
     "0505": "swamp",
     "0711": "forest",
     "0712": "forest",
     "0812": "forest",
     "0909": "farmland",
     "0910": "farmland",
-    "1008": "farmland",
-    "1009": "farmland",
-    "1010": "plains",
-    "1109": "farmland",
-    "1110": "farmland",
     "0911": "forest",
-    "1011": "farmland",
-    "1212": "forest",
     "0809": "farmland",
     "0810": "farmland",
     "0713": "forest",
     "0814": "forested-hills",
     "0913": "hills",
-    "1312": "forested-hills",
-    "1413": "forested-hills",
     "0813": "forest",
     "0912": "forest",
     "0914": "mountains",
-    "1013": "hills",
-    "1014": "mountains",
-    "1015": "mountains",
-    "1016": "mountains",
-    "1114": "mountains",
-    "1115": "mountains",
-    "1213": "hills",
-    "1214": "mountains",
-    "1310": "plains",
     "0907": "farmland",
     "0908": "farmland",
-    "1108": "farmland",
-    "1012": "forest",
     "0811": "forest",
-    "1111": "forest",
     "0606": "forest",
-    "1305": "forest",
-    "1304": "forest",
-    "1104": "forest",
-    "1113": "hills",
-    "1313": "mountains",
-    "1414": "mountains",
     "0915": "mountains",
-    "1215": "mountains",
-    "1314": "mountains",
-    "1415": "mountains",
-    "1112": "hills",
     "0808": "forest",
-    "1211": "plains",
-    "1311": "plains",
-    "1412": "plains",
-    "1613": "plains",
     "0504": "swamp",
     "0903": "forest",
-    "1000": "forest",
-    "1001": "forest",
-    "1002": "forest",
-    "1003": "forest",
     "0900": "forest",
     "0901": "forest"
   },
@@ -569,14 +630,21 @@
     },
     {
       "name": "Thornespire Keep Side Road",
-      "hexes": ["0704", "0804"],
+      "hexes": [
+        "0704",
+        "0804"
+      ],
       "label": "half a day",
       "days": 0.5
     }
   ],
   "crevasse_path": [
     {
-      "hexes": ["1005", "1105", "1205"],
+      "hexes": [
+        "1005",
+        "1105",
+        "1205"
+      ],
       "name": "The Kobold Crevasse"
     }
   ],
@@ -584,13 +652,27 @@
   "region_labels": [
     {
       "text": "The Old Wood",
-      "hexes": ["0704", "0804", "0904", "1004", "0705", "0805", "0905", "1005"],
+      "hexes": [
+        "0704",
+        "0804",
+        "0904",
+        "1004",
+        "0705",
+        "0805",
+        "0905",
+        "1005"
+      ],
       "fontSize": 24,
       "letterSpacing": "6px"
     },
     {
       "text": "Serpent's Teeth",
-      "hexes": ["1015", "1114", "1214", "1314"],
+      "hexes": [
+        "1015",
+        "1114",
+        "1214",
+        "1314"
+      ],
       "fontSize": 20,
       "rotation": 12
     },
@@ -613,11 +695,30 @@
     }
   ],
   "off_map_arrows": [
-    { "direction": "N", "label": "North to the Arcane Academy" },
-    { "direction": "NE", "label": "Forests of Hrivlyggdor" },
-    { "direction": "NW", "label": "Vales of Belerion" },
-    { "direction": "E", "label": "Eastward to the Ulfskeptyr Sea" },
-    { "direction": "S", "label": "South to Kyrgar and Ashenrise" },
-    { "direction": "W", "label": "West lie the Forandol Mountains" }
-  ]
+    {
+      "direction": "N",
+      "label": "North to the Arcane Academy"
+    },
+    {
+      "direction": "NE",
+      "label": "Forests of Hrivlyggdor"
+    },
+    {
+      "direction": "NW",
+      "label": "Vales of Belerion"
+    },
+    {
+      "direction": "E",
+      "label": "Eastward to the Ulfskeptyr Sea"
+    },
+    {
+      "direction": "S",
+      "label": "South to Kyrgar and Ashenrise"
+    },
+    {
+      "direction": "W",
+      "label": "West lie the Forandol Mountains"
+    }
+  ],
+  "hex_encounters": {}
 }

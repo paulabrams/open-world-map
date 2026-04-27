@@ -1,1 +1,6 @@
 .DS_Store
+# Original Map Effects asset packs — licensed for use but not redistribution.
+# Derived runtime assets under viewer/assets/mapeffects/ are committed.
+resources/
+# Local secrets for tools/dev-server.mjs (ANTHROPIC_API_KEY, etc.)
+.env

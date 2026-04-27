@@ -12,11 +12,11 @@ paper treatment — is **in-scope** and must match the reference for a 10/10.
 
 Reference file locations:
 
-- `maps/style-references/middle-earth.webp` (thirdage primary)
+- `viewer/style-references/middle-earth.webp` (thirdage primary)
 - `docs/style-references/middle earth.jpg` (thirdage draft/supporting — has pencil underdrawing and margin construction notes; also present historically in `docs/style-references/`)
-- `maps/style-references/wilderland.jpg` (wilderland)
-- `maps/style-references/thrors-map.jpg` (moonletters)
-- `maps/style-references/dragon_isles_simple.png` (dragonisles)
+- `viewer/style-references/wilderland.jpg` (wilderland)
+- `viewer/style-references/thrors-map.jpg` (moonletters)
+- `viewer/style-references/dragon_isles_simple.png` (dragonisles)
 
 ---
 

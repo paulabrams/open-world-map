@@ -1,20 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "Bash(wc -l /Users/paul/git/open-world-map/maps/*.html)",
+      "Bash(wc -l /Users/paul/git/open-world-map/viewer/*.html)",
       "Bash(git commit -m ':*)",
       "Bash(python3 -c ' *)",
       "Bash(npx --no-install playwright --version)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8787/map.html?map=Basilisk)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:8787/map.html?map=Basilisk\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8787/viewer/map.html?map=Basilisk)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:8787/viewer/map.html?map=Basilisk\")",
       "Bash(node export_svgs.mjs)",
       "Bash(npx --version)",
       "Bash(NODE_PATH=./node_modules node /tmp/export_svgs.mjs)",
       "Bash(node /tmp/export_svgs.mjs)",
       "Bash(python3 -c 'import json; d = json.load\\(open\\(\"maps/Basilisk/Basilisk.json\"\\)\\); print\\(\"crevasse_path:\", d.get\\(\"crevasse_path\"\\)\\); print\\(\"OK\"\\)')",
-      "Bash(node --check maps/core.js)",
+      "Bash(node --check viewer/core.js)",
       "Bash(curl -s \"http://localhost:8787/Basilisk/Basilisk.json\")",
-      "Bash(python3 -c 'import json, sys; d=json.load\\(sys.stdin\\); print\\(\"crevasse:\", d[\"crevasse_path\"]\\)')"
+      "Bash(python3 -c 'import json, sys; d=json.load\\(sys.stdin\\); print\\(\"crevasse:\", d[\"crevasse_path\"]\\)')",
+      "Bash(lsof -iTCP:8787 -sTCP:LISTEN)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(git mv *)",
+      "Bash(awk '$4==\"cwd\" {print $NF}')"
     ],
     "additionalDirectories": [
       "/tmp",

@@ -52,24 +52,25 @@ Create the campaign directory if it doesn't exist, then write to `maps/$ARGUMENT
 
 **Step 5: Serve the map.**
 
-Start the web server in the background (kill any existing one on port 8787 first):
+Start the web server from the repo root in the background (kill any existing one on port 8787 first):
 
 ```sh
-lsof -ti:8787 | xargs kill 2>/dev/null; cd maps && python3 -m http.server 8787 &
+lsof -ti:8787 | xargs kill 2>/dev/null; python3 -m http.server 8787 &
 ```
 
 **Step 6: Export SVGs.**
 
 Use Playwright to open each style in the unified viewer (`map.html`), wait for the map to render, extract `document.querySelector('#map').outerHTML`, and write to disk:
 
-- `http://localhost:8787/map.html?map=$ARGUMENTS&style=dragonisles&grid=square` → `maps/$ARGUMENTS/$ARGUMENTS-grid.svg`
-- `http://localhost:8787/map.html?map=$ARGUMENTS&style=dragonisles&grid=hex` → `maps/$ARGUMENTS/$ARGUMENTS-hex.svg`
-- `http://localhost:8787/map.html?map=$ARGUMENTS&style=moonletters&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-moonletters.svg`
-- `http://localhost:8787/map.html?map=$ARGUMENTS&style=wilderland&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-wilderland.svg`
-- `http://localhost:8787/map.html?map=$ARGUMENTS&style=thirdage&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-thirdage.svg`
+- `http://localhost:8787/viewer/map.html?map=$ARGUMENTS&style=dragonisles&grid=square` → `maps/$ARGUMENTS/$ARGUMENTS-grid.svg`
+- `http://localhost:8787/viewer/map.html?map=$ARGUMENTS&style=dragonisles&grid=hex` → `maps/$ARGUMENTS/$ARGUMENTS-hex.svg`
+- `http://localhost:8787/viewer/map.html?map=$ARGUMENTS&style=moonletters&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-moonletters.svg`
+- `http://localhost:8787/viewer/map.html?map=$ARGUMENTS&style=wilderland&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-wilderland.svg`
+- `http://localhost:8787/viewer/map.html?map=$ARGUMENTS&style=thirdage&grid=none` → `maps/$ARGUMENTS/$ARGUMENTS-thirdage.svg`
 
 **Step 7: Report.**
 
 Summarize: nodes added/removed/updated, links added/removed/updated, orphans flagged. List the exported SVG files. Then link the user to:
 
-http://localhost:8787/map.html?map=$ARGUMENTS
+- Painted renderer: http://localhost:8787/viewer/painted.html?map=$ARGUMENTS
+- SVG renderer: http://localhost:8787/viewer/map.html?map=$ARGUMENTS
