@@ -916,25 +916,26 @@
     if (dirVec) {
       const [ux, uy] = dirVec;
       const EDGE_DIST = 40, TIP_DIST = 6;
-      const tx = ux * EDGE_DIST, ty = uy * EDGE_DIST; // tail at hex edge
-      const hx = ux * TIP_DIST,  hy = uy * TIP_DIST;  // tip near centre
-      // Perpendicular unit vector for arrowhead wings.
-      const px = -uy, py = ux;
       const HEAD_LEN = 11, HEAD_HALF = 6;
-      // Wings flare BEHIND the tip toward the tail (direction = +ux,+uy).
-      const w1x = hx + ux * HEAD_LEN + px * HEAD_HALF;
-      const w1y = hy + uy * HEAD_LEN + py * HEAD_HALF;
-      const w2x = hx + ux * HEAD_LEN - px * HEAD_HALF;
-      const w2y = hy + uy * HEAD_LEN - py * HEAD_HALF;
+      const px = -uy, py = ux; // perpendicular for wings
+      // Tail: outer end of shaft at hex edge. Tip: leading vertex near centre.
+      // Base: where shaft meets arrowhead (back of the triangle). Shaft ends
+      // here — not at the tip — so the round line-cap can't poke past it.
+      const tailX = ux * EDGE_DIST, tailY = uy * EDGE_DIST;
+      const tipX  = ux * TIP_DIST,  tipY  = uy * TIP_DIST;
+      const baseX = ux * (TIP_DIST + HEAD_LEN);
+      const baseY = uy * (TIP_DIST + HEAD_LEN);
+      const w1x = baseX + px * HEAD_HALF, w1y = baseY + py * HEAD_HALF;
+      const w2x = baseX - px * HEAD_HALF, w2y = baseY - py * HEAD_HALF;
 
       const shaft = document.createElementNS(SVG_NS, "line");
-      shaft.setAttribute("x1", tx); shaft.setAttribute("y1", ty);
-      shaft.setAttribute("x2", hx); shaft.setAttribute("y2", hy);
+      shaft.setAttribute("x1", tailX); shaft.setAttribute("y1", tailY);
+      shaft.setAttribute("x2", baseX); shaft.setAttribute("y2", baseY);
       shaft.setAttribute("class", "bolt-shaft");
       g.appendChild(shaft);
 
       const head = document.createElementNS(SVG_NS, "polygon");
-      head.setAttribute("points", `${hx},${hy} ${w1x},${w1y} ${w2x},${w2y}`);
+      head.setAttribute("points", `${tipX},${tipY} ${w1x},${w1y} ${w2x},${w2y}`);
       head.setAttribute("class", "bolt-head");
       g.appendChild(head);
     } else {
@@ -1160,10 +1161,15 @@
       hideBusyOverlay(hex);
     }
   }
+  const SUBHEX_LABELS = {
+    C: "Center", N: "North", NE: "Northeast",
+    SE: "Southeast", S: "South", SW: "Southwest", NW: "Northwest",
+  };
   function renderEncounter(enc) {
     const e = document.getElementById("panel-encounter");
     if (!e) return;
     const esc = MapData.escapeHtml;
+    const subLabel = enc.subhex ? (SUBHEX_LABELS[enc.subhex] || enc.subhex) : null;
     e.innerHTML = `
       <h3>Encounter</h3>
       <div class="creature-line">${esc(enc.creature || "—")} (${esc(enc.number || "?")})</div>
@@ -1172,6 +1178,7 @@
         <span><b>Reaction:</b> ${esc(enc.reaction || "—")}</span>
         <span><b>Distance:</b> ${esc(enc.distance || "—")}</span>
         <span><b>Activity:</b> ${esc(enc.activity || "—")}</span>
+        ${subLabel ? `<span><b>Sub-hex:</b> ${esc(subLabel)}</span>` : ""}
       </div>
     `;
   }

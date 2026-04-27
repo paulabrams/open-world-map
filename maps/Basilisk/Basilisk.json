@@ -408,6 +408,30 @@
       "x_hint": 1.68,
       "y_hint": -0.1,
       "visible": true
+    },
+    {
+      "id": "hex-1107-S",
+      "name": "Bram's Spiral Field",
+      "point_type": "waypoint",
+      "terrain": "farmland",
+      "description": "Cresting the gentle ridge from the forest edge, the first thing visible is a broad field plowed in tight concentric spirals instead of rows — Bram Kessel has worked it this way for three weeks, since his wife scratched the same pattern into the hearthstone the morning she vanished. He's on his ninth pass and won't answer questions until the ox stops.",
+      "hex": "1107",
+      "subhex": "S",
+      "x_hint": 0.75,
+      "y_hint": -1.965,
+      "visible": true
+    },
+    {
+      "id": "hex-0708-S",
+      "name": "The Drowned Stone",
+      "point_type": "sanctuary",
+      "terrain": "forest",
+      "description": "Where the Blackwater bends sharply south, a carved standing stone rises from mid-river — water churning white around its base, the lower half swallowed by weed and silt. Only the top two runes break the surface, and they match the warding stones to the north exactly, placing a third marker in the arc long before the river shifted to claim it.",
+      "hex": "0708",
+      "subhex": "S",
+      "x_hint": -2.25,
+      "y_hint": -1.099,
+      "visible": true
     }
   ],
   "links": [
@@ -592,7 +616,8 @@
     "0504": "swamp",
     "0903": "forest",
     "0900": "forest",
-    "0901": "forest"
+    "0901": "forest",
+    "0708": "forest"
   },
   "river_path": [
     "0503",
@@ -724,7 +749,17 @@
       "label": "West lie the Forandol Mountains"
     }
   ],
-  "hex_encounters": {},
+  "hex_encounters": {
+    "1107": {
+      "creature": "Farmland Militia",
+      "number": "2d6 → 7 farmers armed with billhooks, one with a hunting bow",
+      "distance": "4d6×10 → 140 yards",
+      "activity": "Patrolling the furrow-lines at the field's eastern edge, watching the treeline toward the Old Forest for kobold raiders out of the Crevasse",
+      "reaction": "Unfriendly — they've lost grain stores and one farmhand to kobold night-raids this fortnight and trust no armed strangers crossing their land at dusk",
+      "description": "Seven gaunt farmers fan out across the cabbage rows in a loose skirmish line, billhooks held at the low carry, torches unlit but tucked in belts — and every pair of eyes locks onto the party the moment they crest the rise.",
+      "subhex": "C"
+    }
+  },
   "hex_rumors": {
     "0505": [
       {
@@ -733,6 +768,15 @@
         "reliability": "partial",
         "topic": "the sunken stonework",
         "captured_at": "2026-04-27T06:19:15.820Z"
+      }
+    ],
+    "0905": [
+      {
+        "rumor": "Marta Klöv — she tends the Northern Warding Stone, same as her mother before her — came back from her third-moon visit white as new tallow and wouldn't meet anyone's eyes. Sold off her goats by morning. Folk in Pjörk Choppe Hille say the stone's cold glow hasn't been seen since the last hard frost, and that the webs on the north trail are thicker than any season prior.",
+        "source": "A limping tallow-chandler nursing sour ale near the fire in Pjörk Choppe Hille",
+        "reliability": "partial",
+        "topic": "the Northern Warding Stone",
+        "captured_at": "2026-04-27T23:00:19.129Z"
       }
     ]
   }
