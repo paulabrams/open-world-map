@@ -1701,10 +1701,35 @@
   // ---- Unexplored hex state ----------------------------------------------
   // Hexes flagged "unexplored" hide their stamps + labels + encounters on
   // the overland map; the panel for those hexes shows an "Explore" button
-  // instead of the normal content. Stored on disk under hex_unexplored
-  // (an array of hex codes) and persisted via /api/toggle-unexplored.
+  // instead of the normal content. Persisted in two places:
+  //   - `hex_unexplored` array in Basilisk.json (authoritative; only
+  //     writeable when the dev-server proxy is running locally)
+  //   - localStorage under `unexplored:<campaign>` (per-browser; works on
+  //     a static GitHub Pages deployment with no proxy)
+  // On load we union both sources so a static deployment still toggles
+  // correctly without a backend.
+  const UNEXPLORED_LS_KEY = "unexplored:" + campaign;
+  function loadUnexploredFromLocal() {
+    try {
+      const raw = localStorage.getItem(UNEXPLORED_LS_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+  }
+  function saveUnexploredToLocal() {
+    try {
+      localStorage.setItem(UNEXPLORED_LS_KEY, JSON.stringify(graphData.hex_unexplored || []));
+    } catch (e) { /* localStorage may be full / disabled; harmless */ }
+  }
+  // Merge the local list in on first load so static deployments respect it.
+  graphData.hex_unexplored = graphData.hex_unexplored || [];
+  loadUnexploredFromLocal().forEach(h => {
+    if (graphData.hex_unexplored.indexOf(h) < 0) graphData.hex_unexplored.push(h);
+  });
+
   function isHexUnexplored(hex) {
-    const list = (graphData && graphData.hex_unexplored) || [];
+    const list = graphData.hex_unexplored;
     return Array.isArray(list) && list.indexOf(hex) >= 0;
   }
   async function setHexUnexplored(hex, makeUnexplored) {
@@ -1712,13 +1737,15 @@
     const idx = graphData.hex_unexplored.indexOf(hex);
     if (makeUnexplored && idx < 0) graphData.hex_unexplored.push(hex);
     if (!makeUnexplored && idx >= 0) graphData.hex_unexplored.splice(idx, 1);
+    saveUnexploredToLocal();   // always — works in static mode
+    // Best-effort write through to the proxy (no-op on GitHub Pages).
     try {
       await fetch("/api/toggle-unexplored", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaign, hex, unexplored: !!makeUnexplored }),
       });
-    } catch (e) { console.error("[toggle-unexplored] failed:", e); }
+    } catch (e) { /* expected on static deployment */ }
     await renderAll();
     selectHexAndOpenPanel(hex);   // refresh the panel with the new state
   }
