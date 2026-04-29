@@ -432,6 +432,18 @@
       "x_hint": -2.25,
       "y_hint": -1.099,
       "visible": true
+    },
+    {
+      "id": "hex-1512-C",
+      "name": "Orro's Survey Line",
+      "point_type": "wilderness",
+      "terrain": "forested-hills",
+      "description": "A dead-straight line of blazed beeches descends the hillside toward the north-west — each trunk scored with the same spiral cut at chest height, the work of weeks. At the line's lower end sits Orro Bas, a lean surveyor counting tree-rings on a fresh-cut stump, who will not say why the line must reach the valley floor before midsummer.",
+      "hex": "1512",
+      "subhex": "C",
+      "x_hint": 3.75,
+      "y_hint": 2.165,
+      "visible": true
     }
   ],
   "links": [
@@ -567,6 +579,7 @@
     "1413": "forested-hills",
     "1414": "mountains",
     "1415": "mountains",
+    "1512": "forested-hills",
     "1613": "plains",
     "0604": "forest",
     "0605": "forest",

@@ -520,6 +520,7 @@ const server = createServer(async (req, res) => {
   if (url.startsWith("/api/generate-encounter") && req.method === "POST") return apiGenerateEncounter(req, res);
   if (url.startsWith("/api/update-node") && req.method === "POST") return apiUpdateNode(req, res);
   if (url.startsWith("/api/clear-encounter") && req.method === "POST") return apiClearEncounter(req, res);
+  if (url.startsWith("/api/toggle-unexplored") && req.method === "POST") return apiToggleUnexplored(req, res);
   if (url.startsWith("/api/generate-rumor") && req.method === "POST") return apiGenerateRumor(req, res);
   return serveStatic(req, res);
 });
@@ -699,6 +700,44 @@ async function captureRumorToMcp({ campaign, hex, parsed }) {
 }
 
 // --- /api/clear-encounter: remove the hex_encounters[hex] entry ----------
+// --- /api/toggle-unexplored: add or remove a hex from hex_unexplored ---
+// Body: { campaign, hex, unexplored: true|false }
+async function apiToggleUnexplored(req, res) {
+  let body;
+  try { body = await readJsonBody(req); }
+  catch (e) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "invalid JSON body: " + e.message }));
+    return;
+  }
+  const { campaign, hex, unexplored } = body || {};
+  if (!campaign || !/^[A-Za-z0-9_-]+$/.test(campaign)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "valid `campaign` required" }));
+    return;
+  }
+  if (!hex || typeof hex !== "string") {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "`hex` required" }));
+    return;
+  }
+  const file = join(REPO, "maps", campaign, `${campaign}.json`);
+  if (!existsSync(file)) {
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: `campaign file not found: ${campaign}` }));
+    return;
+  }
+  const data = JSON.parse(await readFile(file, "utf8"));
+  data.hex_unexplored = data.hex_unexplored || [];
+  const idx = data.hex_unexplored.indexOf(hex);
+  if (unexplored && idx < 0) data.hex_unexplored.push(hex);
+  if (!unexplored && idx >= 0) data.hex_unexplored.splice(idx, 1);
+  await safeWriteJsonAtomic(file, data);
+  log(`[toggle-unexplored] hex=${hex} unexplored=${unexplored ? "yes" : "no"}`);
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ ok: true, hex_unexplored: data.hex_unexplored }));
+}
+
 async function apiClearEncounter(req, res) {
   let body;
   try { body = await readJsonBody(req); }

@@ -773,7 +773,10 @@
     hotspots.appendChild(labelLayer);
     paintCtx.svgPathLayer = pathLayer;
     paintCtx.svgLabelLayer = labelLayer;
-    paintCtx.nodes = style.filterNodes(graphData.nodes || []);
+    // Unexplored hexes get no node stamps, no labels — anything tied to a
+    // node in those hexes is hidden from the overland map.
+    paintCtx.nodes = style.filterNodes(graphData.nodes || [])
+      .filter(n => !n.hex || !isHexUnexplored(n.hex));
     await style.render(paintCtx);
     paintCtx.nodes.forEach(node => {
       const slot = paintCtx._stampPositions && paintCtx._stampPositions[node.id];
@@ -1035,7 +1038,10 @@
     hotspots.appendChild(g);
   }
   function reapplyEncounterOverlays() {
-    activeEncounters.forEach((enc, hex) => showEncounterOverlay(hex, enc && enc.subhex));
+    activeEncounters.forEach((enc, hex) => {
+      if (isHexUnexplored(hex)) return;   // hide encounters for unexplored hexes
+      showEncounterOverlay(hex, enc && enc.subhex);
+    });
   }
 
   // Gather rumors saved against this hex and its 6 neighbours. Returned
@@ -1692,6 +1698,139 @@
     showRouteCardPinned(path, hours);
   }
 
+  // ---- Unexplored hex state ----------------------------------------------
+  // Hexes flagged "unexplored" hide their stamps + labels + encounters on
+  // the overland map; the panel for those hexes shows an "Explore" button
+  // instead of the normal content. Stored on disk under hex_unexplored
+  // (an array of hex codes) and persisted via /api/toggle-unexplored.
+  function isHexUnexplored(hex) {
+    const list = (graphData && graphData.hex_unexplored) || [];
+    return Array.isArray(list) && list.indexOf(hex) >= 0;
+  }
+  async function setHexUnexplored(hex, makeUnexplored) {
+    graphData.hex_unexplored = graphData.hex_unexplored || [];
+    const idx = graphData.hex_unexplored.indexOf(hex);
+    if (makeUnexplored && idx < 0) graphData.hex_unexplored.push(hex);
+    if (!makeUnexplored && idx >= 0) graphData.hex_unexplored.splice(idx, 1);
+    try {
+      await fetch("/api/toggle-unexplored", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign, hex, unexplored: !!makeUnexplored }),
+      });
+    } catch (e) { console.error("[toggle-unexplored] failed:", e); }
+    await renderAll();
+    selectHexAndOpenPanel(hex);   // refresh the panel with the new state
+  }
+
+  // Currently-selected hex (the one whose panel is open). Mirrored into
+  // the URL hash so the URL is shareable: opening it restores the same
+  // selection. null when no panel is open.
+  let selectedHex = null;
+  function setSelectedHex(hex) {
+    selectedHex = hex || null;
+    saveViewToHash();
+  }
+
+  // Open the panel for the clicked / shared / restored hex. Same body as
+  // the old inline click handler; factored out so URL-restore and any
+  // future "deep-link" entry points can run it too.
+  function selectHexAndOpenPanel(hex) {
+    if (!hex || !paintCtx.xyToHex) return false;
+    const hexT = paintCtx.hexTerrain || {};
+    const isDefined = !!hexT[hex];
+    let clickable = isDefined;
+    if (!clickable && MapData.hexNeighbors) {
+      const nbrs = MapData.hexNeighbors(hex);
+      clickable = nbrs.some(n => hexT[n]);
+    }
+    if (!clickable) return false;
+
+    routeStartHex = hex;
+    renderRouteStart(hex);
+
+    // Unexplored hexes get a stripped-down panel: terrain only, single
+    // "Explore" button. Encounters/rumors/node content stay hidden until
+    // the player explicitly explores.
+    if (isHexUnexplored(hex)) {
+      const terrain = hexT[hex] || "uncharted";
+      const synthetic = {
+        id: "hex-" + hex,
+        name: `Hex ${hex} — Unexplored`,
+        point_type: "unexplored",
+        terrain,
+        description: "Unexplored. The party has not ventured here. Click Explore to reveal what lies in this hex.",
+        hex,
+      };
+      MapData.openPanel(synthetic, { connections: [] });
+      const actEl = document.getElementById("panel-actions");
+      if (actEl) {
+        actEl.innerHTML = "";
+        const btn = document.createElement("button");
+        btn.className = "panel-action";
+        btn.type = "button";
+        btn.textContent = "Explore";
+        btn.addEventListener("click", () => setHexUnexplored(hex, false));
+        actEl.appendChild(btn);
+      }
+      setSelectedHex(hex);
+      return true;
+    }
+
+    const localNodes = (graphData.nodes || [])
+      .filter(n => n.hex === hex && n.visible !== false);
+    const primary = localNodes.find(n => MapData.isOverlandNode && MapData.isOverlandNode(n))
+                  || localNodes[0];
+    if (primary) {
+      const conns = (graphData.links || [])
+        .filter(l => l.visible !== false && (l.source === primary.id || l.target === primary.id))
+        .map(l => {
+          const otherId = l.source === primary.id ? l.target : l.source;
+          const other = (graphData.nodes || []).find(n => n.id === otherId);
+          const days = l.days != null ? ` — ${l.days}d` : "";
+          return (other ? other.name : otherId) + days;
+        });
+      MapData.openPanel(primary, { connections: conns });
+      attachEditing(primary);
+      attachExploreActions(hex, primary.terrain || hexT[hex] || "wilderness", null);
+    } else {
+      const terrain = hexT[hex] || "uncharted";
+      const desc = isDefined
+        ? `${terrain} hex with no recorded landmarks.`
+        : "Beyond the known map.";
+      const synthetic = {
+        id: "hex-" + hex,
+        name: `Hex ${hex}`,
+        point_type: "wilderness",
+        terrain,
+        description: desc,
+        hex,
+      };
+      MapData.openPanel(synthetic, { connections: [] });
+      attachExploreActions(hex, terrain, synthetic);
+    }
+    // "Mark Unexplored" button — sits alongside the AI actions so a GM can
+    // hide a hex's contents from the players (or for fog-of-war reveals).
+    const actEl = document.getElementById("panel-actions");
+    if (actEl) {
+      const btn = document.createElement("button");
+      btn.className = "panel-action";
+      btn.type = "button";
+      btn.textContent = "Mark Unexplored";
+      btn.addEventListener("click", () => setHexUnexplored(hex, true));
+      actEl.appendChild(btn);
+    }
+    setSelectedHex(hex);
+    return true;
+  }
+
+  // Re-bind the panel close button to also clear the URL selection so the
+  // shared link doesn't keep pointing at a now-closed hex.
+  const _closeBtn = document.querySelector("#detail-panel .close-btn");
+  if (_closeBtn) {
+    _closeBtn.onclick = () => { MapData.closePanel(); setSelectedHex(null); };
+  }
+
   // Hex-level click — captures clicks anywhere inside a hex, not just on
   // the small node circles. If the click hits a hex with a node, opens
   // that node's panel; otherwise opens a hex-info panel showing terrain
@@ -1715,61 +1854,11 @@
         if (res) renderRoute(res.path, res.hours);
         return;
       }
-      const hexT = paintCtx.hexTerrain || {};
-      const isDefined = !!hexT[hex];
-      // Empty hex is clickable IF it borders a defined hex (frontier of the
-      // known map). Hexes well outside the known area stay non-interactive.
-      let clickable = isDefined;
-      if (!clickable && MapData.hexNeighbors) {
-        const nbrs = MapData.hexNeighbors(hex);
-        clickable = nbrs.some(n => hexT[n]);
-      }
-      if (!clickable) {
-        if (!ev.shiftKey) { routeStartHex = null; clearRouteOverlay(); }
-        return;
-      }
-      // Plain click on a clickable hex: set as new route start AND open panel.
-      routeStartHex = hex;
-      renderRouteStart(hex);
-
-      // Look for any node in this hex. Use graphData.nodes (the full set)
-      // rather than paintCtx.nodes (which is filtered for rendering and may
-      // exclude AI-generated nodes that don't pass the renderer's overland
-      // filter).
-      const localNodes = (graphData.nodes || [])
-        .filter(n => n.hex === hex && n.visible !== false);
-      // Prefer the first overland node if there is one.
-      const primary = localNodes.find(n => MapData.isOverlandNode && MapData.isOverlandNode(n))
-                    || localNodes[0];
-      if (primary) {
-        const conns = (graphData.links || [])
-          .filter(l => l.visible !== false && (l.source === primary.id || l.target === primary.id))
-          .map(l => {
-            const otherId = l.source === primary.id ? l.target : l.source;
-            const other = (graphData.nodes || []).find(n => n.id === otherId);
-            const days = l.days != null ? ` — ${l.days}d` : "";
-            return (other ? other.name : otherId) + days;
-          });
-        MapData.openPanel(primary, { connections: conns });
-        attachEditing(primary);
-        attachExploreActions(hex, primary.terrain || hexT[hex] || "wilderness", null);
-      } else {
-        // Empty hex — show a synthetic hex-info "node". For frontier hexes
-        // (no terrain entry), label as "uncharted".
-        const terrain = hexT[hex] || "uncharted";
-        const desc = isDefined
-          ? `${terrain} hex with no recorded landmarks.`
-          : "Beyond the known map.";
-        const synthetic = {
-          id: "hex-" + hex,
-          name: `Hex ${hex}`,
-          point_type: "wilderness",
-          terrain,
-          description: desc,
-          hex,
-        };
-        MapData.openPanel(synthetic, { connections: [] });
-        attachExploreActions(hex, terrain, synthetic);
+      const opened = selectHexAndOpenPanel(hex);
+      if (!opened && !ev.shiftKey) {
+        routeStartHex = null;
+        clearRouteOverlay();
+        setSelectedHex(null);
       }
     });
   }
@@ -1876,9 +1965,13 @@
       const W = window.innerWidth, H = window.innerHeight;
       const cx = (W / 2 - view.tx) / view.scale;
       const cy = (H / 2 - view.ty) / view.scale;
-      const hex = paintCtx.xyToHex ? paintCtx.xyToHex(cx, cy) : null;
+      const centerHex = paintCtx.xyToHex ? paintCtx.xyToHex(cx, cy) : null;
       const zoom = view.scale.toFixed(3);
-      const hash = hex ? `#hex=${hex}&zoom=${zoom}` : `#zoom=${zoom}`;
+      const parts = [];
+      if (centerHex) parts.push("hex=" + centerHex);
+      parts.push("zoom=" + zoom);
+      if (selectedHex) parts.push("selected=" + selectedHex);
+      const hash = "#" + parts.join("&");
       try { history.replaceState(null, "", location.pathname + location.search + hash); }
       catch (e) { /* ignore */ }
     });
@@ -1907,7 +2000,16 @@
     applyTransform();
     return true;
   }
+  function restorePanelFromHash() {
+    const h = location.hash.replace(/^#/, "");
+    if (!h) return;
+    const parts = Object.fromEntries(h.split("&").map(p => p.split("=")));
+    if (parts.selected && /^\d{4}$/.test(parts.selected)) {
+      selectHexAndOpenPanel(parts.selected);
+    }
+  }
   if (!restoreViewFromHash()) fitToViewport();
+  restorePanelFromHash();
 
   // Drag to pan
   let dragging = false, dragStart = null;
