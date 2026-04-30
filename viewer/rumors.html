@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rumors — Open World Map</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #f4e8d1;
+    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    color: #2a1f14;
+    min-height: 100vh;
+  }
+  header {
+    text-align: center;
+    padding: 36px 20px 18px;
+  }
+  header h1 {
+    font-size: 30px;
+    letter-spacing: 4px;
+    color: #8b2500;
+    margin-bottom: 6px;
+  }
+  header .sub {
+    font-size: 13px;
+    font-style: italic;
+    color: #5a4a3a;
+  }
+  header .crumbs {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #5a4a3a;
+  }
+  header .crumbs a {
+    color: #8b2500;
+    text-decoration: none;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto 60px;
+    padding: 0 20px;
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    border-bottom: 1px solid #d4c4a0;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+  }
+  .toolbar .filters {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .toolbar button.filter {
+    background: #faf3e6;
+    border: 1px solid #d4c4a0;
+    color: #5a4a3a;
+    font-family: inherit;
+    font-size: 12px;
+    padding: 4px 10px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .toolbar button.filter.active {
+    background: #8b2500;
+    color: #faf3e6;
+    border-color: #8b2500;
+  }
+  .toolbar .spacer { flex: 1; }
+  .toolbar .count {
+    font-size: 12px;
+    color: #5a4a3a;
+    font-style: italic;
+  }
+  .toolbar .gen-btn {
+    background: #8b2500;
+    color: #faf3e6;
+    border: 1px solid #8b2500;
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+  }
+  .toolbar .gen-btn:disabled {
+    opacity: 0.5;
+    cursor: wait;
+  }
+
+  .gen-form {
+    display: none;
+    background: #faf3e6;
+    border: 1px solid #d4c4a0;
+    padding: 14px;
+    margin-bottom: 18px;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .gen-form.open { display: flex; }
+  .gen-form label {
+    font-size: 12px;
+    color: #5a4a3a;
+  }
+  .gen-form select, .gen-form input {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 4px 6px;
+    border: 1px solid #d4c4a0;
+    background: #fffbf0;
+  }
+  .gen-form .err { color: #8b2500; font-size: 12px; }
+
+  .empty {
+    text-align: center;
+    color: #8b7b6b;
+    font-style: italic;
+    padding: 40px 20px;
+  }
+
+  .rumor-card {
+    background: #faf3e6;
+    border: 1px solid #d4c4a0;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .rumor-card .row1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .rumor-card .topic {
+    font-size: 16px;
+    color: #2a1f14;
+    font-weight: 600;
+  }
+  .rumor-card .hex-link {
+    font-size: 12px;
+    color: #8b2500;
+    text-decoration: none;
+    font-variant: small-caps;
+    letter-spacing: 0.5px;
+  }
+  .rumor-card .text {
+    line-height: 1.55;
+    color: #2a1f14;
+    margin: 8px 0;
+    font-size: 14px;
+  }
+  .rumor-card .text::before { content: "\201C"; }
+  .rumor-card .text::after { content: "\201D"; }
+  .rumor-card .meta {
+    font-size: 12px;
+    color: #5a4a3a;
+    font-style: italic;
+    margin-top: 6px;
+  }
+  .rumor-card .badges {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 8px;
+    font-style: normal;
+  }
+  .badge {
+    font-size: 10px;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 2px;
+    background: rgba(90,74,58,0.15);
+    color: #5a4a3a;
+    font-style: normal;
+    font-family: inherit;
+    border: 1px solid transparent;
+  }
+  .badge.reliability-true     { background: #d6e7c8; color: #3a5a1f; }
+  .badge.reliability-partial  { background: #f0e2b8; color: #6a5414; }
+  .badge.reliability-false    { background: #efd5cf; color: #8b2500; }
+
+  .badge.status-new           { background: #f5e6c8; color: #6a5414; border-color: #d4c084; }
+  .badge.status-investigating { background: #d4dde8; color: #2c4660; border-color: #98aac3; }
+  .badge.status-confirmed     { background: #cfe3c4; color: #2c5a1f; border-color: #84b072; }
+  .badge.status-debunked      { background: #e7c8c8; color: #6c1f1f; border-color: #b07272; }
+  .badge.status-resolved      { background: #ddd5c8; color: #5a4a3a; border-color: #b8a994; }
+
+  select.status-select {
+    font-family: inherit;
+    font-size: 11px;
+    padding: 1px 4px;
+    border: 1px solid #d4c4a0;
+    background: #fffbf0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .rumor-card .timestamp {
+    font-size: 10px;
+    color: #8b7b6b;
+    font-style: italic;
+    margin-left: auto;
+  }
+
+  footer {
+    text-align: center;
+    padding: 24px 20px;
+    font-size: 11px;
+    color: #8b7b6b;
+    font-style: italic;
+  }
+  footer a { color: #8b7b6b; text-decoration: none; }
+
+  .banner {
+    background: #efd5cf;
+    color: #6c1f1f;
+    border: 1px solid #b07272;
+    padding: 8px 12px;
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>RUMORS</h1>
+  <div class="sub" id="campaign-sub">Loading…</div>
+  <div class="crumbs">
+    <a href="index.html">&larr; Home</a>
+    &nbsp;&middot;&nbsp;
+    <a id="map-link" href="painted.html">Open Map &rarr;</a>
+  </div>
+</header>
+
+<div class="container">
+  <div id="banner" class="banner" style="display:none;"></div>
+
+  <div class="toolbar">
+    <div class="filters" id="filters"></div>
+    <span class="spacer"></span>
+    <span class="count" id="count">—</span>
+    <button class="gen-btn" id="gen-btn" style="display:none;" type="button">+ New Rumor</button>
+  </div>
+
+  <div class="gen-form" id="gen-form">
+    <label for="gen-hex">Hex:</label>
+    <select id="gen-hex"></select>
+    <button class="gen-btn" id="gen-submit" type="button">Generate</button>
+    <button class="filter" id="gen-cancel" type="button">Cancel</button>
+    <span class="err" id="gen-err"></span>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<footer>
+  <a href="index.html">Open World Map</a>
+</footer>
+
+<script src="core-data.js"></script>
+<script>
+(async () => {
+  const STATUSES = ["new", "investigating", "confirmed", "debunked", "resolved"];
+  const STATUS_LABEL = {
+    new: "New",
+    investigating: "Investigating",
+    confirmed: "Confirmed",
+    debunked: "Debunked",
+    resolved: "Resolved",
+  };
+
+  const params = new URLSearchParams(location.search);
+  const campaign = params.get("map") || "Basilisk";
+  const initialFilter = params.get("status") || "all";
+
+  const subEl = document.getElementById("campaign-sub");
+  const listEl = document.getElementById("list");
+  const filtersEl = document.getElementById("filters");
+  const countEl = document.getElementById("count");
+  const genBtn = document.getElementById("gen-btn");
+  const genForm = document.getElementById("gen-form");
+  const genHex = document.getElementById("gen-hex");
+  const genSubmit = document.getElementById("gen-submit");
+  const genCancel = document.getElementById("gen-cancel");
+  const genErr = document.getElementById("gen-err");
+  const banner = document.getElementById("banner");
+  const mapLink = document.getElementById("map-link");
+  mapLink.href = "painted.html?map=" + encodeURIComponent(campaign);
+
+  // Detect local dev server. Without it the page is read-only.
+  let aiEnabled = false;
+  try {
+    const r = await fetch("/api/health", { cache: "no-store" });
+    if (r.ok) {
+      const j = await r.json();
+      aiEnabled = !!(j && j.aiEnabled);
+    }
+  } catch (_) { /* GH Pages: stays read-only */ }
+
+  // Load campaign JSON via the shared loader.
+  let graphData;
+  try {
+    graphData = await MapData.loadData(campaign);
+  } catch (e) {
+    subEl.textContent = "—";
+    banner.style.display = "block";
+    banner.textContent = "Failed to load campaign: " + e.message;
+    return;
+  }
+
+  const meta = graphData.meta || {};
+  subEl.textContent = (meta.campaign || campaign) + (meta.world ? " · " + meta.world : "");
+
+  // Flatten hex_rumors → list with hex + index for write-back lookup.
+  function collectRumors() {
+    const out = [];
+    const map = graphData.hex_rumors || {};
+    for (const hex of Object.keys(map)) {
+      const arr = map[hex] || [];
+      arr.forEach((r, i) => {
+        out.push({
+          hex,
+          index: i,
+          rumor: r.rumor || "",
+          source: r.source || "",
+          reliability: (r.reliability || "").toLowerCase(),
+          topic: r.topic || "",
+          status: STATUSES.includes(r.status) ? r.status : "new",
+          captured_at: r.captured_at || "",
+          _ref: r,
+        });
+      });
+    }
+    out.sort((a, b) => (b.captured_at || "").localeCompare(a.captured_at || ""));
+    return out;
+  }
+
+  let currentFilter = initialFilter;
+
+  function buildFilters() {
+    const counts = { all: 0 };
+    for (const s of STATUSES) counts[s] = 0;
+    for (const r of collectRumors()) {
+      counts.all++;
+      counts[r.status] = (counts[r.status] || 0) + 1;
+    }
+    filtersEl.innerHTML = "";
+    const items = [["all", "All"], ...STATUSES.map(s => [s, STATUS_LABEL[s]])];
+    for (const [val, label] of items) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "filter" + (val === currentFilter ? " active" : "");
+      btn.textContent = `${label} (${counts[val] || 0})`;
+      btn.addEventListener("click", () => {
+        currentFilter = val;
+        const u = new URL(location.href);
+        if (val === "all") u.searchParams.delete("status");
+        else u.searchParams.set("status", val);
+        history.replaceState(null, "", u);
+        render();
+      });
+      filtersEl.appendChild(btn);
+    }
+  }
+
+  function esc(s) { return MapData.escapeHtml(s); }
+
+  function statusControl(r) {
+    if (!aiEnabled) {
+      return `<span class="badge status-${r.status}">${esc(STATUS_LABEL[r.status])}</span>`;
+    }
+    const opts = STATUSES.map(s =>
+      `<option value="${s}"${s === r.status ? " selected" : ""}>${esc(STATUS_LABEL[s])}</option>`
+    ).join("");
+    return `<select class="status-select" data-hex="${esc(r.hex)}" data-captured="${esc(r.captured_at)}">${opts}</select>`;
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  function render() {
+    const all = collectRumors();
+    const filtered = currentFilter === "all" ? all : all.filter(r => r.status === currentFilter);
+    countEl.textContent = `${filtered.length} of ${all.length} rumor${all.length === 1 ? "" : "s"}`;
+    if (!filtered.length) {
+      listEl.innerHTML = `<div class="empty">No rumors${currentFilter !== "all" ? " with status “" + STATUS_LABEL[currentFilter] + "”" : ""}.</div>`;
+      return;
+    }
+    listEl.innerHTML = filtered.map(r => {
+      const reliClass = r.reliability ? `reliability-${r.reliability.replace(/[^a-z]/g, "")}` : "";
+      const reliBadge = r.reliability
+        ? `<span class="badge ${reliClass}">${esc(r.reliability)}</span>`
+        : "";
+      return `
+        <div class="rumor-card" data-hex="${esc(r.hex)}" data-captured="${esc(r.captured_at)}">
+          <div class="row1">
+            <div class="topic">${esc(r.topic || "Untitled")}</div>
+            <a class="hex-link" href="painted.html?map=${encodeURIComponent(campaign)}#hex=${esc(r.hex)}">Hex ${esc(r.hex)} &rarr;</a>
+          </div>
+          <div class="text">${esc(r.rumor)}</div>
+          <div class="meta">&mdash; ${esc(r.source || "unknown")}</div>
+          <div class="badges">
+            ${reliBadge}
+            ${statusControl(r)}
+            <span class="timestamp">${esc(fmtDate(r.captured_at))}</span>
+          </div>
+        </div>`;
+    }).join("");
+
+    // Wire up status edits (local mode only).
+    if (aiEnabled) {
+      listEl.querySelectorAll("select.status-select").forEach(sel => {
+        sel.addEventListener("change", async (ev) => {
+          const hex = sel.getAttribute("data-hex");
+          const capturedAt = sel.getAttribute("data-captured");
+          const newStatus = sel.value;
+          const prev = sel.getAttribute("data-prev") || "new";
+          sel.disabled = true;
+          try {
+            const resp = await fetch("/api/update-rumor-status", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ campaign, hex, capturedAt, status: newStatus }),
+            });
+            const body = await resp.json().catch(() => ({}));
+            if (!resp.ok) throw new Error(body.error || ("HTTP " + resp.status));
+            // Mirror into in-memory graph so re-render reflects without reload.
+            const list = (graphData.hex_rumors && graphData.hex_rumors[hex]) || [];
+            const entry = list.find(x => x && x.captured_at === capturedAt);
+            if (entry) entry.status = newStatus;
+            buildFilters();
+            render();
+          } catch (e) {
+            sel.value = prev;
+            alert("Failed to update status: " + e.message);
+          } finally {
+            sel.disabled = false;
+          }
+        });
+        sel.setAttribute("data-prev", sel.value);
+      });
+    }
+  }
+
+  // --- Generate-new-rumor form (local only) -----------------------------
+  if (aiEnabled) {
+    genBtn.style.display = "";
+    // Populate hex dropdown from defined nodes (visible places + their hexes).
+    const seen = new Set();
+    const opts = [];
+    for (const n of (graphData.nodes || [])) {
+      if (!n || !n.hex || seen.has(n.hex)) continue;
+      seen.add(n.hex);
+      opts.push({ hex: n.hex, label: `${n.hex} — ${n.name || "(unnamed)"}` });
+    }
+    opts.sort((a, b) => a.hex.localeCompare(b.hex));
+    genHex.innerHTML = opts.map(o => `<option value="${esc(o.hex)}">${esc(o.label)}</option>`).join("");
+    if (!opts.length) {
+      genHex.innerHTML = `<option value="">(no nodes available)</option>`;
+      genSubmit.disabled = true;
+    }
+
+    genBtn.addEventListener("click", () => {
+      genErr.textContent = "";
+      genForm.classList.toggle("open");
+    });
+    genCancel.addEventListener("click", () => {
+      genErr.textContent = "";
+      genForm.classList.remove("open");
+    });
+    genSubmit.addEventListener("click", async () => {
+      const hex = genHex.value;
+      if (!hex) return;
+      const node = (graphData.nodes || []).find(n => n.hex === hex);
+      const terrain = node && node.terrain
+        ? node.terrain
+        : (graphData.hex_terrain && graphData.hex_terrain[hex]) || "";
+      genSubmit.disabled = true;
+      genErr.textContent = "Generating…";
+      try {
+        const resp = await fetch("/api/generate-rumor", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            hex,
+            terrain,
+            campaign,
+            contextNodes: nearbyContextNodes(hex),
+            nearbyRumors: nearbyHexRumors(hex),
+            encounter: null,
+          }),
+        });
+        const body = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(body.error || ("HTTP " + resp.status));
+        // Mirror into in-memory graphData.
+        graphData.hex_rumors = graphData.hex_rumors || {};
+        graphData.hex_rumors[hex] = graphData.hex_rumors[hex] || [];
+        graphData.hex_rumors[hex].push(body.savedRumor || {
+          rumor: body.rumor, source: body.source,
+          reliability: body.reliability, topic: body.topic,
+          status: "new", captured_at: new Date().toISOString(),
+        });
+        genErr.textContent = "";
+        genForm.classList.remove("open");
+        buildFilters();
+        render();
+      } catch (e) {
+        genErr.textContent = "Failed: " + e.message;
+      } finally {
+        genSubmit.disabled = false;
+      }
+    });
+  }
+
+  function nearbyContextNodes(hex, limit = 6) {
+    return (graphData.nodes || [])
+      .filter(n => n.visible !== false && n.hex)
+      .map(n => {
+        const [hc, hr] = [parseInt(hex.substring(0,2),10), parseInt(hex.substring(2,4),10)];
+        const [nc, nr] = [parseInt(n.hex.substring(0,2),10), parseInt(n.hex.substring(2,4),10)];
+        return { node: n, dist: Math.abs(hc-nc) + Math.abs(hr-nr) };
+      })
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, limit)
+      .map(({ node }) => ({
+        name: node.name,
+        point_type: node.point_type,
+        hex: node.hex,
+        description: node.description,
+      }));
+  }
+
+  function nearbyHexRumors(hex) {
+    const all = graphData.hex_rumors || {};
+    return [...(all[hex] || []).map(r => ({ ...r, hex }))];
+  }
+
+  buildFilters();
+  render();
+})();
+</script>
+
+</body>
+</html>

@@ -414,6 +414,30 @@
     border-radius: 2px;
     background: rgba(90,74,58,0.15);
   }
+  #detail-panel .rumor .status-badge {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 10px;
+    margin-left: 6px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    border: 1px solid transparent;
+  }
+  #detail-panel .rumor .status-new           { background: #f5e6c8; color: #6a5414; border-color: #d4c084; }
+  #detail-panel .rumor .status-investigating { background: #d4dde8; color: #2c4660; border-color: #98aac3; }
+  #detail-panel .rumor .status-confirmed     { background: #cfe3c4; color: #2c5a1f; border-color: #84b072; }
+  #detail-panel .rumor .status-debunked      { background: #e7c8c8; color: #6c1f1f; border-color: #b07272; }
+  #detail-panel .rumor .status-resolved      { background: #ddd5c8; color: #5a4a3a; border-color: #b8a994; }
+  #detail-panel .rumor select.status-select {
+    font-family: inherit;
+    font-size: 10px;
+    margin-left: 6px;
+    padding: 1px 3px;
+    border: 1px solid #d4c4a0;
+    background: #fffbf0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 
   #title-bar {
     position: fixed;
@@ -1061,6 +1085,17 @@
   }
 
   // Render every saved rumor for this hex into the panel callout.
+  // GM-tracking status is editable when the local backend is available; on
+  // GitHub Pages it shows as a static badge. Saved status round-trips to the
+  // Rumors page via the shared Basilisk.json file.
+  const RUMOR_STATUSES = ["new", "investigating", "confirmed", "debunked", "resolved"];
+  const RUMOR_STATUS_LABEL = {
+    new: "New", investigating: "Investigating", confirmed: "Confirmed",
+    debunked: "Debunked", resolved: "Resolved",
+  };
+  function rumorStatusOf(r) {
+    return RUMOR_STATUSES.includes(r && r.status) ? r.status : "new";
+  }
   function renderRumors(hex) {
     const el = document.getElementById("panel-rumors");
     if (!el) return;
@@ -1069,13 +1104,55 @@
     const esc = MapData.escapeHtml;
     el.innerHTML = `
       <h3>Rumors</h3>
-      ${list.map(r => `
+      ${list.map(r => {
+        const s = rumorStatusOf(r);
+        const statusCtl = AI_HEX.enabled
+          ? `<select class="status-select" data-hex="${esc(hex)}" data-captured="${esc(r.captured_at || "")}">${
+              RUMOR_STATUSES.map(v => `<option value="${v}"${v === s ? " selected" : ""}>${esc(RUMOR_STATUS_LABEL[v])}</option>`).join("")
+            }</select>`
+          : `<span class="status-badge status-${s}">${esc(RUMOR_STATUS_LABEL[s])}</span>`;
+        return `
         <div class="rumor">
           <div class="text">"${esc(r.rumor || "")}"</div>
-          <div class="meta">— ${esc(r.source || "unknown")}${r.reliability ? `<span class="reliability">${esc(r.reliability)}</span>` : ""}${r.topic ? ` · ${esc(r.topic)}` : ""}</div>
-        </div>
-      `).join("")}
+          <div class="meta">— ${esc(r.source || "unknown")}${r.reliability ? `<span class="reliability">${esc(r.reliability)}</span>` : ""}${r.topic ? ` · ${esc(r.topic)}` : ""}${statusCtl}</div>
+        </div>`;
+      }).join("")}
     `;
+    if (AI_HEX.enabled) {
+      el.querySelectorAll("select.status-select").forEach(sel => {
+        sel.setAttribute("data-prev", sel.value);
+        sel.addEventListener("change", async () => {
+          const h = sel.getAttribute("data-hex");
+          const capturedAt = sel.getAttribute("data-captured");
+          const newStatus = sel.value;
+          const prev = sel.getAttribute("data-prev") || "new";
+          if (!capturedAt) {
+            sel.value = prev;
+            alert("This rumor has no captured_at timestamp — cannot update status.");
+            return;
+          }
+          sel.disabled = true;
+          try {
+            const resp = await fetch("/api/update-rumor-status", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ campaign, hex: h, capturedAt, status: newStatus }),
+            });
+            const body = await resp.json().catch(() => ({}));
+            if (!resp.ok) throw new Error(body.error || ("HTTP " + resp.status));
+            const arr = (graphData.hex_rumors && graphData.hex_rumors[h]) || [];
+            const entry = arr.find(x => x && x.captured_at === capturedAt);
+            if (entry) entry.status = newStatus;
+            sel.setAttribute("data-prev", newStatus);
+          } catch (e) {
+            sel.value = prev;
+            alert("Failed to update status: " + e.message);
+          } finally {
+            sel.disabled = false;
+          }
+        });
+      });
+    }
   }
 
   // Ask for a rumor about this hex. If an encounter is active, the rumor

@@ -13,6 +13,7 @@ Running log of every item the user has asked for, with status. Newest items towa
 
 ## Completed
 
+- [x] **Rumors page** at `viewer/rumors.html` — lists all `hex_rumors` per campaign with topic / text / source / reliability / status, filterable by status. Static read-only on GitHub Pages; locally (with `dev-server.mjs`) status is editable via dropdown and a "+ New Rumor" button generates rumors for any hex with a defined node. Rumor entries gained a `status` field (`new` / `investigating` / `confirmed` / `debunked` / `resolved`); painted-map rumor callout now shows the same status control. Both views read/write the same `hex_rumors` block in `Basilisk.json`, so generation and status edits round-trip between them. New endpoint: `POST /api/update-rumor-status` keyed by `(hex, captured_at)`.
 - [x] **River-crossing penalty** — rivers count as perilous (½ hex per watch / 12h per hex) when off-road. Roads/trails through river hexes still cap at their bridge/ford cost. Hovercard bucketing also treats river hexes as perilous.
 - [x] **Hex 0910 + 1011 reclassified** to `farmland-forest` in `Basilisk.json` AND in the open-world MCP. Renderer paints both farm tiles and trees in those hexes.
 - [x] **CLAUDE.md schema corrected** — full list of valid `thought_type` values (point, path, rumor, journey, campaign, observation, note, terrain, monster, npc) with a pointer to the canonical schema file.

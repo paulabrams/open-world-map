@@ -522,6 +522,7 @@ const server = createServer(async (req, res) => {
   if (url.startsWith("/api/clear-encounter") && req.method === "POST") return apiClearEncounter(req, res);
   if (url.startsWith("/api/toggle-unexplored") && req.method === "POST") return apiToggleUnexplored(req, res);
   if (url.startsWith("/api/generate-rumor") && req.method === "POST") return apiGenerateRumor(req, res);
+  if (url.startsWith("/api/update-rumor-status") && req.method === "POST") return apiUpdateRumorStatus(req, res);
   return serveStatic(req, res);
 });
 
@@ -669,6 +670,7 @@ async function appendRumorToCampaign(campaign, hex, parsed) {
       source:      parsed.source || "",
       reliability: parsed.reliability || "",
       topic:       parsed.topic || "",
+      status:      "new",
       captured_at: new Date().toISOString(),
     };
     data.hex_rumors[hex].push(entry);
@@ -697,6 +699,67 @@ async function captureRumorToMcp({ campaign, hex, parsed }) {
     permissionMode: "acceptEdits",
     tag: "mcp-rumor",
   });
+}
+
+// --- /api/update-rumor-status: change status on a single rumor entry -----
+// Body: { campaign, hex, capturedAt, status }
+// Status is GM-tracking metadata (new / investigating / confirmed / debunked /
+// resolved). The (hex, captured_at) pair uniquely identifies a rumor since
+// captured_at is an ISO timestamp set at generation time. JSON-only — does
+// not propagate to the open-world MCP, since status is not lore.
+const RUMOR_STATUSES = ["new", "investigating", "confirmed", "debunked", "resolved"];
+async function apiUpdateRumorStatus(req, res) {
+  let body;
+  try { body = await readJsonBody(req); }
+  catch (e) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "invalid JSON body: " + e.message }));
+    return;
+  }
+  const { campaign, hex, capturedAt, status } = body || {};
+  if (!campaign || !/^[A-Za-z0-9_-]+$/.test(campaign)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "valid `campaign` required" }));
+    return;
+  }
+  if (!hex || typeof hex !== "string") {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "`hex` required" }));
+    return;
+  }
+  if (!capturedAt || typeof capturedAt !== "string") {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "`capturedAt` required" }));
+    return;
+  }
+  if (!RUMOR_STATUSES.includes(status)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: `\`status\` must be one of ${RUMOR_STATUSES.join(", ")}` }));
+    return;
+  }
+  const file = join(REPO, "maps", campaign, `${campaign}.json`);
+  if (!existsSync(file)) {
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: `campaign file not found: ${campaign}` }));
+    return;
+  }
+  const updated = await withFileLock(file, async () => {
+    const data = JSON.parse(await readFile(file, "utf8"));
+    const list = (data.hex_rumors && data.hex_rumors[hex]) || [];
+    const entry = list.find(r => r && r.captured_at === capturedAt);
+    if (!entry) return null;
+    entry.status = status;
+    await safeWriteJsonAtomic(file, data);
+    return entry;
+  });
+  if (!updated) {
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: `rumor not found for hex=${hex} capturedAt=${capturedAt}` }));
+    return;
+  }
+  log(`[update-rumor-status] hex=${hex} capturedAt=${capturedAt} → ${status}`);
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ ok: true, rumor: updated }));
 }
 
 // --- /api/clear-encounter: remove the hex_encounters[hex] entry ----------
