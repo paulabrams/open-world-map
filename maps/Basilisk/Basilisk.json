@@ -86,7 +86,7 @@
       "point_type": "waypoint",
       "terrain": "forest",
       "visible": true,
-      "description": "A transitional landmark where the Trade Road leaves the Old Forest and descends into farmland — two hours south of the forest edge. Leaning stones and sparse trees mark civilization's northern limit. A gallows further south carries a sign reading \"THEEF.\" Travelers here turn east to reach Kalla Cave.",
+      "description": "A minecraft-deep crevasse east of the Trade Road, with a path winding down to a kobold settlement. At the surface stands a mystic ring of trees around a stone table carved with thaumaturgical runes — a binding spell for receiving prophetic dreams as the moon's shadow crosses it. Home to Yip-Snap the hunter and her clan under Chieftain Snarl-Tooth; the kobolds communicate and trash-talk the porcs by drum. A kobold kit was recently taken by spiders from a nearby drum-post, leaving only web.",
       "x_hint": 0,
       "y_hint": -2.6,
       "hex": "1007"
@@ -97,7 +97,7 @@
       "point_type": "dungeon",
       "terrain": "plains",
       "visible": true,
-      "description": "A cave four hours east of the Graveyard, stocked with a large supply of kalla. A stream winds through the hex toward the mouth. The surviving Mud Tooth Porcs — Soak Tusk, Warm Wallow, Steam Snout, Mud Plume and Bubble Trotter — resettled here after Whip convinced them to abandon the Mud Wallow. They lost a sibling, Sulphur Bristle, to the basilisk on the road south, and remain deeply shaken.",
+      "description": "A minecraft-deep crevasse east of the Trade Road, with a path winding down to a kobold settlement. At the surface stands a mystic ring of trees around a stone table carved with thaumaturgical runes — a binding spell for receiving prophetic dreams as the moon's shadow crosses it. Home to Yip-Snap the hunter and her clan under Chieftain Snarl-Tooth; the kobolds communicate and trash-talk the porcs by drum. A kobold kit was recently taken by spiders from a nearby drum-post, leaving only web.",
       "x_hint": 1.5,
       "y_hint": -2.6,
       "hex": "1207"
@@ -120,7 +120,7 @@
       "point_type": "settlement",
       "terrain": "forest",
       "visible": true,
-      "description": "An organized porc settlement in the black pines roughly 3/4 of a day north of Blackwater Crossing, then an hour west by the widest cart path. Narrower trails take three to six hours; the wide cart path exists because these porcs carry off stolen wagons whole. A recurring regional threat, with raiding forces disciplined enough to cut proper roads.",
+      "description": "A minecraft-deep crevasse east of the Trade Road, with a path winding down to a kobold settlement. At the surface stands a mystic ring of trees around a stone table carved with thaumaturgical runes — a binding spell for receiving prophetic dreams as the moon's shadow crosses it. Home to Yip-Snap the hunter and her clan under Chieftain Snarl-Tooth; the kobolds communicate and trash-talk the porcs by drum. A kobold kit was recently taken by spiders from a nearby drum-post, leaving only web.",
       "x_hint": -0.75,
       "y_hint": -3.9,
       "hex": "0905"
@@ -332,7 +332,7 @@
       "point_type": "waypoint",
       "terrain": "forest",
       "visible": true,
-      "description": "The waypoint where the Trade Road crosses from tilled farmland into dense Old Forest, about a day's march (18 miles) north of Blackwater Crossing. The treeline curves away east and west — a prominent band of tall black pines marking the edge of civilized country.",
+      "description": "A minecraft-deep crevasse east of the Trade Road, with a path winding down to a kobold settlement. At the surface stands a mystic ring of trees around a stone table carved with thaumaturgical runes — a binding spell for receiving prophetic dreams as the moon's shadow crosses it. Home to Yip-Snap the hunter and her clan under Chieftain Snarl-Tooth; the kobolds communicate and trash-talk the porcs by drum. A kobold kit was recently taken by spiders from a nearby drum-post, leaving only web.",
       "x_hint": 0.45,
       "y_hint": -2.88,
       "hex": "1106"
@@ -443,6 +443,18 @@
       "subhex": "C",
       "x_hint": 3.75,
       "y_hint": 2.165,
+      "visible": true
+    },
+    {
+      "id": "hex-1306-SE",
+      "name": "Edda's Kiln",
+      "point_type": "wilderness",
+      "terrain": "forest",
+      "description": "A pale column of smoke climbs above the birch canopy — a charcoal-burner's mound still smoldering in a circular clearing — but Edda Moss has not been seen in three days, and her supper bowl sits untouched beside an axe left standing upright in a stump.",
+      "hex": "1306",
+      "subhex": "SE",
+      "x_hint": 2.43,
+      "y_hint": -2.931,
       "visible": true
     }
   ],
@@ -570,6 +582,7 @@
     "1215": "mountains",
     "1304": "forest",
     "1305": "forest",
+    "1306": "forest",
     "1310": "plains",
     "1311": "plains",
     "1312": "forested-hills",

@@ -560,6 +560,12 @@ MOUNTAIN_SCALE = {
     "mountain-range":      0.36,   # multiple peaks composed
     "lake-mountain":       0.30,
 }
+# Cap for single-peak mountain stamps. A few outlier brushes (e.g.
+# "Mountains 18" shape-20, "Volcano 2" shape-50) have trimmed heights
+# nearly 2x the typical peak; multiplying through the archetype scale
+# made them render 4–5× too large on the map. Cap clamps those outliers
+# without affecting the well-behaved majority.
+MOUNTAIN_MAX_HEIGHT_PX = 50
 
 # Per-peak target *width* in canvas pixels — used for multi-peak stamps so
 # each individual peak in a ridge ends up the same canvas width as a single
@@ -733,7 +739,9 @@ def apply_size_factor(rows: list[dict]) -> None:
                     scale = target_w / per_peak_src_w
                 else:
                     scale = MOUNTAIN_SCALE.get(arch, 0.28)
-                r["suggested_height_px"] = max(6, round(th * scale))
+                # Cap single-peak mountain stamps so outlier brushes with
+                # exceptionally tall trimmed_h don't render giant.
+                r["suggested_height_px"] = max(6, min(MOUNTAIN_MAX_HEIGHT_PX, round(th * scale)))
                 r["size_factor"] = round(scale, 4)
             else:
                 scale = ARCHETYPE_SCALE.get(arch, DEFAULT_ARCHETYPE_SCALE) * GLOBAL_SCALE

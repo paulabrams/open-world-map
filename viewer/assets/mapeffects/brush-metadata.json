@@ -356,7 +356,7 @@
     "aspect_class": "clump",
     "peak_count": 1,
     "inked_w": 801,
-    "suggested_height_px": 190,
+    "suggested_height_px": 50,
     "size_factor": 0.36
   },
   "symbols/mountains/shape-21.png": {
@@ -898,7 +898,7 @@
     "aspect_class": "clump",
     "peak_count": 1,
     "inked_w": 992,
-    "suggested_height_px": 169,
+    "suggested_height_px": 50,
     "size_factor": 0.34
   },
   "symbols/mountains/shape-51.png": {
