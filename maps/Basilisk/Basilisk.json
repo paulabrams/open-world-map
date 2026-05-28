@@ -209,7 +209,7 @@
       "point_type": "sanctuary",
       "terrain": "forest",
       "visible": true,
-      "description": "A mystical sanctuary 2–3 days southwest of Blackwater Crossing through tough forest. The Kalla'din is a pocket realm woven between three house-wide oaks — platforms twenty feet above scorched ground, floating rune-stones, upward-flowing waterfalls, and silver-bark trees growing both upright and inverted. Home to seven immortal Dwur Eldar of the Thornbeard Circle under Gunnar \"Brambleheart,\" now trapped in blissful captivity by stonedcunning fungi. Snezynja, an Aethiiri sorceress bound in starlight chains, keeps ancient memories of the Vault of First Light. The Stone-Nose Clan forest trolls under Grandmother Lichen-Beard dwell at the Standing Stones nearby.",
+      "description": "A stand of birches all tilting a few degrees inward toward a muddy depression at their center, where a crack in the earth exhales warm air smelling faintly of charcoal. Boot prints — a woman's, small — circle the crack twice and do not come back out.",
       "x_hint": -1.5,
       "y_hint": 1.73,
       "hex": "0812"
@@ -456,6 +456,18 @@
       "x_hint": 2.43,
       "y_hint": -2.931,
       "visible": true
+    },
+    {
+      "id": "hex-1307-NW",
+      "name": "The Leaning Trees",
+      "point_type": "waypoint",
+      "terrain": "forest",
+      "description": "A stand of birches all tilting a few degrees inward toward a muddy depression at their center, where a crack in the earth exhales warm air smelling faintly of charcoal. Boot prints — a woman's, small — circle the crack twice and do not come back out.",
+      "hex": "1307",
+      "subhex": "NW",
+      "x_hint": 2.07,
+      "y_hint": -2.265,
+      "visible": true
     }
   ],
   "links": [
@@ -583,6 +595,7 @@
     "1304": "forest",
     "1305": "forest",
     "1306": "forest",
+    "1307": "forest",
     "1310": "plains",
     "1311": "plains",
     "1312": "forested-hills",
@@ -784,9 +797,48 @@
       "reaction": "Unfriendly — they've lost grain stores and one farmhand to kobold night-raids this fortnight and trust no armed strangers crossing their land at dusk",
       "description": "Seven gaunt farmers fan out across the cabbage rows in a loose skirmish line, billhooks held at the low carry, torches unlit but tucked in belts — and every pair of eyes locks onto the party the moment they crest the rise.",
       "subhex": "C"
+    },
+    "1307": {
+      "creature": "Grave-robbers",
+      "number": "2d6 → 3 men",
+      "distance": "2d6×10 → 60 yards",
+      "activity": "Hauling a long bundle wrapped in waxed funeral cloth through the undergrowth, arguing in urgent whispers about which direction leads back to the Blackwater road",
+      "reaction": "Indifferent — they freeze and feign woodcutters if spotted, offering no trouble unless cornered or the bundle is questioned",
+      "description": "Three mud-caked men drag something human-sized between them through the ferns, their breath fogging in ragged plumes, faces slick with sweat despite the cold air.",
+      "subhex": "SE"
     }
   },
   "hex_rumors": {
+    "1105": [
+      {
+        "rumor": "Torvald Klint, a charcoal burner who works the eastern forest, swears the trees at Bram's Spiral Field aren't planted — they just *grew* that way, every crown leaning inward like they're straining to hear something in the middle. He's burned wood in this forest for twenty years and never approached the place after dark. Last autumn he did, once, and said the silence inside the ring was wrong: no birds, no wind off the ridge, but the leaves were moving.",
+        "source": "Torvald Klint, a soot-faced charcoal burner met warming his hands at a smouldering pit stack off the forest road",
+        "reliability": "partial",
+        "topic": "Bram's Spiral Field",
+        "status": "new",
+        "captured_at": "2026-05-19T05:36:06.556Z"
+      }
+    ],
+    "1207": [
+      {
+        "rumor": "Old Maret who grazes her barrow-flock near the Graveyard swears the mouth of Kalla Cave breathes warm air on cold mornings — and last week she found one of her ewes standing inside it, still as a post, eyes white as chalk. The animal lived, but it won't eat and it won't look at her anymore.",
+        "source": "a weathered shepherdess named Maret, smelling of lanolin and sour ale, met on the plains road at dusk",
+        "reliability": "partial",
+        "topic": "Kalla Cave",
+        "status": "new",
+        "captured_at": "2026-05-19T05:34:25.125Z"
+      }
+    ],
+    "1307": [
+      {
+        "rumor": "Pell, the charcoal-clamp boy from Edda's Kiln, came in rattled last evening — says he crossed three woodcutters near the Leaning Trees who had no axe and no wood, just a long bundle bound in old sacking, dragged between them on a rope. They smiled and waved friendly enough when he hollered, but their boots were caked in that grey clay they dig up around the Graveyard, not forest mud, and the bundle sagged wrong at both ends.",
+        "source": "Pell, a charcoal-clamp apprentice from Edda's Kiln, still trembling over his third cup of small beer",
+        "reliability": "partial",
+        "topic": "the woodcutters near the Leaning Trees",
+        "status": "new",
+        "captured_at": "2026-05-21T03:17:12.753Z"
+      }
+    ],
     "0505": [
       {
         "rumor": "Drubwick, the one-eyed fen-poler who works the deep crossing, sells knotted reed charms to anyone fool enough to wade west of the third marker. Won't say what they're charming against, but he mutters that the mud bubbles even in a hard frost out there — warm, like something breathing underneath. The reeds around the old sunken stonework grow twice the height of anything else in the fen.",
@@ -804,6 +856,24 @@
         "reliability": "partial",
         "topic": "the Northern Warding Stone",
         "captured_at": "2026-04-27T23:00:19.129Z"
+      },
+      {
+        "rumor": "Osla Brenn's youngest — the girl who plaits rushes and sells them by the alehouse door — swears she heard a man's voice coming out of the Spider Cave last Restday, singing the same three words over and over in a tongue she didn't know. When she crept close enough to peek inside, she says the ceiling was moving. All of it, slow and breathing-like. She ran and didn't stop until she reached the mill. Her mother says the girl doesn't lie, and she doesn't — but she also can't say what the words were, only that hearing them made her want to sit down in the dirt and stay there.",
+        "source": "Osla Brenn's youngest daughter, a rush-plaiting girl of perhaps ten, loitering outside the alehouse in Pjörk Choppe Hille",
+        "reliability": "partial",
+        "topic": "The Spider Cave",
+        "status": "new",
+        "captured_at": "2026-05-19T05:37:31.772Z"
+      }
+    ],
+    "0903": [
+      {
+        "rumor": "Gully Fick, a bark-stripper who works the forest edge south of Pjörk Choppe Hille, came into the alehouse last tenday white as chalk and bought two cups of rye with shaking hands. Said he found a new stone man standing at the tree-line of the Spiderwood — proper iron pauldrons, arms flung wide, face turned upward like he'd seen something drop out of the sky. Gully says it wasn't there the month before. He didn't go close enough to check the face. He still won't say why he was out that far in the first place.",
+        "source": "Gully Fick, a lean bark-stripper of middle years, met nursing rye spirits near the alehouse hearth in Pjörk Choppe Hille",
+        "reliability": "true",
+        "topic": "the Basilisk Spiderwood",
+        "status": "new",
+        "captured_at": "2026-05-19T05:43:08.021Z"
       }
     ]
   },
