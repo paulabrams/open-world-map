@@ -468,6 +468,66 @@
       "x_hint": 2.07,
       "y_hint": -2.265,
       "visible": true
+    },
+    {
+      "id": "hex-1208-SE",
+      "name": "Havel's Fence",
+      "point_type": "waypoint",
+      "terrain": "farmland",
+      "description": "Approaching from the north, the party first sees a long dry-stone wall running perpendicular to the path — impossibly well-maintained, not a stone shifted, while every neighbouring field boundary has crumbled to rubble. An old man crouches at its midpoint pressing his ear flat against the top course, eyes closed, listening.",
+      "hex": "1208",
+      "subhex": "SE",
+      "x_hint": 1.68,
+      "y_hint": -1.632,
+      "visible": true
+    },
+    {
+      "id": "hex-1308-C",
+      "name": "Aldric's Black Furrow",
+      "point_type": "waypoint",
+      "terrain": "farmland",
+      "description": "Cresting the hedgerow from the birch-side, the first thing visible is a single furrow running arrow-straight through the standing rye — soil so dark it looks scorched, though the rye flanking it grows tall and green on either side. Aldric Fenne crouches at the near end, pressing something small and pale into the earth with his thumb, and does not look up when the party approaches.",
+      "hex": "1308",
+      "subhex": "C",
+      "x_hint": 2.25,
+      "y_hint": -1.299,
+      "visible": true
+    },
+    {
+      "id": "hex-1309-NE",
+      "name": "The Tar-Seep Boundary",
+      "point_type": "waypoint",
+      "terrain": "forested-hills",
+      "description": "Where the birchwood thins at the north edge of the hex, a low ridge of black-streaked outcrop weeps a slow tar seep — the ground around it is studded with small animal bones, perfectly preserved but pressed flat into the hardened residue, as though the earth has been quietly collecting them for years.",
+      "hex": "1309",
+      "subhex": "NE",
+      "x_hint": 2.43,
+      "y_hint": -0.533,
+      "visible": true
+    },
+    {
+      "id": "hex-1209-NW",
+      "name": "The Setter's Bank",
+      "point_type": "waypoint",
+      "terrain": "hills",
+      "description": "Cresting the rise from Aldric's fields, the first thing visible is a lean man in a tar-stained coat pressing his bare hand into an exposed clay bank, working methodically left to right; he has made eleven prints so far, each filled with black paste that smells of rendered fat, and when the party draws close he holds up one finger — wait — without turning round.",
+      "hex": "1209",
+      "subhex": "NW",
+      "x_hint": 1.32,
+      "y_hint": -0.966,
+      "visible": true
+    },
+    {
+      "id": "hex-1209-S",
+      "name": "The Pedlar's Fork",
+      "point_type": "waypoint",
+      "terrain": "hills",
+      "description": "Descending the slope from Nob's Rise, the party spots a battered signpost at a junction in the drove road — one arm reads HAVEL in fresh black paint, the other points into featureless hillside toward 'MOTHER'S GATE — 2H', lettered in the same careful hand. No track leads that way, and no one at Blackwater Crossing has ever mentioned the name.",
+      "hex": "1209",
+      "subhex": "S",
+      "x_hint": 1.5,
+      "y_hint": -0.666,
+      "visible": true
     }
   ],
   "links": [
@@ -586,6 +646,8 @@
     "1205": "forest",
     "1206": "forest",
     "1207": "forest",
+    "1208": "farmland",
+    "1209": "hills",
     "1210": "hills",
     "1211": "plains",
     "1212": "forest",
@@ -596,6 +658,8 @@
     "1305": "forest",
     "1306": "forest",
     "1307": "forest",
+    "1308": "farmland",
+    "1309": "forested-hills",
     "1310": "plains",
     "1311": "plains",
     "1312": "forested-hills",
@@ -829,6 +893,16 @@
         "captured_at": "2026-05-19T05:34:25.125Z"
       }
     ],
+    "1208": [
+      {
+        "rumor": "Aldric Fenne, who sharecrops the long strip east of Havel's Fence, says his rye came up black along the northern furrow three seasons running — same strip every time, straight as a plumb line. He figured bad drainage, dug a trench, and found a row of old fence posts buried a foot deep, much older than the ones standing. Each post had an animal jawbone nailed to it, and the nails weren't iron.",
+        "source": "a seed merchant named Osla Drenk, picking her teeth after supper at the common table",
+        "reliability": "partial",
+        "topic": "Havel's Fence",
+        "status": "debunked",
+        "captured_at": "2026-05-28T02:28:59.552Z"
+      }
+    ],
     "1307": [
       {
         "rumor": "Pell, the charcoal-clamp boy from Edda's Kiln, came in rattled last evening — says he crossed three woodcutters near the Leaning Trees who had no axe and no wood, just a long bundle bound in old sacking, dragged between them on a rope. They smiled and waved friendly enough when he hollered, but their boots were caked in that grey clay they dig up around the Graveyard, not forest mud, and the bundle sagged wrong at both ends.",
@@ -837,6 +911,24 @@
         "topic": "the woodcutters near the Leaning Trees",
         "status": "new",
         "captured_at": "2026-05-21T03:17:12.753Z"
+      }
+    ],
+    "1308": [
+      {
+        "rumor": "Maret Toll, who sharecropped the Black Furrow strip after her man broke his leg on the threshing board and never mended, swears the blackness has nothing to do with bad soil or drainage. Her husband buried their plough-dog along that furrow the winter before he died — good dark earth, she thought, no harm. Come the thaw something had opened the grave and stood the bones upright in the turned soil, arranged like a figure mid-stride. She won't say which direction they faced. She sold her lease the same week and hasn't slept a full night since.",
+        "source": "Maret Toll, a leathery ploughman's widow nursing weak cider alone at the far end of the bench",
+        "reliability": "partial",
+        "topic": "Aldric's Black Furrow",
+        "status": "new",
+        "captured_at": "2026-05-28T03:08:16.872Z"
+      },
+      {
+        "rumor": "Maret, who keeps geese along the south track, swears her old gander — a beast that will chase a horse — won't cross the line where Aldric's rye goes black. Says she watched three men try to drive a plough-ox over that same stripe last harvest. Ox lay down flat as a hearthstone and wouldn't stand until they walked it clear around the long way. She reckons Aldric's grandfather laid that boundary on purpose, same as you'd lay a foundation, and that whatever's buried under it wasn't put there to stay buried — it was put there to stay *down*.",
+        "source": "Maret, a stout goose-keeping widow whose smallholding borders the southern edge of the furrow",
+        "reliability": "partial",
+        "topic": "Aldric's Black Furrow",
+        "status": "new",
+        "captured_at": "2026-05-28T03:08:22.862Z"
       }
     ],
     "0505": [
@@ -885,6 +977,8 @@
     "1111",
     "1512",
     "1213",
-    "1110"
+    "1110",
+    "1309",
+    "1209"
   ]
 }
