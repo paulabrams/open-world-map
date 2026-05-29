@@ -566,6 +566,65 @@
     opacity: 0.55;
   }
   #export-btn:hover { opacity: 1; }
+
+  #clock-widget {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 180px;
+    background: #fdf6e3;
+    border: 1px solid #1a1410;
+    padding: 10px 14px;
+    font-family: 'IM Fell English', serif;
+    font-size: 12px;
+    color: #1a1410;
+    z-index: 50;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.25);
+  }
+  #clock-widget .clock-date {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 1px;
+  }
+  #clock-widget .clock-season {
+    font-size: 11px;
+    color: #5a4a3a;
+    margin-bottom: 6px;
+  }
+  #clock-widget .clock-watch {
+    font-size: 12px;
+    margin-bottom: 1px;
+  }
+  #clock-widget .clock-watch-time {
+    font-family: "SF Mono", "Monaco", "Menlo", monospace;
+    font-size: 10px;
+    color: #5a4a3a;
+    margin-bottom: 2px;
+  }
+  #clock-widget .clock-day {
+    font-size: 10px;
+    color: #5a4a3a;
+    border-bottom: 1px dotted rgba(90,74,58,0.4);
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+  }
+  #clock-widget .clock-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  #clock-widget .clock-btn {
+    font-family: inherit;
+    font-size: 11px;
+    padding: 4px 6px;
+    background: #f1e4c4;
+    color: #1a1410;
+    border: 1px solid #1a1410;
+    cursor: pointer;
+    flex: 1;
+  }
+  #clock-widget .clock-btn:hover { background: #e7d5a8; }
+  #clock-widget .clock-btn.full { flex: 0 0 100%; text-align: center; }
 </style>
 </head>
 <body>
@@ -628,6 +687,7 @@
 
 <div id="title-bar"></div>
 <button id="export-btn">Save PNG</button>
+<div id="clock-widget"></div>
 <div id="loading">Loading assets…</div>
 
 <script src="core-data.js"></script>
@@ -1322,6 +1382,88 @@
       if (btn) { btn.disabled = false; btn.textContent = "Scout Terrain"; }
     }
   }
+
+  // --- Session Clock -------------------------------------------------------
+  const CLOCK_LS_KEY = "clock:" + campaign;
+  const WATCH_NAMES  = ["Dawn", "Morning", "Afternoon", "Evening"];
+  const WATCH_RANGES = ["0000–0600", "0600–1200", "1200–1800", "1800–2400"];
+  const MONTH_NAMES  = ["","January","February","March","April","May","June",
+                         "July","August","September","October","November","December"];
+
+  function clockSeasonLabel(month) {
+    if (month === 12 || month <= 2) return "Winter";
+    if (month === 3)  return "Early Spring";
+    if (month <= 5)   return "Spring";
+    if (month <= 8)   return "Summer";
+    if (month <= 10)  return "Autumn";
+    return "Late Autumn";
+  }
+
+  function seasonalModifier(month) {
+    if (month === 12 || month === 1 || month === 2) return 4;
+    if (month === 3)  return 2;
+    if (month === 4 || month === 11) return 1;
+    return 0;
+  }
+
+  let clockState = (() => {
+    try {
+      const raw = localStorage.getItem(CLOCK_LS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    const now = new Date();
+    return { startYear: now.getFullYear(), startMonth: now.getMonth() + 1,
+             startDay: now.getDate(), elapsedWatches: 0 };
+  })();
+
+  function saveClock() {
+    try { localStorage.setItem(CLOCK_LS_KEY, JSON.stringify(clockState)); } catch (e) {}
+  }
+
+  function clockCurrentDate() {
+    const start = new Date(clockState.startYear, clockState.startMonth - 1, clockState.startDay);
+    start.setDate(start.getDate() + Math.floor(clockState.elapsedWatches / 4));
+    return start;
+  }
+
+  function clockCurrentMonth() { return clockCurrentDate().getMonth() + 1; }
+
+  function advanceClock(hours) {
+    clockState.elapsedWatches = Math.max(0, clockState.elapsedWatches + hours / 6);
+    saveClock();
+    renderClock();
+  }
+
+  function renderClock() {
+    const widget = document.getElementById("clock-widget");
+    if (!widget) return;
+    const date = clockCurrentDate();
+    const month = date.getMonth() + 1;
+    const season = clockSeasonLabel(month);
+    const mod = seasonalModifier(month);
+    const watchIdx = Math.floor(clockState.elapsedWatches) % 4;
+    const dayNum = Math.floor(clockState.elapsedWatches / 4) + 1;
+    widget.innerHTML =
+      `<div class="clock-date">${date.getDate()} ${MONTH_NAMES[month]}</div>` +
+      `<div class="clock-season">${season}${mod > 0 ? ` · +${mod}h off-trail` : ""}</div>` +
+      `<div class="clock-watch">${WATCH_NAMES[watchIdx]} Watch</div>` +
+      `<div class="clock-watch-time">${WATCH_RANGES[watchIdx]}</div>` +
+      `<div class="clock-day">Day ${dayNum}</div>` +
+      `<div class="clock-buttons">` +
+        `<button class="clock-btn" id="ck-minus">−1w</button>` +
+        `<button class="clock-btn" id="ck-plus">+1w</button>` +
+        `<button class="clock-btn full" id="ck-camp">Camp (2 watches)</button>` +
+        `<button class="clock-btn full" id="ck-dawn">Reset to dawn</button>` +
+      `</div>`;
+    document.getElementById("ck-minus").onclick = () => advanceClock(-6);
+    document.getElementById("ck-plus").onclick  = () => advanceClock(6);
+    document.getElementById("ck-camp").onclick  = () => advanceClock(12);
+    document.getElementById("ck-dawn").onclick  = () => {
+      clockState.elapsedWatches = Math.floor(clockState.elapsedWatches / 4) * 4;
+      saveClock(); renderClock();
+    };
+  }
+  // -------------------------------------------------------------------------
 
   function addMarkUnexploredButton(hex) {
     const actEl = document.getElementById("panel-actions");
@@ -2039,8 +2181,8 @@
       // Shift-click → resolve route from the start hex to this one.
       if (ev.shiftKey && routeStartHex) {
         MapData.closePanel();   // drop the start hex's panel; route card replaces it
-        const res = MapData.findRoute(routeStartHex, hex, graphData);
-        if (res) renderRoute(res.path, res.hours);
+        const res = MapData.findRoute(routeStartHex, hex, graphData, seasonalModifier(clockCurrentMonth()));
+        if (res) { renderRoute(res.path, res.hours); advanceClock(res.hours); }
         return;
       }
       const opened = selectHexAndOpenPanel(hex);
@@ -2438,6 +2580,9 @@
 
   // Re-fit on viewport resize.
   window.addEventListener("resize", fitToViewport);
+
+  // Render the session clock widget.
+  renderClock();
 })().catch(err => {
   console.error(err);
   document.getElementById("loading").textContent = "Error: " + err.message;

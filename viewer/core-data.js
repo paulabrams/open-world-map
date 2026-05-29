@@ -142,7 +142,7 @@
     return (Math.abs(ax - bx) + Math.abs(ay - by) + Math.abs(az - bz)) / 2;
   }
 
-  function buildTravelGraph(graphData) {
+  function buildTravelGraph(graphData, seasonModifier = 0) {
     const graph = new Map();
     const addEdge = (a, b, hours) => {
       if (!graph.has(a)) graph.set(a, new Map());
@@ -165,8 +165,11 @@
       const base = hexTravelHours(h, hexTerrain);
       return (riverHexes.has(h) && riverHexes.has(otherH)) ? Math.max(base, 12) : base;
     };
+    // seasonModifier adds extra hours/hex to off-trail edges only. Road/trail
+    // edges are added first with their caps, so the minimum-cost rule in
+    // addEdge ensures maintained paths are unaffected by the season.
     const edgeCost = (a, b) =>
-      (hexCostForEdge(a, b) + hexCostForEdge(b, a)) / 2;
+      (hexCostForEdge(a, b) + hexCostForEdge(b, a)) / 2 + seasonModifier;
     function addPathEntries(entries, defaultCap) {
       const norm = typeof entries[0] === "string" ? [{ hexes: entries }] : entries;
       norm.forEach(entry => {
@@ -273,9 +276,9 @@
     return { path, hours };
   }
 
-  function findRoute(startHex, endHex, graphData) {
+  function findRoute(startHex, endHex, graphData, seasonModifier = 0) {
     if (startHex === endHex) return { path: [startHex], hours: 0 };
-    const { graph, known } = buildTravelGraph(graphData);
+    const { graph, known } = buildTravelGraph(graphData, seasonModifier);
     if (known.has(startHex) && known.has(endHex)) {
       const res = dijkstra(graph, startHex, endHex);
       if (res) return res;
