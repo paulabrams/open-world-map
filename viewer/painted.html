@@ -789,16 +789,17 @@
   await assets.preload("assets/mapeffects/manifest.json");
 
   // Feature-detect the local proxy. On GitHub Pages there is no /api/health,
-  // so the fetch fails and AI features stay hidden. The proxy holds the API
-  // key — the browser never sees it.
+  // so the fetch fails and server-only features stay hidden.
+  let serverAvailable = false;
   let AI_HEX = { enabled: false, model: null };
   try {
     const r = await fetch("/api/health", { cache: "no-store" });
     if (r.ok) {
+      serverAvailable = true;
       const j = await r.json();
       if (j && j.aiEnabled) AI_HEX = { enabled: true, model: j.model || null };
     }
-  } catch (e) { /* no proxy — feature stays off */ }
+  } catch (e) { /* no proxy — server features stay off */ }
 
   loadingEl.classList.add("hidden");
 
@@ -1466,6 +1467,7 @@
   // -------------------------------------------------------------------------
 
   function addMarkUnexploredButton(hex) {
+    if (!serverAvailable) return;
     const actEl = document.getElementById("panel-actions");
     if (!actEl) return;
     const btn = document.createElement("button");
@@ -1973,33 +1975,10 @@
 
   // ---- Unexplored hex state ----------------------------------------------
   // Hexes flagged "unexplored" hide their stamps + labels + encounters on
-  // the overland map; the panel for those hexes shows an "Explore" button
-  // instead of the normal content. Persisted in two places:
-  //   - `hex_unexplored` array in Basilisk.json (authoritative; only
-  //     writeable when the dev-server proxy is running locally)
-  //   - localStorage under `unexplored:<campaign>` (per-browser; works on
-  //     a static GitHub Pages deployment with no proxy)
-  // On load we union both sources so a static deployment still toggles
-  // correctly without a backend.
-  const UNEXPLORED_LS_KEY = "unexplored:" + campaign;
-  function loadUnexploredFromLocal() {
-    try {
-      const raw = localStorage.getItem(UNEXPLORED_LS_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch { return []; }
-  }
-  function saveUnexploredToLocal() {
-    try {
-      localStorage.setItem(UNEXPLORED_LS_KEY, JSON.stringify(graphData.hex_unexplored || []));
-    } catch (e) { /* localStorage may be full / disabled; harmless */ }
-  }
-  // Merge the local list in on first load so static deployments respect it.
+  // the overland map; the panel shows a stripped-down view until explored.
+  // State is authoritative in the campaign JSON (hex_unexplored array).
+  // Controls to change it only appear when the local dev server is available.
   graphData.hex_unexplored = graphData.hex_unexplored || [];
-  loadUnexploredFromLocal().forEach(h => {
-    if (graphData.hex_unexplored.indexOf(h) < 0) graphData.hex_unexplored.push(h);
-  });
 
   function isHexUnexplored(hex) {
     const list = graphData.hex_unexplored;
@@ -2010,17 +1989,13 @@
     const idx = graphData.hex_unexplored.indexOf(hex);
     if (makeUnexplored && idx < 0) graphData.hex_unexplored.push(hex);
     if (!makeUnexplored && idx >= 0) graphData.hex_unexplored.splice(idx, 1);
-    saveUnexploredToLocal();   // always — works in static mode
-    // Best-effort write through to the proxy (no-op on GitHub Pages).
-    try {
-      await fetch("/api/toggle-unexplored", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaign, hex, unexplored: !!makeUnexplored }),
-      });
-    } catch (e) { /* expected on static deployment */ }
+    await fetch("/api/toggle-unexplored", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaign, hex, unexplored: !!makeUnexplored }),
+    });
     await renderAll();
-    selectHexAndOpenPanel(hex);   // refresh the panel with the new state
+    selectHexAndOpenPanel(hex);
   }
 
   // Currently-selected hex (the one whose panel is open). Mirrored into
@@ -2063,15 +2038,16 @@
         hex,
       };
       MapData.openPanel(synthetic, { connections: [] });
-      const actEl = document.getElementById("panel-actions");
-      if (actEl) {
-        actEl.innerHTML = "";
-        const btn = document.createElement("button");
-        btn.className = "panel-action";
-        btn.type = "button";
-        btn.textContent = "Explore";
-        btn.addEventListener("click", () => setHexUnexplored(hex, false));
-        actEl.appendChild(btn);
+      if (serverAvailable) {
+        const actEl = document.getElementById("panel-actions");
+        if (actEl) {
+          const btn = document.createElement("button");
+          btn.className = "panel-action";
+          btn.type = "button";
+          btn.textContent = "Explore";
+          btn.addEventListener("click", () => setHexUnexplored(hex, false));
+          actEl.appendChild(btn);
+        }
       }
       setSelectedHex(hex);
       return true;
@@ -2125,7 +2101,7 @@
         hex,
       };
       MapData.openPanel(synthetic, { connections: [] });
-      if (AI_HEX.enabled) {
+      if (serverAvailable) {
         const actEl = document.getElementById("panel-actions");
         if (actEl) {
           const btn = document.createElement("button");
@@ -2169,7 +2145,7 @@
   if (paintCtx.hexPolygon && paintCtx.xyToHex) {
     container.addEventListener("click", (ev) => {
       // Skip clicks on UI / node hotspot circles (those have their own handler).
-      if (ev.target.closest("#detail-panel,#zoom-controls,#export-btn,#style-controls")) return;
+      if (ev.target.closest("#detail-panel,#zoom-controls,#export-btn,#style-controls,#clock-widget")) return;
       if (ev.target.closest("#map-hotspots > circle")) return;
       if (dragging) return;
       const { sx, sy } = pixelToCanvas(ev.clientX, ev.clientY);
@@ -2345,7 +2321,7 @@
   // Drag to pan
   let dragging = false, dragStart = null;
   container.addEventListener("mousedown", (ev) => {
-    if (ev.target.closest("#detail-panel,#zoom-controls,#export-btn,#map-hotspots > circle")) return;
+    if (ev.target.closest("#detail-panel,#zoom-controls,#export-btn,#clock-widget,#map-hotspots > circle")) return;
     dragging = true;
     dragStart = { x: ev.clientX - view.tx, y: ev.clientY - view.ty };
     ev.preventDefault();
@@ -2385,7 +2361,7 @@
   }
   container.addEventListener("touchstart", (ev) => {
     // Don't hijack touches on UI overlays.
-    if (ev.target.closest("#detail-panel,#zoom-controls,#export-btn,#style-controls,#route-card")) return;
+    if (ev.target.closest("#detail-panel,#zoom-controls,#export-btn,#style-controls,#clock-widget,#route-card")) return;
     ev.preventDefault();
 
     if (ev.touches.length === 1) {
@@ -2524,7 +2500,7 @@
   // Double-click on a hex → smoothly zoom in centred on that hex.
   // Skips if the user double-clicked on a node hotspot (those open the panel).
   container.addEventListener("dblclick", (ev) => {
-    if (ev.target.closest("#detail-panel,#zoom-controls,#export-btn,#map-hotspots > circle")) return;
+    if (ev.target.closest("#detail-panel,#zoom-controls,#export-btn,#clock-widget,#map-hotspots > circle")) return;
     const { sx, sy } = pixelToCanvas(ev.clientX, ev.clientY);
     const targetScale = Math.min(8, view.scale * 2.5);
     const W = window.innerWidth, H = window.innerHeight;
