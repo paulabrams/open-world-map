@@ -521,6 +521,7 @@ const server = createServer(async (req, res) => {
   if (url.startsWith("/api/update-node") && req.method === "POST") return apiUpdateNode(req, res);
   if (url.startsWith("/api/clear-encounter") && req.method === "POST") return apiClearEncounter(req, res);
   if (url.startsWith("/api/toggle-unexplored") && req.method === "POST") return apiToggleUnexplored(req, res);
+  if (url.startsWith("/api/save-hex-terrain") && req.method === "POST") return apiSaveHexTerrain(req, res);
   if (url.startsWith("/api/generate-rumor") && req.method === "POST") return apiGenerateRumor(req, res);
   if (url.startsWith("/api/update-rumor-status") && req.method === "POST") return apiUpdateRumorStatus(req, res);
   return serveStatic(req, res);
@@ -763,6 +764,49 @@ async function apiUpdateRumorStatus(req, res) {
 }
 
 // --- /api/clear-encounter: remove the hex_encounters[hex] entry ----------
+// --- /api/save-hex-terrain: persist a single hex's terrain to the JSON ---
+// Body: { campaign, hex, terrain }
+async function apiSaveHexTerrain(req, res) {
+  let body;
+  try { body = await readJsonBody(req); }
+  catch (e) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "invalid JSON body: " + e.message }));
+    return;
+  }
+  const { campaign, hex, terrain } = body || {};
+  if (!campaign || !/^[A-Za-z0-9_-]+$/.test(campaign)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "valid `campaign` required" }));
+    return;
+  }
+  if (!hex || typeof hex !== "string") {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "`hex` required" }));
+    return;
+  }
+  if (!terrain || typeof terrain !== "string") {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "`terrain` required" }));
+    return;
+  }
+  const file = join(REPO, "maps", campaign, `${campaign}.json`);
+  if (!existsSync(file)) {
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: `campaign file not found: ${campaign}` }));
+    return;
+  }
+  await withFileLock(file, async () => {
+    const data = JSON.parse(await readFile(file, "utf8"));
+    data.hex_terrain = data.hex_terrain || {};
+    data.hex_terrain[hex] = terrain;
+    await safeWriteJsonAtomic(file, data);
+  });
+  log(`[save-hex-terrain] hex=${hex} terrain=${terrain}`);
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ ok: true, hex, terrain }));
+}
+
 // --- /api/toggle-unexplored: add or remove a hex from hex_unexplored ---
 // Body: { campaign, hex, unexplored: true|false }
 async function apiToggleUnexplored(req, res) {

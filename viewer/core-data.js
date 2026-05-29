@@ -158,12 +158,15 @@
     // wading takes time. Roads/trails crossing a river hex stay capped
     // (bridges/fords) because the road/trail edge override wins.
     const riverHexes = new Set((graphData && graphData.river_path) || []);
-    const hexTravelHoursWithRiver = (h) => {
+    // River penalty applies only when BOTH endpoints are in the river path —
+    // i.e. you are traversing through the river course. Arriving at a river
+    // hex as a destination does not require fording.
+    const hexCostForEdge = (h, otherH) => {
       const base = hexTravelHours(h, hexTerrain);
-      return riverHexes.has(h) ? Math.max(base, 12) : base;
+      return (riverHexes.has(h) && riverHexes.has(otherH)) ? Math.max(base, 12) : base;
     };
     const edgeCost = (a, b) =>
-      (hexTravelHoursWithRiver(a) + hexTravelHoursWithRiver(b)) / 2;
+      (hexCostForEdge(a, b) + hexCostForEdge(b, a)) / 2;
     function addPathEntries(entries, defaultCap) {
       const norm = typeof entries[0] === "string" ? [{ hexes: entries }] : entries;
       norm.forEach(entry => {

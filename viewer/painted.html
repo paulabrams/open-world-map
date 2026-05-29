@@ -275,8 +275,35 @@
     margin-bottom: 4px;
     letter-spacing: 1px;
   }
-  #detail-panel .hex-travel,
-  #detail-panel .hex-pois { display: none; }
+  #detail-panel .hex-travel { display: none; }
+  #detail-panel .hex-pois { display: block; }
+  #detail-panel .hex-pois:empty { display: none; }
+  #detail-panel .hex-pois h3 {
+    font-size: 14px;
+    color: #9c2a1f;
+    margin: 10px 0 6px;
+    border-top: 1px solid #c8b89a;
+    padding-top: 10px;
+  }
+  #detail-panel .poi-item { margin-bottom: 10px; }
+  #detail-panel .poi-item strong {
+    display: block;
+    font-size: 14px;
+    color: #1a1410;
+    margin-bottom: 1px;
+  }
+  #detail-panel .poi-type {
+    font-style: italic;
+    font-size: 11px;
+    color: #5a4a3a;
+    display: block;
+    margin-bottom: 4px;
+  }
+  #detail-panel .poi-desc {
+    font-size: 13px;
+    line-height: 1.4;
+    color: #2a1f14;
+  }
   #detail-panel .actions {
     display: flex;
     flex-wrap: wrap;
@@ -813,17 +840,21 @@
       c.setAttribute("data-id", node.id);
       c.addEventListener("click", (ev) => {
         ev.stopPropagation();
-        const conns = (graphData.links || [])
-          .filter(l => l.visible !== false && (l.source === node.id || l.target === node.id))
-          .map(l => {
-            const otherId = l.source === node.id ? l.target : l.source;
-            const other = (graphData.nodes || []).find(n => n.id === otherId);
-            const days = l.days != null ? ` — ${l.days}d` : "";
-            return (other ? other.name : otherId) + days;
-          });
-        MapData.openPanel(node, { connections: conns });
-        attachEditing(node);
-        if (node.hex) attachExploreActions(node.hex, node.terrain || (paintCtx.hexTerrain && paintCtx.hexTerrain[node.hex]) || "wilderness", null);
+        if (node.hex) {
+          // Delegate to selectHexAndOpenPanel so all POIs are treated equally.
+          selectHexAndOpenPanel(node.hex);
+        } else {
+          const conns = (graphData.links || [])
+            .filter(l => l.visible !== false && (l.source === node.id || l.target === node.id))
+            .map(l => {
+              const otherId = l.source === node.id ? l.target : l.source;
+              const other = (graphData.nodes || []).find(n => n.id === otherId);
+              const days = l.days != null ? ` — ${l.days}d` : "";
+              return (other ? other.name : otherId) + days;
+            });
+          MapData.openPanel(node, { connections: conns });
+          attachEditing(node);
+        }
       });
       hotspots.appendChild(c);
     });
@@ -1267,8 +1298,44 @@
   }
 
   // Append AI action controls to the panel after openPanel. For empty
-  // hexes (synthetic !== null) we add the Explore picker block; for every
-  // hex we add a Roll Encounter button. Skipped entirely if AI is off.
+  async function scoutTerrain(hex, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Scouting…"; }
+    try {
+      const hexT = graphData.hex_terrain || {};
+      const neighborTerrains = MapData.hexNeighbors
+        ? MapData.hexNeighbors(hex).map(h => hexT[h]).filter(Boolean)
+        : [];
+      const chosenTerrain = neighborTerrains.length
+        ? neighborTerrains[Math.floor(Math.random() * neighborTerrains.length)]
+        : "wilderness";
+      graphData.hex_terrain = graphData.hex_terrain || {};
+      graphData.hex_terrain[hex] = chosenTerrain;
+      // Persist to the campaign JSON via the dev server (no-op in production).
+      await fetch("/api/save-hex-terrain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign, hex, terrain: chosenTerrain }),
+      }).catch(() => {});
+      await renderAll();
+      selectHexAndOpenPanel(hex);
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = "Scout Terrain"; }
+    }
+  }
+
+  function addMarkUnexploredButton(hex) {
+    const actEl = document.getElementById("panel-actions");
+    if (!actEl) return;
+    const btn = document.createElement("button");
+    btn.className = "panel-action";
+    btn.type = "button";
+    btn.textContent = "Mark Unexplored";
+    btn.addEventListener("click", () => setHexUnexplored(hex, true));
+    actEl.appendChild(btn);
+  }
+
+  // For every hex we add the Explore direction picker and a Roll Encounter
+  // button. Skipped entirely if AI is off.
   function attachExploreActions(hex, terrain, synthetic /* null for defined */) {
     // If this hex has a saved encounter, surface it in the panel callout
     // — independent of whether the AI backend is currently available.
@@ -1281,9 +1348,8 @@
     const actEl = document.getElementById("panel-actions");
     if (!actEl) return;
     actEl.innerHTML = "";
-    if (synthetic) {
-      actEl.appendChild(buildExploreBlock(hex, terrain, synthetic));
-    }
+    const exploreSyn = synthetic || { id: "hex-" + hex, hex, name: "Hex " + hex, terrain, description: "" };
+    actEl.appendChild(buildExploreBlock(hex, terrain, exploreSyn));
     const encBtn = document.createElement("button");
     encBtn.className = "panel-action";
     encBtn.type = "button";
@@ -1398,26 +1464,12 @@
     showBusyOverlay(hex, direction);
     try {
       const contextNodes = nearbyContextNodes(hex, 12);
-      // For uncharted hexes, nudge terrain continuity: half the time, pick
-      // a neighbour's terrain so the world tends to extend existing biomes
-      // rather than fragment into random patches. Only fires when we have
-      // at least one defined neighbour terrain.
-      let requestTerrain = terrain;
-      const hexT = graphData.hex_terrain || {};
-      if (requestTerrain === "uncharted" && MapData.hexNeighbors) {
-        const neighborTerrains = MapData.hexNeighbors(hex)
-          .map(h => hexT[h])
-          .filter(Boolean);
-        if (neighborTerrains.length && Math.random() < 0.5) {
-          requestTerrain = neighborTerrains[Math.floor(Math.random() * neighborTerrains.length)];
-        }
-      }
       const resp = await fetch("/api/generate-hex", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           hex,
-          terrain: requestTerrain,
+          terrain,
           campaign,
           contextNodes,
           nearbyRumors: nearbyHexRumors(hex),
@@ -1446,6 +1498,8 @@
       await renderAll();
       MapData.openPanel(generated, { connections: [] });
       attachEditing(generated);
+      attachExploreActions(hex, finalTerrain, generated);
+      addMarkUnexploredButton(hex);
     } catch (e) {
       if (btn) { btn.disabled = false; btn.textContent = "Generate this hex"; }
       const descEl = document.getElementById("panel-desc");
@@ -1883,46 +1937,77 @@
 
     const localNodes = (graphData.nodes || [])
       .filter(n => n.hex === hex && n.visible !== false);
-    const primary = localNodes.find(n => MapData.isOverlandNode && MapData.isOverlandNode(n))
-                  || localNodes[0];
-    if (primary) {
+    const terrain = (localNodes[0] && localNodes[0].terrain) || hexT[hex] || "wilderness";
+    if (localNodes.length === 1) {
+      // Single POI: show it as the panel header.
+      const node = localNodes[0];
       const conns = (graphData.links || [])
-        .filter(l => l.visible !== false && (l.source === primary.id || l.target === primary.id))
+        .filter(l => l.visible !== false && (l.source === node.id || l.target === node.id))
         .map(l => {
-          const otherId = l.source === primary.id ? l.target : l.source;
+          const otherId = l.source === node.id ? l.target : l.source;
           const other = (graphData.nodes || []).find(n => n.id === otherId);
           const days = l.days != null ? ` — ${l.days}d` : "";
           return (other ? other.name : otherId) + days;
         });
-      MapData.openPanel(primary, { connections: conns });
-      attachEditing(primary);
-      attachExploreActions(hex, primary.terrain || hexT[hex] || "wilderness", null);
+      MapData.openPanel(node, { connections: conns });
+      attachEditing(node);
+      const exploreSynthetic = { id: "hex-" + hex, hex, name: node.name, terrain, description: "" };
+      attachExploreActions(hex, terrain, exploreSynthetic);
+      addMarkUnexploredButton(hex);
+    } else if (localNodes.length > 1) {
+      // Multiple POIs: use the hex itself as the header; list all nodes equally.
+      const hexHeader = { id: "hex-" + hex, name: `Hex ${hex}`, point_type: terrain, terrain, description: "", hex };
+      MapData.openPanel(hexHeader, { connections: [] });
+      const poisEl = document.getElementById("panel-pois");
+      if (poisEl) {
+        poisEl.innerHTML = localNodes.map(n =>
+          `<div class="poi-item">` +
+          `<strong>${MapData.escapeHtml(n.name || "")}</strong>` +
+          `<span class="poi-type">${MapData.escapeHtml(n.point_type || "")}</span>` +
+          `<span class="poi-desc">${MapData.escapeHtml(n.description || "")}</span>` +
+          `</div>`
+        ).join("");
+      }
+      const exploreSynthetic = { id: "hex-" + hex, hex, name: `Hex ${hex}`, terrain, description: "" };
+      attachExploreActions(hex, terrain, exploreSynthetic);
+      addMarkUnexploredButton(hex);
+    } else if (!isDefined) {
+      // Uncharted hex: no terrain data yet. Offer scouting only — no direction
+      // picker, since the party hasn't entered the hex.
+      const synthetic = {
+        id: "hex-" + hex,
+        name: `Hex ${hex} — Uncharted`,
+        point_type: "uncharted",
+        terrain: "uncharted",
+        description: "The party has not scouted this hex. Climb a tree or find a vantage point to reveal the terrain.",
+        hex,
+      };
+      MapData.openPanel(synthetic, { connections: [] });
+      if (AI_HEX.enabled) {
+        const actEl = document.getElementById("panel-actions");
+        if (actEl) {
+          const btn = document.createElement("button");
+          btn.className = "panel-action";
+          btn.type = "button";
+          btn.textContent = "Scout Terrain";
+          btn.addEventListener("click", () => scoutTerrain(hex, btn));
+          actEl.appendChild(btn);
+        }
+      }
     } else {
-      const terrain = hexT[hex] || "uncharted";
-      const desc = isDefined
-        ? `${terrain} hex with no recorded landmarks.`
-        : "Beyond the known map.";
+      // Known terrain, no POI yet: show direction picker for exploration.
+      const terrain = hexT[hex];
       const synthetic = {
         id: "hex-" + hex,
         name: `Hex ${hex}`,
         point_type: "wilderness",
         terrain,
-        description: desc,
+        description: `${terrain} hex with no recorded landmarks.`,
         hex,
       };
       MapData.openPanel(synthetic, { connections: [] });
       attachExploreActions(hex, terrain, synthetic);
-    }
-    // "Mark Unexplored" button — sits alongside the AI actions so a GM can
-    // hide a hex's contents from the players (or for fog-of-war reveals).
-    const actEl = document.getElementById("panel-actions");
-    if (actEl) {
-      const btn = document.createElement("button");
-      btn.className = "panel-action";
-      btn.type = "button";
-      btn.textContent = "Mark Unexplored";
-      btn.addEventListener("click", () => setHexUnexplored(hex, true));
-      actEl.appendChild(btn);
+      addMarkUnexploredButton(hex);
     }
     setSelectedHex(hex);
     return true;
