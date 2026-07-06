@@ -886,9 +886,14 @@
     paintCtx.svgPathLayer = pathLayer;
     paintCtx.svgLabelLayer = labelLayer;
     // Unexplored hexes get no node stamps, no labels — anything tied to a
-    // node in those hexes is hidden from the overland map.
+    // node in those hexes is hidden from the overland map. Exception:
+    // landmark nodes (distant fortresses/towers seeded at map creation) show
+    // their stamp *through* the fog — a silhouette on the horizon — while the
+    // hex stays unexplored. Their label is suppressed (see mapeffects
+    // label loops) and clicking the hex still shows the generic Unexplored
+    // panel, so no place detail leaks.
     paintCtx.nodes = style.filterNodes(graphData.nodes || [])
-      .filter(n => !n.hex || !isHexUnexplored(n.hex));
+      .filter(n => !n.hex || n.landmark || !isHexUnexplored(n.hex));
     await style.render(paintCtx);
     paintCtx.nodes.forEach(node => {
       const slot = paintCtx._stampPositions && paintCtx._stampPositions[node.id];
@@ -2251,12 +2256,54 @@
     stage.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.scale})`;
     saveViewToHash();
   }
+  // Bounding box (in canvas coords) of the actual content — terrain hexes +
+  // placed nodes. Used to frame the map on load. This is what makes maps
+  // whose origin is far from Blackwater Crossing's (0,0) anchor (e.g. a new
+  // map started at 2020 or 5050) frame correctly instead of appearing as a
+  // speck in the corner of the BC-centred canvas.
+  function contentBoundsCanvas() {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, found = false;
+    const consider = (x, y) => {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      found = true;
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    };
+    if (paintCtx.hexCenterXY) {
+      for (const hex of Object.keys(graphData.hex_terrain || {})) {
+        const xy = paintCtx.hexCenterXY(hex);
+        if (xy) consider(xy[0], xy[1]);
+      }
+    }
+    if (paintCtx.nodeXY) {
+      for (const n of (graphData.nodes || [])) {
+        if (!n.hex) continue;
+        const xy = paintCtx.nodeXY(n);
+        if (xy) consider(xy[0], xy[1]);
+      }
+    }
+    if (!found) return null;
+    const pad = 140; // ~one hex of breathing room around the content
+    return { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad };
+  }
+
   function fitToViewport() {
     const W = window.innerWidth, H = window.innerHeight;
-    const s = Math.min(W / RENDER_W, H / RENDER_H);
+    const b = contentBoundsCanvas();
+    if (!b) {
+      // No content to frame — fall back to fitting the whole canvas.
+      const s = Math.min(W / RENDER_W, H / RENDER_H);
+      view.scale = s;
+      view.tx = (W - RENDER_W * s) / 2;
+      view.ty = (H - RENDER_H * s) / 2;
+      applyTransform();
+      return;
+    }
+    const cw = Math.max(1, b.maxX - b.minX), ch = Math.max(1, b.maxY - b.minY);
+    const s = Math.min(W / cw, H / ch);
     view.scale = s;
-    view.tx = (W - RENDER_W * s) / 2;
-    view.ty = (H - RENDER_H * s) / 2;
+    view.tx = W / 2 - s * (b.minX + b.maxX) / 2;
+    view.ty = H / 2 - s * (b.minY + b.maxY) / 2;
     applyTransform();
   }
 

@@ -1,0 +1,148 @@
+{
+  "meta": {
+    "campaign": "Akkar Frontier",
+    "world": "Dragon Isles",
+    "region": "Akkar Frontier",
+    "biome": "coast"
+  },
+  "nodes": [
+    {
+      "id": "hex-1010-C",
+      "name": "Harrowmouth",
+      "point_type": "heart",
+      "terrain": "farmland",
+      "description": "A weathered river-mouth town on the frontier's edge — the party's home base and the starting point of the campaign.",
+      "hex": "1010",
+      "subhex": "C",
+      "x_hint": 0,
+      "y_hint": 0,
+      "visible": true
+    },
+    {
+      "id": "hex-1110-C",
+      "name": "The Salt Widow's Lantern",
+      "point_type": "waypoint",
+      "terrain": "coast",
+      "description": "A bleached driftwood post driven into a sea-stack at the tide-line, hung with a iron cage lantern whose wick burns rendered shark liver rather than tallow — the smell carries half a mile. Fisherfolk say a woman named Dara Cael has tended it every dusk for thirty years without explanation, and no ship has grounded on these rocks since she started.",
+      "hex": "1110",
+      "subhex": "C",
+      "x_hint": 0.75,
+      "y_hint": 0.433,
+      "visible": true
+    },
+    {
+      "id": "hex-1009-C",
+      "name": "The Saltblind Lantern",
+      "point_type": "ruin",
+      "terrain": "coast",
+      "description": "A collapsed lighthouse whose iron lens-housing still tilts seaward atop cracked basalt columns, refracting moonlight into a wandering ghost-beam that sailors swear predicts squalls by turning green. The keeper's cottage below is long drowned, but her tide-chart, etched into the rock face in copper nail-heads, remains legible at low water.",
+      "hex": "1009",
+      "subhex": "C",
+      "x_hint": 0,
+      "y_hint": -0.866,
+      "visible": true
+    },
+    {
+      "id": "hex-0910-C",
+      "name": "The Tidal Lantern",
+      "point_type": "ruin",
+      "terrain": "hills",
+      "description": "A collapsed signal tower perched on a chalk headland, its bronze mirror-array still faintly intact — salvagers learned the hard way that tilting the reflector at the wrong angle ignites the dry grass in a fifty-foot arc. Local fishers use the glare as a bearing mark without knowing why the hill never grows back its scrub.",
+      "hex": "0910",
+      "subhex": "C",
+      "x_hint": -0.75,
+      "y_hint": 0.433,
+      "visible": true
+    },
+    {
+      "id": "hex-0909-C",
+      "name": "The Tidekeeper's Battery",
+      "point_type": "ruin",
+      "terrain": "coast",
+      "description": "A crumbling coastal artillery emplacement whose four bronze cannon barrels have been colonised by nesting gannets, the birds' white-streaked heads peering from the muzzles like charges on a mad heraldic device. The powder magazine floods to knee-depth at every high tide, and the iron door has not closed properly since a kraken — or something close to one — bent it outward three winters past.",
+      "hex": "0909",
+      "subhex": "C",
+      "x_hint": -0.75,
+      "y_hint": -0.433,
+      "visible": true
+    },
+    {
+      "id": "hex-1109-C",
+      "name": "The Salt Ledgers",
+      "point_type": "ruin",
+      "terrain": "hills",
+      "description": "A terraced limestone outcrop where Akkar merchants once carved trade tallies directly into the cliff face — hundreds of columns of wedge-cut numerals in a script no living scholar reads, still sharp despite the salt wind. Goats shelter in the carved recesses at dusk, their hooves clicking against forgotten fortunes.",
+      "hex": "1109",
+      "subhex": "C",
+      "x_hint": 0.75,
+      "y_hint": -0.433,
+      "visible": true
+    },
+    {
+      "id": "hex-1011-C",
+      "name": "Thresh Point",
+      "point_type": "tower",
+      "terrain": "coast",
+      "description": "A squat basalt tower barnacled to its arrow slits, occupied by a cartographer who trades accurate coastal charts for teeth — she claims each extracted molar maps what its owner witnessed at sea, and her collection numbers in the thousands.",
+      "hex": "1011",
+      "subhex": "C",
+      "x_hint": 0,
+      "y_hint": 0.866,
+      "visible": true
+    },
+    {
+      "id": "hex-0908-C",
+      "name": "Hollow Spire",
+      "point_type": "tower",
+      "terrain": "coast",
+      "description": "",
+      "hex": "0908",
+      "subhex": "C",
+      "x_hint": -0.75,
+      "y_hint": -1.299,
+      "visible": true,
+      "landmark": true
+    }
+  ],
+  "links": [],
+  "hex_terrain": {
+    "1007": "plains",
+    "1008": "coast",
+    "1009": "coast",
+    "1010": "farmland",
+    "1011": "coast",
+    "1012": "plains",
+    "1013": "hills",
+    "1109": "hills",
+    "1110": "coast",
+    "1111": "hills",
+    "0910": "hills",
+    "0909": "coast",
+    "0811": "forested-hills",
+    "0908": "coast",
+    "0810": "mountains"
+  },
+  "hex_unexplored": [
+    "1007",
+    "1008",
+    "1012",
+    "1013",
+    "0811",
+    "1111",
+    "0908",
+    "0810"
+  ],
+  "hex_encounters": {},
+  "hex_rumors": {},
+  "river_path": [
+    "1007",
+    "1008",
+    "1009",
+    "1010",
+    "1011",
+    "1012",
+    "1013"
+  ],
+  "road_path": [],
+  "off_map_arrows": []
+}

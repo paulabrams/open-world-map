@@ -17,7 +17,7 @@
 // Stops with Ctrl-C.
 
 import { createServer } from "node:http";
-import { readFile, stat, writeFile, rename } from "node:fs/promises";
+import { readFile, stat, writeFile, rename, mkdir, readdir } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve, join, extname, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -511,11 +511,392 @@ function readJsonBody(req) {
   });
 }
 
+// --- /api/create-map: scaffold a brand-new campaign ----------------------
+//
+// Body: { campaign, world, biome, size }
+//   campaign — dir + ?map= value; validated to [A-Za-z0-9_-]+
+//   world    — meta.world (free text)
+//   biome    — drives terrain weighting + river seeding
+//   size     — small|medium|large → origin hex 1010|2020|5050 (headroom only)
+//
+// Seeds exactly the 7-hex flower (origin heart + 6 neighbour POIs), all
+// explored. Optionally scatters distant *unexplored* landmarks and extends a
+// river into the fog. Refuses to overwrite an existing campaign directory.
+// DB capture is best-effort and fire-and-forget (never blocks the response).
+const SIZE_ORIGIN = { small: "1010", medium: "2020", large: "5050" };
+
+// Flat-top neighbour offsets, parity-anchored to BC_COL (mirrors
+// core-data.js hexNeighbors). Order: [N, NE, SE, S, SW, NW]. N (index 0) and
+// S (index 3) are parity-independent, so a river can walk them directly.
+function hexNeighborsServer(hex) {
+  const col = parseInt(hex.substring(0, 2), 10);
+  const row = parseInt(hex.substring(2, 4), 10);
+  if (isNaN(col) || isNaN(row)) return [];
+  const shifted = (col % 2) !== (BC_COL % 2);
+  const offsets = shifted
+    ? [[0, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]]
+    : [[0, -1], [1, -1], [1, 0], [0, 1], [-1, 0], [-1, -1]];
+  return offsets.map(([dc, dr]) =>
+    String(col + dc).padStart(2, "0") + String(row + dr).padStart(2, "0"));
+}
+
+// biome → weighted terrain table (weights need not sum to anything).
+const BIOME_TERRAINS = {
+  temperate: { plains: 3, forest: 2, hills: 2, farmland: 1, "forested-hills": 1 },
+  forest:    { forest: 4, "forested-hills": 2, hills: 1, plains: 1 },
+  desert:    { desert: 4, badlands: 2, hills: 1, plains: 1 },
+  coast:     { coast: 3, plains: 2, hills: 1, marsh: 1 },
+  mountains: { mountains: 4, hills: 3, "forested-hills": 1 },
+  swamp:     { swamp: 3, marsh: 2, forest: 1, plains: 1 },
+  hills:     { hills: 4, "forested-hills": 2, plains: 1, mountains: 1 },
+  plains:    { plains: 4, farmland: 2, hills: 1 },
+};
+const DEFAULT_BIOME = "temperate";
+// Biomes whose maps get a river routed through the origin.
+const RIVER_BIOMES = new Set(["coast", "swamp"]);
+// Terrain preferred under the home settlement (habitable ground).
+const ORIGIN_TERRAINS = { plains: 3, farmland: 2, hills: 1 };
+// Distant-landmark whitelist (spec: prominence whitelist, locked).
+const LANDMARK_TERRAINS = ["mountains", "hills", "forested-hills"];
+const LANDMARK_STRUCTURES = ["fortress", "tower", "settlement"];
+
+function weightedPick(weights) {
+  const entries = Object.entries(weights);
+  const total = entries.reduce((s, [, w]) => s + w, 0);
+  let r = Math.random() * total;
+  for (const [k, w] of entries) { if ((r -= w) < 0) return k; }
+  return entries[0][0];
+}
+const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
+function biomeWeights(biome) { return BIOME_TERRAINS[biome] || BIOME_TERRAINS[DEFAULT_BIOME]; }
+function pickTerrainForBiome(biome) { return weightedPick(biomeWeights(biome)); }
+
+// --- Procedural POI generator (no-AI fallback) ---------------------------
+const POI_TYPE_WEIGHTS = {
+  settlement: 3, wilderness: 3, ruin: 2, tavern: 1,
+  dungeon: 1, lair: 1, waypoint: 1, sanctuary: 1, tower: 1,
+};
+const NAME_ADJ = ["Old", "North", "Grey", "Little", "Broken", "Raven's", "Elder", "Nether", "Hollow", "Stone", "Amber", "Cold"];
+const NAME_NOUN = {
+  settlement: ["Ford", "Crossing", "Hollow", "Dale", "Market", "Bridge", "Haven", "Reach"],
+  wilderness: ["Copse", "Meadow", "Thicket", "Barrens", "Fen", "Downs", "Wold", "Heath"],
+  ruin:       ["Ruins", "Cairn", "Standing Stones", "Broken Tower", "Old Wall", "Barrow"],
+  tavern:     ["Rest", "Tankard", "Hearth", "Lantern", "Wayhouse"],
+  dungeon:    ["Delve", "Undercroft", "Warren", "Deep", "Hollow"],
+  lair:       ["Den", "Nest", "Roost", "Burrow", "Warren"],
+  waypoint:   ["Marker", "Milestone", "Shrine-post", "Crossroads", "Ferry"],
+  sanctuary:  ["Chapel", "Grove", "Refuge", "Retreat", "Hermitage"],
+  tower:      ["Watchtower", "Spire", "Beacon", "Turret"],
+  fortress:   ["Keep", "Hold", "Bastion", "Redoubt"],
+};
+function proceduralPOI(biome, terrain) {
+  const point_type = weightedPick(POI_TYPE_WEIGHTS);
+  const nouns = NAME_NOUN[point_type] || NAME_NOUN.wilderness;
+  const name = `${rand(NAME_ADJ)} ${rand(nouns)}`;
+  const description = `A ${point_type} set amid the ${terrain}. The party has not yet learned its story.`;
+  return { name, point_type, terrain, description };
+}
+// The party's home town — a settlement-style name distinct from the region.
+function proceduralTown(terrain) {
+  return {
+    name: `${rand(NAME_ADJ)} ${rand(NAME_NOUN.settlement)}`,
+    point_type: "heart",
+    terrain,
+    description: "The party's home base and the starting point of the campaign.",
+  };
+}
+
+// --- AI POI generator (reuses the generate-hex backends) -----------------
+// Terrain is fixed by the caller (biome-procedural); the model authors only
+// the location. Returns a parsed {name, point_type, terrain, description} or
+// null on any failure so the caller can fall back to procedural content.
+async function aiGenerateLocation({ campaign, hex, terrain, biome, role }) {
+  const system = [
+    "You are a TTRPG content generator for a point-crawl hex map.",
+    "Output ONE concrete location: a single named place with a vivid 1-2 sentence description.",
+    "Favour specific, surprising details over clichés.",
+    "Respond ONLY as a JSON object with these exact fields: {\"name\": string, \"point_type\": string, \"terrain\": string, \"description\": string}.",
+    "No preamble, code fences, or commentary — just the JSON.",
+    "Valid point_type values: heart, fortress, tavern, settlement, wilderness, dungeon, sanctuary, tower, ruin, waypoint, lair.",
+  ].join(" ");
+  const ask = role === "home"
+    ? "Generate the party's HOME settlement — a named town or village where the campaign begins (its own place-name, NOT the region's name). Somewhere lived-in the party would return to."
+    : "Generate one location for this hex that fits the biome and terrain.";
+  const userPrompt = [
+    `Region: ${campaign}`,
+    `Biome: ${biome}`,
+    `Hex: ${hex}`,
+    `Terrain: ${terrain} (keep this terrain; do not change it)`,
+    ask,
+  ].join("\n");
+  try {
+    const content = BACKEND === "claude-code"
+      ? await runClaudeCli(system, userPrompt, { tag: "create-map" })
+      : await runAnthropicApi(system, userPrompt);
+    let parsed;
+    try { parsed = JSON.parse(content); }
+    catch { const m = content.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); }
+    if (!parsed || !parsed.name) return null;
+    parsed.terrain = terrain; // terrain is authoritative from the biome step
+    return parsed;
+  } catch (e) {
+    log(`[create-map] AI location for ${hex} failed: ${e.message}`);
+    return null;
+  }
+}
+
+// Build a node the same way appendNodeToCampaign does, at a chosen sub-hex.
+function makeFlowerNode(hex, subhex, parsed, extra = {}) {
+  const [hx, hy] = hexCenterInches(hex);
+  const [ox, oy] = SUBHEX_OFFSET_INCHES[subhex] || SUBHEX_OFFSET_INCHES.C;
+  return {
+    id: `hex-${hex}-${subhex}`,
+    name: parsed.name,
+    point_type: parsed.point_type || "wilderness",
+    terrain: parsed.terrain || "plains",
+    description: parsed.description || "",
+    hex,
+    subhex,
+    x_hint: +(hx + ox).toFixed(3),
+    y_hint: +(hy + oy).toFixed(3),
+    visible: true,
+    ...extra,
+  };
+}
+
+function newBaseGraph(meta) {
+  return {
+    meta,
+    nodes: [], links: [],
+    hex_terrain: {},
+    hex_unexplored: [],
+    hex_encounters: {}, hex_rumors: {},
+    river_path: [], road_path: [],
+    off_map_arrows: [],
+  };
+}
+
+// Route a river N↔S through the origin. The two flower hexes on it stay
+// explored; the extensions into the fog are added to hex_unexplored.
+function seedRiver(graph, origin, biome) {
+  const path = [origin];
+  let up = origin, down = origin;
+  for (let i = 0; i < 3; i++) { up = hexNeighborsServer(up)[0]; path.unshift(up); }     // N (upstream)
+  for (let i = 0; i < 3; i++) { down = hexNeighborsServer(down)[3]; path.push(down); }   // S (downstream)
+  graph.river_path = path;
+  const flower = new Set([origin, ...hexNeighborsServer(origin)]);
+  for (const h of path) {
+    if (flower.has(h)) continue;               // flower hexes already handled / explored
+    if (!graph.hex_terrain[h]) graph.hex_terrain[h] = pickTerrainForBiome(biome);
+    if (!graph.hex_unexplored.includes(h)) graph.hex_unexplored.push(h);
+  }
+}
+
+// Scatter 2–4 distant landmarks in the ring beyond the flower. Terrain
+// landmarks render for free; structure landmarks carry landmark:true.
+function seedLandmarks(graph, origin, biome) {
+  const flower = new Set([origin, ...hexNeighborsServer(origin)]);
+  const ring2 = new Set();
+  for (const n of hexNeighborsServer(origin)) {
+    for (const nn of hexNeighborsServer(n)) {
+      if (!flower.has(nn) && !badHex(nn)) ring2.add(nn);
+    }
+  }
+  const candidates = [...ring2];
+  const target = 2 + Math.floor(Math.random() * 3); // 2..4
+  let placed = 0;
+  while (placed < target && candidates.length) {
+    const h = candidates.splice(Math.floor(Math.random() * candidates.length), 1)[0];
+    if (graph.hex_terrain[h]) continue; // don't overwrite
+    if (Math.random() < 0.6) {
+      graph.hex_terrain[h] = rand(LANDMARK_TERRAINS);          // terrain landmark
+    } else {
+      const point_type = rand(LANDMARK_STRUCTURES);
+      graph.hex_terrain[h] = point_type === "fortress" ? "hills" : pickTerrainForBiome(biome);
+      graph.nodes.push(makeFlowerNode(h, "C", {
+        name: `${rand(NAME_ADJ)} ${rand(NAME_NOUN[point_type] || NAME_NOUN.tower)}`,
+        point_type,
+        terrain: graph.hex_terrain[h],
+        description: "",
+      }, { landmark: true }));
+    }
+    if (!graph.hex_unexplored.includes(h)) graph.hex_unexplored.push(h);
+    placed++;
+  }
+}
+function badHex(h) {
+  const col = parseInt(h.substring(0, 2), 10), row = parseInt(h.substring(2, 4), 10);
+  return !(col >= 1 && row >= 1) || h.length !== 4;
+}
+
+// GET /api/list-maps — discover every campaign on disk (dir + <dir>.json),
+// returning the dir id (used as the ?map= slug) plus its meta so the landing
+// page can list maps created after the page was authored.
+async function apiListMaps(req, res) {
+  try {
+    const mapsDir = join(REPO, "maps");
+    const entries = existsSync(mapsDir) ? await readdir(mapsDir, { withFileTypes: true }) : [];
+    const maps = [];
+    for (const e of entries) {
+      if (!e.isDirectory()) continue;
+      const id = e.name;
+      const f = join(mapsDir, id, `${id}.json`);
+      if (!existsSync(f)) continue;
+      let meta = {};
+      try { meta = (JSON.parse(await readFile(f, "utf8")).meta) || {}; } catch { /* skip bad meta */ }
+      maps.push({ id, meta });
+    }
+    maps.sort((a, b) => a.id.localeCompare(b.id));
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ maps }));
+  } catch (e) {
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
+// Derive a filesystem/URL-safe slug from a friendly name. Keeps case, turns
+// runs of anything outside [A-Za-z0-9_-] into a single hyphen, trims hyphens.
+// "The Akkar Frontier" -> "The-Akkar-Frontier".
+function slugifyCampaign(name) {
+  return String(name).trim().replace(/[^A-Za-z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+
+async function apiCreateMap(req, res) {
+  let body;
+  try { body = await readJsonBody(req); }
+  catch (e) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "invalid JSON body: " + e.message }));
+    return;
+  }
+  const { campaign, world, size } = body || {};
+  const biome = (body && body.biome) || DEFAULT_BIOME;
+  // campaign is the FRIENDLY name (spaces allowed). The slug is derived from
+  // it and used for the directory, filename, ?map= value, and MCP campaign key.
+  const friendly = (typeof campaign === "string" ? campaign : "").trim();
+  const slug = slugifyCampaign(friendly);
+  if (!friendly || !slug || !/^[A-Za-z0-9_-]+$/.test(slug)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "a campaign name is required (must contain at least one letter or digit)" }));
+    return;
+  }
+  const origin = SIZE_ORIGIN[size] || SIZE_ORIGIN.small;
+  const dir = join(REPO, "maps", slug);
+  const file = join(dir, `${slug}.json`);
+  if (existsSync(dir)) {
+    res.writeHead(409, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: `a map with id "${slug}" already exists` }));
+    return;
+  }
+
+  const reqStart = Date.now();
+  log(`[create-map] START name="${friendly}" slug=${slug} size=${size || "small"} origin=${origin} biome=${biome} aiEnabled=${aiEnabled}`);
+
+  // The entered name is the REGION/campaign. It shows on the cartouche via
+  // meta.region (with meta.world as the larger world above it). meta.campaign
+  // carries it as the map's identity/display name for the landing page + DB.
+  const metaObj = { campaign: friendly, world: world || "", biome };
+  if (world) metaObj.region = friendly; // else the cartouche falls back to campaign
+  const graph = newBaseGraph(metaObj);
+
+  // Origin: the party's home town (heart) — a named settlement, NOT the
+  // region's name. Centred sub-hex, habitable terrain.
+  const originTerrain = weightedPick(ORIGIN_TERRAINS);
+  graph.hex_terrain[origin] = originTerrain;
+  let originPoi = aiEnabled
+    ? await aiGenerateLocation({ campaign: friendly, hex: origin, terrain: originTerrain, biome, role: "home" })
+    : null;
+  if (!originPoi) originPoi = proceduralTown(originTerrain);
+  originPoi.point_type = "heart";
+  originPoi.terrain = originTerrain;
+  graph.nodes.push(makeFlowerNode(origin, "C", originPoi));
+
+  // Flower: assign biome terrain to each neighbour, then author one POI.
+  const neighbours = hexNeighborsServer(origin);
+  const emptyHexes = [];
+  const seededPoints = [];
+  await Promise.all(neighbours.map(async (hex) => {
+    const terrain = pickTerrainForBiome(biome);
+    graph.hex_terrain[hex] = terrain;
+    let poi = aiEnabled ? await aiGenerateLocation({ campaign: friendly, hex, terrain, biome }) : null;
+    if (!poi) { if (aiEnabled) emptyHexes.push(hex); poi = proceduralPOI(biome, terrain); }
+    poi.terrain = terrain;
+    const node = makeFlowerNode(hex, "C", poi);
+    graph.nodes.push(node);
+    seededPoints.push(node);
+  }));
+
+  // Enhancement layer (lowest priority — safe if it no-ops).
+  try {
+    if (RIVER_BIOMES.has(biome)) seedRiver(graph, origin, biome);
+    seedLandmarks(graph, origin, biome);
+  } catch (e) { log(`[create-map] landmark/river seeding skipped: ${e.message}`); }
+
+  try {
+    await mkdir(dir, { recursive: true });
+    await safeWriteJsonAtomic(file, graph);
+  } catch (e) {
+    log(`[create-map] FAILED to write ${file}: ${e.message}`);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "failed to write campaign file: " + e.message }));
+    return;
+  }
+  log(`[create-map] wrote ${file} — ${graph.nodes.length} nodes, ${Object.keys(graph.hex_terrain).length} hexes in ${Date.now() - reqStart}ms`);
+
+  // Best-effort DB capture — MUST NOT block the response (spec Must-Not).
+  // The MCP campaign key is the slug (short name, like "Basilisk"); the
+  // friendly name goes into the campaign thought's content.
+  const originNode = graph.nodes[0];
+  captureMapToMcp({ campaign: slug, friendly, world: world || "", biome, originHex: origin, originTerrain, points: [originNode, ...seededPoints] })
+    .then(msg => log(`[create-map] MCP capture OK: ${String(msg).slice(0, 160)}`))
+    .catch(e => log(`[create-map] MCP capture FAILED (non-fatal): ${e.message}`));
+
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({
+    created: true,
+    campaign: slug,
+    name: friendly,
+    url: `painted.html?map=${encodeURIComponent(slug)}`,
+    aiUsed: aiEnabled,
+    emptyHexes,
+  }));
+}
+
+// Capture the campaign + seeded points + flower terrains to Supabase in a
+// SINGLE claude -p call (one spawn, not one per thought). Best-effort.
+async function captureMapToMcp({ campaign, friendly, world, biome, originHex, originTerrain, points }) {
+  if (!aiEnabled) throw new Error("no AI backend for MCP capture");
+  const displayName = friendly || campaign;
+  const system = "You are a database integration helper. Call the open-world MCP capture_thought tool once per item requested, then report a one-line summary. Do not ask questions.";
+  const pointLines = points.map(p =>
+    `- point: name="${p.name}", point_type=${p.point_type}, hex=${p.hex}, terrain=${p.terrain}, description="${(p.description || "").replace(/"/g, "'")}"`).join("\n");
+  const terrainLines = points.map(p => `- terrain: hex=${p.hex}, terrain=${p.terrain}`).join("\n");
+  const userPrompt = [
+    `Save the following to the open-world database for campaign "${campaign}" using the open-world MCP capture_thought tool. Always pass campaign="${campaign}".`,
+    "",
+    `1. One campaign thought: thought_type="campaign", content describing a new campaign "${displayName}" in the world "${world || "unknown"}" with biome "${biome}", starting at hex ${originHex} (${originTerrain}).`,
+    `2. One point thought (thought_type="point") for each of these locations:`,
+    pointLines,
+    `3. One terrain thought (thought_type="terrain") for each flower hex:`,
+    terrainLines,
+    "",
+    "After the tool calls, reply with a one-line confirmation of how many thoughts were saved.",
+  ].join("\n");
+  return runClaudeCli(system, userPrompt, {
+    allowedTools: ["mcp__open-world__capture_thought"],
+    permissionMode: "acceptEdits",
+    tag: "create-map-mcp",
+  });
+}
+
 // --- Router ---------------------------------------------------------------
 const server = createServer(async (req, res) => {
   const url = req.url || "/";
   if (url.startsWith("/api/")) console.log(`[${req.method}] ${url}`);
   if (url.startsWith("/api/health")) return apiHealth(req, res);
+  if (url.startsWith("/api/list-maps")) return apiListMaps(req, res);
+  if (url.startsWith("/api/create-map") && req.method === "POST") return apiCreateMap(req, res);
   if (url.startsWith("/api/generate-hex") && req.method === "POST") return apiGenerateHex(req, res);
   if (url.startsWith("/api/generate-encounter") && req.method === "POST") return apiGenerateEncounter(req, res);
   if (url.startsWith("/api/update-node") && req.method === "POST") return apiUpdateNode(req, res);

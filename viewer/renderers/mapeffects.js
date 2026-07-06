@@ -288,6 +288,7 @@
     for (const node of nodes) {
       if (D.isOverlandNode && !D.isOverlandNode(node)) continue;
       if (!node.name) continue;
+      if (node.landmark) continue;   // distant landmarks show a stamp but no label
       const xy = nodeXY(node);
       if (!xy) continue;
       const fontSize = node.point_type === "heart" ? 16 : 13;
@@ -2225,6 +2226,7 @@
     nodes.forEach(node => {
       if (!D.isOverlandNode(node)) return;
       if (!node.name) return;
+      if (node.landmark) return;   // distant landmarks show a stamp but no label
       const slot = paintCtx._stampPositions && paintCtx._stampPositions[node.id];
       const [x, y] = slot ? [slot.x, slot.y] : nodeXY(node);
       const yOff = (slot ? slot.bottomOffset : 0) + 6;

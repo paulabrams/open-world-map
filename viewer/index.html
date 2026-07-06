@@ -152,6 +152,72 @@
     .style-row, .style-row:nth-child(even) { flex-direction: column; }
     .style-image { flex: 1; }
   }
+
+  /* New Map (local dev server only) */
+  .hidden { display: none !important; }
+  .new-map-card { border-style: dashed; }
+  .new-map-card h3 { color: #8b2500; }
+
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(30, 20, 10, 0.55);
+    z-index: 1100;
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: #faf3e6;
+    border: 1px solid #c9b48a;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    padding: 28px 30px;
+    width: 100%; max-width: 460px;
+  }
+  .modal h2 {
+    font-size: 20px; color: #8b2500;
+    border-bottom: 1px solid #d4c4a0;
+    padding-bottom: 8px; margin-bottom: 18px;
+  }
+  .modal label {
+    display: block; margin-bottom: 16px;
+    font-size: 13px; color: #2a1f14;
+  }
+  .modal input[type="text"], .modal select {
+    width: 100%; margin-top: 5px;
+    padding: 8px 10px;
+    background: #fffdf7;
+    border: 1px solid #c9b48a;
+    font-family: inherit; font-size: 14px; color: #2a1f14;
+  }
+  .modal .hint {
+    display: block; margin-top: 4px;
+    font-size: 11px; font-style: italic; color: #8b7b6b;
+  }
+  .radio-row { display: flex; gap: 16px; margin-top: 6px; }
+  .radio-row label {
+    margin: 0; display: flex; align-items: center; gap: 5px;
+    font-size: 13px; font-style: normal;
+  }
+  .modal-actions {
+    display: flex; justify-content: flex-end; gap: 12px;
+    margin-top: 22px;
+  }
+  .modal button {
+    font-family: inherit; font-size: 13px;
+    padding: 8px 18px; cursor: pointer;
+    border: 1px solid #c9b48a; background: #f0e6d0; color: #2a1f14;
+  }
+  .modal button#newMapSubmit { background: #8b2500; color: #f4e8d1; border-color: #8b2500; }
+  .modal button:disabled { opacity: 0.5; cursor: default; }
+  .modal-error {
+    background: #f6dcd5; border: 1px solid #c86a58; color: #8b2500;
+    padding: 8px 10px; font-size: 12px; margin-top: 4px;
+  }
+  #newMapProgress {
+    margin-top: 16px; font-size: 13px; font-style: italic; color: #5a4a3a;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
@@ -162,6 +228,15 @@
 
 <div class="campaigns">
   <h2>Maps</h2>
+  <div class="campaign-card new-map-card hidden" id="newMapCard">
+    <div>
+      <h3>+ New Map</h3>
+      <div class="meta">Create a fresh campaign region &mdash; seeds a starting area you can explore outward from.</div>
+    </div>
+    <div class="campaign-links">
+      <a href="#" id="newMapBtn">Create &rarr;</a>
+    </div>
+  </div>
   <div class="campaign-card">
     <div>
       <h3>The Basilisk Campaign</h3>
@@ -188,6 +263,170 @@
   &nbsp;&middot;&nbsp;
   Open World Map &mdash; built with D3.js, Supabase, and the Open World MCP server
 </footer>
+
+<!-- New Map modal (revealed only when the local dev server is reachable) -->
+<div id="newMapModal" class="modal-overlay">
+  <div class="modal">
+    <h2>New Map</h2>
+    <form id="newMapForm">
+      <label>Campaign / region name
+        <input type="text" name="campaign" id="nmCampaign" required
+               autocomplete="off" placeholder="e.g. The Akkar Frontier">
+        <span class="hint">Any name &mdash; spaces are fine. A file-safe id is derived automatically (e.g. &ldquo;The Akkar Frontier&rdquo; &rarr; <code id="nmSlugPreview">The-Akkar-Frontier</code>).</span>
+      </label>
+      <label>World
+        <input type="text" name="world" id="nmWorld" autocomplete="off" placeholder="e.g. Dragon Isles">
+      </label>
+      <label>Biome
+        <select name="biome" id="nmBiome">
+          <option value="temperate">Temperate</option>
+          <option value="forest">Forest</option>
+          <option value="hills">Hills</option>
+          <option value="plains">Plains</option>
+          <option value="mountains">Mountains</option>
+          <option value="desert">Desert</option>
+          <option value="coast">Coast</option>
+          <option value="swamp">Swamp</option>
+        </select>
+        <span class="hint">Drives the terrain of the starting area (and whether it has a river).</span>
+      </label>
+      <label>Size
+        <div class="radio-row">
+          <label><input type="radio" name="size" value="small" checked> Small</label>
+          <label><input type="radio" name="size" value="medium"> Medium</label>
+          <label><input type="radio" name="size" value="large"> Large</label>
+        </div>
+        <span class="hint">Sets how much room the world has to grow, not the starting size &mdash; every size opens to the same seeded starting area.</span>
+      </label>
+      <div class="modal-error hidden" id="newMapError"></div>
+      <div class="modal-actions">
+        <button type="button" id="newMapCancel">Cancel</button>
+        <button type="submit" id="newMapSubmit">Create Map</button>
+      </div>
+    </form>
+    <div id="newMapProgress" class="hidden">Seeding your world&hellip; generating the starting area, this can take a moment.</div>
+  </div>
+</div>
+
+<script>
+// New Map — only wired up when the local dev server answers /api/health.
+// On GitHub Pages the fetch fails, the control stays hidden, and there is no
+// create-map endpoint to hit.
+(async function initNewMap() {
+  let serverAvailable = false;
+  try {
+    const r = await fetch("/api/health", { cache: "no-store" });
+    if (r.ok) serverAvailable = true;
+  } catch (e) { /* no local backend — stay hidden */ }
+  if (!serverAvailable) return;
+
+  const card     = document.getElementById("newMapCard");
+  const modal    = document.getElementById("newMapModal");
+  const form     = document.getElementById("newMapForm");
+  const errEl    = document.getElementById("newMapError");
+  const progress = document.getElementById("newMapProgress");
+  const submit   = document.getElementById("newMapSubmit");
+  card.classList.remove("hidden");
+
+  function openModal(ev) { if (ev) ev.preventDefault(); errEl.classList.add("hidden"); modal.classList.add("open"); document.getElementById("nmCampaign").focus(); }
+  function closeModal() { modal.classList.remove("open"); }
+
+  document.getElementById("newMapBtn").addEventListener("click", openModal);
+  document.getElementById("newMapCancel").addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+
+  function showError(msg) {
+    errEl.textContent = msg;
+    errEl.classList.remove("hidden");
+    progress.classList.add("hidden");
+    form.classList.remove("hidden");
+    submit.disabled = false;
+  }
+
+  // Mirror the server's slugify so the preview matches what gets created.
+  function slugify(name) {
+    return String(name).trim().replace(/[^A-Za-z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  }
+  const nameInput = document.getElementById("nmCampaign");
+  const slugPreview = document.getElementById("nmSlugPreview");
+  nameInput.addEventListener("input", () => {
+    slugPreview.textContent = slugify(nameInput.value) || "…";
+  });
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  // Discover maps on disk and list any not already shown as a hardcoded card
+  // (Basilisk, Dragon Isles). Local-server only — production keeps the static
+  // cards. Inserted right after the New Map card so fresh maps appear on top.
+  async function renderDiscoveredMaps() {
+    let maps;
+    try {
+      const r = await fetch("/api/list-maps", { cache: "no-store" });
+      if (!r.ok) return;
+      ({ maps } = await r.json());
+    } catch (e) { return; }
+    if (!Array.isArray(maps)) return;
+    const existing = new Set(
+      [...document.querySelectorAll('a[href*="painted.html?map="]')]
+        .map(a => new URLSearchParams(a.getAttribute("href").split("?")[1]).get("map"))
+        .filter(Boolean)
+    );
+    const frag = document.createDocumentFragment();
+    maps.forEach(m => {
+      if (!m || !m.id || existing.has(m.id)) return;
+      const meta = m.meta || {};
+      // Title = campaign/region name; subtitle = world + biome + era (region is
+      // the same as the title for new maps, so don't repeat it here).
+      const bits = [meta.world, meta.biome, meta.era].filter(Boolean).join(" — ");
+      const el = document.createElement("div");
+      el.className = "campaign-card";
+      el.innerHTML =
+        `<div><h3>${esc(meta.campaign || m.id)}</h3><div class="meta">${esc(bits)}</div></div>` +
+        `<div class="campaign-links">` +
+        `<a href="rumors.html?map=${encodeURIComponent(m.id)}">Rumors</a> ` +
+        `<a href="painted.html?map=${encodeURIComponent(m.id)}">Open Map &rarr;</a></div>`;
+      frag.appendChild(el);
+    });
+    if (frag.childNodes.length) card.after(frag);
+  }
+  renderDiscoveredMaps();
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const campaign = document.getElementById("nmCampaign").value.trim();
+    const world    = document.getElementById("nmWorld").value.trim();
+    const biome    = document.getElementById("nmBiome").value;
+    const size     = (form.querySelector('input[name="size"]:checked') || {}).value || "small";
+    if (!slugify(campaign)) {
+      showError("Please enter a name with at least one letter or digit.");
+      return;
+    }
+    errEl.classList.add("hidden");
+    submit.disabled = true;
+    form.classList.add("hidden");
+    progress.classList.remove("hidden");
+    try {
+      const resp = await fetch("/api/create-map", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign, world, biome, size }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        showError(data.error || ("Create failed (" + resp.status + ")."));
+        return;
+      }
+      window.location.href = data.url || ("painted.html?map=" + encodeURIComponent(campaign));
+    } catch (err) {
+      showError("Could not reach the dev server: " + err.message);
+    }
+  });
+})();
+</script>
 
 </body>
 </html>
