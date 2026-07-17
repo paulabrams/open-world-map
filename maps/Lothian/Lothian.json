@@ -1,0 +1,366 @@
+{
+  "meta": {
+    "campaign": "The Lothian Campaign",
+    "world": "Dragon Isles",
+    "region": "Lyonesse — west shore of the Wolf's Maw, north of Kyrgar",
+    "biome": "coast"
+  },
+  "nodes": [
+    {
+      "id": "gottsburg",
+      "name": "Gottsburg",
+      "point_type": "heart",
+      "terrain": "coast",
+      "visible": true,
+      "description": "The one safe town on the sinking Lyonesse coast — a small wrecking-and-fishing town on the final spit of land before the drowned reaches, too small for any world chart. Slate roofs, a stone quay, fish-cellars cut into the cliff, a chapel with a cracked bell, and goats with tiny old throat-bells climbing the vertical basalt columns that pack this coast. Everyone lives off tin from the moor, the pilchard catch, and what the sea gives back off the wrecks. The Vogt keeps a thin order; no jarl is coming — Kyrgar of the drowning towers lies days south, Deganwy days north. The party sleeps, spends, heals, and sets out from here — guests, not owners. Neighbors say Goats Burg.",
+      "x_hint": 0,
+      "y_hint": 0,
+      "hex": "1010"
+    },
+    {
+      "id": "senkbell",
+      "name": "The Senkbell",
+      "point_type": "tavern",
+      "terrain": "town",
+      "visible": true,
+      "description": "The Sunken Bell — the party's home tavern, named for the drowned church bells offshore. A ship's bell hangs over the bar; Hild rings it once when a name should go softer. Cheap ale, salt herring, a loft to sleep in, goats on the benches. Lodging and Muster.",
+      "x_hint": 0,
+      "y_hint": 0,
+      "hex": "1010",
+      "scale": "local",
+      "parent": "gottsburg"
+    },
+    {
+      "id": "cracked-chapel",
+      "name": "The Cracked Chapel",
+      "point_type": "sanctuary",
+      "terrain": "town",
+      "visible": true,
+      "description": "Hedge chapel — the bell won't ring true since the last storm. Holy water and mending at 10 gp, both cut from goat milk and fish roe. Father Berthold yells Grüßgott and works Vitae life-magic in village clothes; Old Edda sets bones above the fish-cellars and knows the old Langarrow stories: them lot trafficked with fishes. Goats hold yoga poses on the ledges and roof through every rite. Town joke calls it the Krankenhaus.",
+      "x_hint": 0,
+      "y_hint": 0,
+      "hex": "1010",
+      "scale": "local",
+      "parent": "gottsburg"
+    },
+    {
+      "id": "tims-column",
+      "name": "Tim's Column",
+      "point_type": "tower",
+      "terrain": "town",
+      "visible": true,
+      "description": "A cramped sorcerer's hut on the grass-and-moss plateau atop one of the basalt columns above town — climb the staggered hexagonal faces or shout up. The wizard wants to be called Tim; his full name is Timer Done, and Berthold will not cooperate, bellowing Timmer! with the sign of the Gott from the street below. The flock uses his roof as another ledge. Safe town does not mean safe Tim.",
+      "x_hint": 0,
+      "y_hint": 0,
+      "hex": "1010",
+      "scale": "local",
+      "parent": "gottsburg"
+    },
+    {
+      "id": "ebb-barrow",
+      "name": "The Ebb Barrow",
+      "point_type": "dungeon",
+      "terrain": "coast",
+      "visible": true,
+      "description": "A tide-exposed binding-tomb off the point. At low spring tide a black-rock causeway surfaces and runs out to a tidal islet crowned with a half-drowned tomb older than the town; it floods again in roughly six hours — the clock is the dungeon. The party cleared it across Sessions 0–1: grasping dead in the antechamber, the Drowned Lord beneath the missing bell, and in the deepest cist a salt-sealed coffin holding a draugr — hauled to the beach, freed, and put down with fire, silver, holy water, and the binding toll. The keeper's lung vault beneath the coffin bed has been looted. The sealed tin found here charts three coastal spots where the sea gives ground.",
+      "x_hint": 0.75,
+      "y_hint": 0.433,
+      "hex": "1110"
+    },
+    {
+      "id": "drowned-boat",
+      "name": "The Drowned Boat",
+      "point_type": "waypoint",
+      "terrain": "coast",
+      "visible": false,
+      "description": "GM-held — undiscovered. Tied up at the far end of the Ebb Barrow causeway where the sea normally covers it: waterlogged, barnacled, older than it should be, as if it never quite rotted. It wants to go home. If brought into play it finds the drowned road — fog, bells below, stone spires where no land should be, kith sails in the murk — and can reveal Langarrow or the Black Crag when ordinary boats cannot pass. It belonged to the beheaded stranger at the barrow threshold, the cove-corpse of the town rumor.",
+      "x_hint": 0.95,
+      "y_hint": 0.55,
+      "hex": "1110"
+    },
+    {
+      "id": "moor-tin-diggings",
+      "name": "The Moor & Tin Diggings",
+      "point_type": "wilderness",
+      "terrain": "hills",
+      "visible": true,
+      "description": "Inland, up the cliffs from Gottsburg: cold open moor, tin miners and their diggings, old workings that go deeper than anyone remembers, and standing stones on the high ground. The tin brought down from here is a third of the town's living. The Vogt's job list mentions moor unrest.",
+      "x_hint": -1.5,
+      "y_hint": -0.866,
+      "hex": "0809"
+    },
+    {
+      "id": "moor-standing-stones",
+      "name": "The Standing Stones",
+      "point_type": "sanctuary",
+      "terrain": "hills",
+      "visible": true,
+      "description": "Old standing stones on the high moor beyond the tin diggings, from before Gottsburg had any name at all. The miners walk around them, not past them. Beyond the high ground the land falls away west toward the Dewiniaid, the endless border forest of the Magi.",
+      "x_hint": -2.25,
+      "y_hint": -2.165,
+      "hex": "0707"
+    },
+    {
+      "id": "wreck-coast",
+      "name": "The Wreck Coast",
+      "point_type": "lair",
+      "terrain": "coast",
+      "visible": true,
+      "description": "Sea caves and grounded hulks south along the cliffs toward Kyrgar — wreckers' territory, and kith pirate ground. Wrecking is not spoken of plainly in Gottsburg but it is half the economy; the hulks anchored in the fog here are the other half of the story. Stone spires stand in the murk offshore.",
+      "x_hint": 0.75,
+      "y_hint": 2.165,
+      "hex": "1112"
+    },
+    {
+      "id": "langarrow",
+      "name": "Drowned Langarrow",
+      "point_type": "ruin",
+      "terrain": "coast",
+      "visible": true,
+      "description": "Out under the waves of the Wolf's Maw. Whole parishes lie beneath the water, and on bad nights the town hears the drowned churches ringing across it — three nights running now, out of season, and the old folk say the sea takes more land after. Old Edda's stories tangle tale and truth: sea demons, fish-faced saints, and people who took gifts from below the tide. Somewhere in the drowned land stands the Black Crag — a sunken monolith and undersea megadungeon, either Langarrow itself or one of its islands. No ordinary boat finds the way; the same cold waters swallow Kyrgar's drowning towers to the south.",
+      "x_hint": 3,
+      "y_hint": 0,
+      "hex": "1410"
+    },
+    {
+      "id": "north-ebb-ruin",
+      "name": "The Northern Ebb Ruin",
+      "point_type": "ruin",
+      "terrain": "coast",
+      "visible": false,
+      "description": "GM-held — one of the three coastal spots marked on the sealed tin's chart where the sea gives ground: a tide-bared ruin north of Gottsburg along the cold shore toward Deganwy. Revealed when the party opens the barrow tin (and Stein's matching tin fills in more of the chart).",
+      "x_hint": 0,
+      "y_hint": -1.732,
+      "hex": "1008"
+    },
+    {
+      "id": "south-ebb-ruin",
+      "name": "The Southern Ebb Ruin",
+      "point_type": "ruin",
+      "terrain": "coast",
+      "visible": false,
+      "description": "GM-held — the southernmost of the chart's three spots where the sea gives ground, down past the Wreck Coast cliffs. Revealed by the sealed tins; getting to it quietly means crossing wreckers' territory.",
+      "x_hint": 0.75,
+      "y_hint": 3.031,
+      "hex": "1113"
+    }
+  ],
+  "links": [
+    {
+      "source": "gottsburg",
+      "target": "ebb-barrow",
+      "name": "The Ebb Causeway",
+      "days": 0.1,
+      "path_type": "wilderness",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "gottsburg",
+      "target": "moor-tin-diggings",
+      "name": "Miners' Track",
+      "days": 0.5,
+      "path_type": "trail",
+      "terrain_difficulty": "easy",
+      "visible": true
+    },
+    {
+      "source": "moor-tin-diggings",
+      "target": "moor-standing-stones",
+      "name": "Path to the Stones",
+      "days": 0.25,
+      "path_type": "trail",
+      "terrain_difficulty": "easy",
+      "visible": true
+    },
+    {
+      "source": "gottsburg",
+      "target": "wreck-coast",
+      "name": "Cliff Path",
+      "days": 1,
+      "path_type": "trail",
+      "terrain_difficulty": "tough",
+      "visible": true
+    },
+    {
+      "source": "ebb-barrow",
+      "target": "drowned-boat",
+      "name": "Causeway's End",
+      "days": 0,
+      "path_type": "wilderness",
+      "terrain_difficulty": "tough",
+      "visible": false
+    },
+    {
+      "source": "drowned-boat",
+      "target": "langarrow",
+      "name": "The Drowned Road",
+      "days": 1,
+      "path_type": "wilderness",
+      "terrain_difficulty": "perilous",
+      "visible": false
+    }
+  ],
+  "hex_terrain": {
+    "0608": "hills",
+    "0609": "mountains",
+    "0610": "mountains",
+    "0611": "hills",
+    "0612": "forested-hills",
+    "0706": "coast",
+    "0707": "hills",
+    "0708": "hills",
+    "0709": "forested-hills",
+    "0710": "hills",
+    "0711": "forested-hills",
+    "0712": "hills",
+    "0713": "coast",
+    "0807": "coast",
+    "0808": "hills",
+    "0809": "hills",
+    "0810": "hills",
+    "0811": "hills",
+    "0812": "forested-hills",
+    "0813": "coast",
+    "0907": "coast",
+    "0908": "hills",
+    "0909": "plains",
+    "0910": "plains",
+    "0911": "hills",
+    "0912": "hills",
+    "0913": "coast",
+    "1008": "coast",
+    "1009": "coast",
+    "1010": "coast",
+    "1011": "coast",
+    "1012": "coast",
+    "1013": "coast",
+    "1110": "coast",
+    "1112": "coast",
+    "1113": "coast"
+  },
+  "river_path": [
+    "0609",
+    "0709",
+    "0809",
+    "0909",
+    "1010"
+  ],
+  "river_name": "The Tinwash",
+  "road_path": [
+    {
+      "name": "Miners' Track",
+      "hexes": [
+        "1010",
+        "0909",
+        "0809"
+      ],
+      "path_type": "trail",
+      "terrain_difficulty": "easy",
+      "days": 0.5
+    },
+    {
+      "name": "Cliff Path",
+      "hexes": [
+        "1010",
+        "1011",
+        "1012",
+        "1112"
+      ],
+      "path_type": "trail",
+      "terrain_difficulty": "tough",
+      "days": 1
+    }
+  ],
+  "region_labels": [
+    {
+      "text": "The Moor",
+      "hexes": [
+        "0708",
+        "0808",
+        "0908",
+        "0709",
+        "0809"
+      ],
+      "fontSize": 22,
+      "letterSpacing": "5px"
+    },
+    {
+      "text": "The Wreck Coast",
+      "hexes": [
+        "1112",
+        "1113",
+        "1013"
+      ],
+      "fontSize": 18,
+      "rotation": 8
+    },
+    {
+      "text": "Drowned Langarrow",
+      "hexes": [
+        "1409",
+        "1410",
+        "1509",
+        "1510"
+      ],
+      "fontSize": 22,
+      "letterSpacing": "6px"
+    }
+  ],
+  "off_map_arrows": [
+    {
+      "direction": "N",
+      "label": "North to Deganwy at the Conwy's mouth"
+    },
+    {
+      "direction": "E",
+      "label": "East over the Wolf's Maw to Ashenrise"
+    },
+    {
+      "direction": "S",
+      "label": "South along the coast to Kyrgar"
+    },
+    {
+      "direction": "W",
+      "label": "West to the Dewiniaid, forest of the Magi"
+    }
+  ],
+  "hex_encounters": {},
+  "hex_rumors": {},
+  "hex_unexplored": [
+    "0608",
+    "0609",
+    "0610",
+    "0611",
+    "0612",
+    "0706",
+    "0707",
+    "0708",
+    "0709",
+    "0710",
+    "0711",
+    "0712",
+    "0713",
+    "0807",
+    "0808",
+    "0809",
+    "0810",
+    "0811",
+    "0812",
+    "0813",
+    "0907",
+    "0908",
+    "0909",
+    "0910",
+    "0911",
+    "0912",
+    "0913",
+    "1008",
+    "1009",
+    "1011",
+    "1012",
+    "1013",
+    "1112",
+    "1113"
+  ]
+}
